@@ -33,7 +33,6 @@ type CtrlplaneProvider struct {
 // CtrlplaneProviderModel describes the provider data model.
 type CtrlplaneProviderModel struct {
 	BaseURL   types.String `tfsdk:"base_url"`
-	Workspace types.String `tfsdk:"workspace"`
 	Token     types.String `tfsdk:"token"`
 }
 
@@ -51,10 +50,6 @@ func (p *CtrlplaneProvider) Schema(ctx context.Context, req provider.SchemaReque
 			},
 			"token": schema.StringAttribute{
 				MarkdownDescription: "The token to use for authentication",
-				Optional:            true,
-			},
-			"workspace": schema.StringAttribute{
-				MarkdownDescription: "The workspace ID to use for Ctrlplane resources",
 				Optional:            true,
 			},
 		},
