@@ -1,3 +1,3 @@
-provider "scaffolding" {
+provider "ctrlplane" {
   # example configuration here
 }
