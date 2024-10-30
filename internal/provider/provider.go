@@ -12,6 +12,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/function"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -32,8 +33,8 @@ type CtrlplaneProvider struct {
 
 // CtrlplaneProviderModel describes the provider data model.
 type CtrlplaneProviderModel struct {
-	BaseURL   types.String `tfsdk:"base_url"`
-	Token     types.String `tfsdk:"token"`
+	BaseURL types.String `tfsdk:"base_url"`
+	Token   types.String `tfsdk:"token"`
 }
 
 func (p *CtrlplaneProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
@@ -72,7 +73,20 @@ func (p *CtrlplaneProvider) Configure(ctx context.Context, req provider.Configur
 		return
 	}
 
-	if data.BaseURL.IsNull()  {
+	if data.Token.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("token"),
+			"Unknown Ctrlplane API key token",
+			"The provider cannot create the Ctrlplane API client as there is an unknown configuration value for the API key token. "+
+				"Set the value statically in the configuration, or use the CTRLPLANE_TOKEN environment variable.",
+		)
+	}
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if data.BaseURL.IsNull() {
 		envBaseURL := os.Getenv("CTRLPLANE_BASE_URL")
 		if envBaseURL != "" {
 			data.BaseURL = types.StringValue(envBaseURL)
@@ -94,6 +108,7 @@ func (p *CtrlplaneProvider) Configure(ctx context.Context, req provider.Configur
 		data.BaseURL.ValueString(),
 		client.WithRequestEditorFn(addAPIKey(data.Token.ValueString())),
 	)
+
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create client", err.Error())
 		return
@@ -111,7 +126,7 @@ func (p *CtrlplaneProvider) Resources(ctx context.Context) []func() resource.Res
 
 func (p *CtrlplaneProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
-		NewExampleDataSource,
+		NewTargetDataSource,
 	}
 }
 
