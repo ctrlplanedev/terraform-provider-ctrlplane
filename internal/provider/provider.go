@@ -7,6 +7,7 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"strings"
 
 	"terraform-provider-ctrlplane/client"
 
@@ -32,8 +33,8 @@ type CtrlplaneProvider struct {
 
 // CtrlplaneProviderModel describes the provider data model.
 type CtrlplaneProviderModel struct {
-	BaseURL   types.String `tfsdk:"base_url"`
-	Token     types.String `tfsdk:"token"`
+	BaseURL types.String `tfsdk:"base_url"`
+	Token   types.String `tfsdk:"token"`
 }
 
 func (p *CtrlplaneProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
@@ -72,7 +73,7 @@ func (p *CtrlplaneProvider) Configure(ctx context.Context, req provider.Configur
 		return
 	}
 
-	if data.BaseURL.IsNull()  {
+	if data.BaseURL.IsNull() {
 		envBaseURL := os.Getenv("CTRLPLANE_BASE_URL")
 		if envBaseURL != "" {
 			data.BaseURL = types.StringValue(envBaseURL)
@@ -90,8 +91,13 @@ func (p *CtrlplaneProvider) Configure(ctx context.Context, req provider.Configur
 		data.Token = types.StringValue(envToken)
 	}
 
+	server := data.BaseURL.ValueString()
+	server = strings.TrimSuffix(server, "/")
+	server = strings.TrimSuffix(server, "/api")
+	server = server + "/api"
+
 	client, err := client.NewClient(
-		data.BaseURL.ValueString(),
+		server,
 		client.WithRequestEditorFn(addAPIKey(data.Token.ValueString())),
 	)
 	if err != nil {
@@ -105,7 +111,7 @@ func (p *CtrlplaneProvider) Configure(ctx context.Context, req provider.Configur
 
 func (p *CtrlplaneProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
-		NewTargetResource,
+		NewSystemResource,
 	}
 }
 
