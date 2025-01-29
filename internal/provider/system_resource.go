@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"terraform-provider-ctrlplane/client"
@@ -13,20 +12,18 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// Ensure the implementation satisfies the expected interfaces.
 var (
 	_ resource.Resource              = &systemResource{}
 	_ resource.ResourceWithConfigure = &systemResource{}
 )
 
-// NewSystemResource is a helper function to simplify the provider implementation.
 func NewSystemResource() resource.Resource {
 	return &systemResource{}
 }
 
-// systemResource is the resource implementation.
 type systemResource struct {
-	client *client.Client
+	client      *client.ClientWithResponses
+	workspaceID uuid.UUID
 }
 
 func (r *systemResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
@@ -34,16 +31,17 @@ func (r *systemResource) Configure(_ context.Context, req resource.ConfigureRequ
 		return
 	}
 
-	client, ok := req.ProviderData.(*client.Client)
+	dataSourceModel, ok := req.ProviderData.(*DataSourceModel)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *client.ClientWithResponses, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 		return
 	}
 
-	r.client = client
+	r.client = dataSourceModel.Client
+	r.workspaceID = dataSourceModel.Workspace
 }
 
 // Metadata returns the resource type name.
@@ -67,9 +65,6 @@ func (r *systemResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			"description": schema.StringAttribute{
 				Optional: true,
 			},
-			"workspace_id": schema.StringAttribute{
-				Required: true,
-			},
 		},
 	}
 }
@@ -79,7 +74,6 @@ type systemResourceModel struct {
 	Name        types.String `tfsdk:"name"`
 	Slug        types.String `tfsdk:"slug"`
 	Description types.String `tfsdk:"description"`
-	WorkspaceId types.String `tfsdk:"workspace_id"`
 }
 
 func getDescription(description *string) *string {
@@ -87,6 +81,16 @@ func getDescription(description *string) *string {
 		return nil
 	}
 	return description
+}
+
+func setSystemResourceData(plan *systemResourceModel, system *client.System) {
+	plan.Id = types.StringValue(system.Id.String())
+	plan.Name = types.StringValue(system.Name)
+	plan.Slug = types.StringValue(system.Slug)
+	description := getDescription(system.Description)
+	if description != nil {
+		plan.Description = types.StringValue(*description)
+	}
 }
 
 // Create creates the resource and sets the initial Terraform state.
@@ -98,40 +102,34 @@ func (r *systemResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
-	workspaceId, err := uuid.Parse(plan.WorkspaceId.ValueString())
-	if err != nil {
-		resp.Diagnostics.AddError("Invalid workspace ID", fmt.Sprintf("Invalid workspace ID: %s", err))
-		return
-	}
-
-	clientResp, err := r.client.CreateSystem(ctx, client.CreateSystemJSONRequestBody{
+	system, err := r.client.CreateSystemWithResponse(ctx, client.CreateSystemJSONRequestBody{
 		Name:        plan.Name.ValueString(),
 		Slug:        plan.Slug.ValueString(),
 		Description: getDescription(plan.Description.ValueStringPointer()),
-		WorkspaceId: workspaceId,
+		WorkspaceId: r.workspaceID,
 	})
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create system", fmt.Sprintf("Failed to create system: %s", err))
 		return
 	}
 
-	var result struct {
-		System client.System `json:"system"`
-	}
+	if system.JSON201 == nil {
+		if system.JSON400 != nil && system.JSON400.Error != nil {
+			resp.Diagnostics.AddError("Failed to create system", fmt.Sprintf("Failed to create system: %s", *system.JSON400.Error))
+			return
+		}
 
-	if err := json.NewDecoder(clientResp.Body).Decode(&result); err != nil {
-		resp.Diagnostics.AddError("Failed to unmarshal system", fmt.Sprintf("Failed to unmarshal system: %s", err))
+		if system.JSON500 != nil && system.JSON500.Error != nil {
+			resp.Diagnostics.AddError("Failed to create system", fmt.Sprintf("Failed to create system: %s", *system.JSON500.Error))
+			return
+		}
+
+		resp.Diagnostics.AddError("Failed to create system", fmt.Sprintf("Failed to create system: %s", system.Status()))
 		return
 	}
 
-	plan.Id = types.StringValue(result.System.Id.String())
-	plan.Name = types.StringValue(result.System.Name)
-	plan.Slug = types.StringValue(result.System.Slug)
-	description := getDescription(result.System.Description)
-	if description != nil {
-		plan.Description = types.StringValue(*description)
-	}
-	plan.WorkspaceId = types.StringValue(result.System.WorkspaceId.String())
+	fmt.Println("system from the api", *system.JSON201)
+	setSystemResourceData(&plan, system.JSON201)
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -149,29 +147,30 @@ func (r *systemResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 
-	clientResp, err := r.client.GetSystem(ctx, state.Id.ValueString())
+	systemId, err := uuid.Parse(state.Id.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Invalid system ID", fmt.Sprintf("Invalid system ID: %s", err))
+		return
+	}
+
+	system, err := r.client.GetSystemWithResponse(ctx, systemId)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to read system", fmt.Sprintf("Failed to read system: %s", err))
 		return
 	}
 
-	var result struct {
-		System client.System `json:"system"`
-	}
-
-	if err := json.NewDecoder(clientResp.Body).Decode(&result); err != nil {
-		resp.Diagnostics.AddError("Failed to unmarshal system", fmt.Sprintf("Failed to unmarshal system: %s", err))
+	if system.JSON200 == nil {
+		resp.Diagnostics.AddError("Failed to read system", fmt.Sprintf("Failed to read system: %s", system.Status()))
 		return
 	}
 
-	state.Id = types.StringValue(result.System.Id.String())
-	state.Name = types.StringValue(result.System.Name)
-	state.Slug = types.StringValue(result.System.Slug)
-	description := getDescription(result.System.Description)
+	state.Id = types.StringValue(system.JSON200.Id.String())
+	state.Name = types.StringValue(system.JSON200.Name)
+	state.Slug = types.StringValue(system.JSON200.Slug)
+	description := getDescription(system.JSON200.Description)
 	if description != nil {
 		state.Description = types.StringValue(*description)
 	}
-	state.WorkspaceId = types.StringValue(result.System.WorkspaceId.String())
 
 	diags = resp.State.Set(ctx, state)
 	resp.Diagnostics.Append(diags...)
@@ -196,43 +195,38 @@ func (r *systemResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 
-	workspaceId, err := uuid.Parse(plan.WorkspaceId.ValueString())
+	systemId, err := uuid.Parse(state.Id.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Invalid workspace ID", fmt.Sprintf("Invalid workspace ID: %s", err))
+		resp.Diagnostics.AddError("Invalid system ID", fmt.Sprintf("Invalid system ID: %s", err))
 		return
 	}
-	workspaceIdString := workspaceId.String()
 
-	systemId := state.Id.ValueString()
-
-	clientResp, err := r.client.UpdateSystem(ctx, systemId, client.UpdateSystemJSONRequestBody{
+	system, err := r.client.UpdateSystemWithResponse(ctx, systemId, client.UpdateSystemJSONRequestBody{
 		Name:        plan.Name.ValueStringPointer(),
 		Slug:        plan.Slug.ValueStringPointer(),
 		Description: getDescription(plan.Description.ValueStringPointer()),
-		WorkspaceId: &workspaceIdString,
 	})
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to update system", fmt.Sprintf("Failed to update system: %s", err))
 		return
 	}
 
-	var result struct {
-		System client.System `json:"system"`
-	}
+	if system.JSON200 == nil {
+		if system.JSON404 != nil && system.JSON404.Error != nil {
+			resp.Diagnostics.AddError("Failed to update system", fmt.Sprintf("Failed to update system: %s", *system.JSON404.Error))
+			return
+		}
 
-	if err := json.NewDecoder(clientResp.Body).Decode(&result); err != nil {
-		resp.Diagnostics.AddError("Failed to unmarshal system", fmt.Sprintf("Failed to unmarshal system: %s", err))
+		if system.JSON500 != nil && system.JSON500.Error != nil {
+			resp.Diagnostics.AddError("Failed to update system", fmt.Sprintf("Failed to update system: %s", *system.JSON500.Error))
+			return
+		}
+
+		resp.Diagnostics.AddError("Failed to update system", fmt.Sprintf("Failed to update system: %s", system.Status()))
 		return
 	}
 
-	plan.Id = types.StringValue(result.System.Id.String())
-	plan.Name = types.StringValue(result.System.Name)
-	plan.Slug = types.StringValue(result.System.Slug)
-	description := getDescription(result.System.Description)
-	if description != nil {
-		plan.Description = types.StringValue(*description)
-	}
-	plan.WorkspaceId = types.StringValue(result.System.WorkspaceId.String())
+	setSystemResourceData(&plan, system.JSON200)
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
