@@ -5,11 +5,14 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"os"
+	"strings"
 
 	"terraform-provider-ctrlplane/client"
 
+	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/function"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
@@ -34,6 +37,7 @@ type CtrlplaneProvider struct {
 type CtrlplaneProviderModel struct {
 	BaseURL   types.String `tfsdk:"base_url"`
 	Token     types.String `tfsdk:"token"`
+	Workspace types.String `tfsdk:"workspace"`
 }
 
 func (p *CtrlplaneProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
@@ -52,6 +56,10 @@ func (p *CtrlplaneProvider) Schema(ctx context.Context, req provider.SchemaReque
 				MarkdownDescription: "The token to use for authentication",
 				Optional:            true,
 			},
+			"workspace": schema.StringAttribute{
+				MarkdownDescription: "The workspace to use",
+				Optional:            true,
+			},
 		},
 	}
 }
@@ -63,6 +71,51 @@ func addAPIKey(apiKey string) client.RequestEditorFn {
 	}
 }
 
+func getWorkspaceById(ctx context.Context, workspaceID uuid.UUID, client *client.ClientWithResponses) (uuid.UUID, error) {
+	validatedWorkspace, err := client.GetWorkspaceWithResponse(ctx, workspaceID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	if validatedWorkspace.JSON200 != nil {
+		return validatedWorkspace.JSON200.Id, nil
+	}
+
+	if validatedWorkspace.JSON404 != nil {
+		return uuid.Nil, errors.New("workspace not found")
+	}
+
+	return uuid.Nil, errors.New("failed to get workspace")
+}
+
+func getWorkspaceBySlug(ctx context.Context, slug string, client *client.ClientWithResponses) (uuid.UUID, error) {
+	validatedWorkspace, err := client.GetWorkspaceBySlugWithResponse(ctx, slug)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	if validatedWorkspace.JSON200 != nil {
+		return getWorkspaceById(ctx, validatedWorkspace.JSON200.Id, client)
+	}
+
+	if validatedWorkspace.JSON404 != nil {
+		return uuid.Nil, errors.New("workspace not found")
+	}
+
+	return uuid.Nil, errors.New("failed to get workspace")
+}
+
+func getWorkspace(ctx context.Context, workspace string, client *client.ClientWithResponses) (uuid.UUID, error) {
+	if workspace == "" {
+		return uuid.Nil, errors.New("workspace is required")
+	}
+
+	if workspaceID, err := uuid.Parse(workspace); err == nil {
+		return getWorkspaceById(ctx, workspaceID, client)
+	}
+	return getWorkspaceBySlug(ctx, workspace, client)
+}
+
 func (p *CtrlplaneProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
 	var data CtrlplaneProviderModel
 
@@ -72,7 +125,7 @@ func (p *CtrlplaneProvider) Configure(ctx context.Context, req provider.Configur
 		return
 	}
 
-	if data.BaseURL.IsNull()  {
+	if data.BaseURL.IsNull() {
 		envBaseURL := os.Getenv("CTRLPLANE_BASE_URL")
 		if envBaseURL != "" {
 			data.BaseURL = types.StringValue(envBaseURL)
@@ -90,8 +143,13 @@ func (p *CtrlplaneProvider) Configure(ctx context.Context, req provider.Configur
 		data.Token = types.StringValue(envToken)
 	}
 
-	client, err := client.NewClient(
-		data.BaseURL.ValueString(),
+	server := data.BaseURL.ValueString()
+	server = strings.TrimSuffix(server, "/")
+	server = strings.TrimSuffix(server, "/api")
+	server = server + "/api"
+
+	client, err := client.NewClientWithResponses(
+		server,
 		client.WithRequestEditorFn(addAPIKey(data.Token.ValueString())),
 	)
 	if err != nil {
@@ -99,26 +157,34 @@ func (p *CtrlplaneProvider) Configure(ctx context.Context, req provider.Configur
 		return
 	}
 
-	resp.DataSourceData = client
-	resp.ResourceData = client
+	configuredWorkspace := data.Workspace.ValueString()
+	workspaceID, err := getWorkspace(ctx, configuredWorkspace, client)
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to get workspace", err.Error())
+		return
+	}
+
+	dataSourceModel := &DataSourceModel{
+		Workspace: workspaceID,
+		Client:    client,
+	}
+
+	resp.DataSourceData = dataSourceModel
+	resp.ResourceData = dataSourceModel
 }
 
 func (p *CtrlplaneProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
-		NewTargetResource,
+		NewSystemResource,
 	}
 }
 
 func (p *CtrlplaneProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
-	return []func() datasource.DataSource{
-		NewExampleDataSource,
-	}
+	return []func() datasource.DataSource{}
 }
 
 func (p *CtrlplaneProvider) Functions(ctx context.Context) []func() function.Function {
-	return []func() function.Function{
-		NewExampleFunction,
-	}
+	return []func() function.Function{}
 }
 
 func New(version string) func() provider.Provider {
