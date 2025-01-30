@@ -54,18 +54,28 @@ func (r *systemResource) Metadata(_ context.Context, req resource.MetadataReques
 // Schema defines the schema for the resource.
 func (r *systemResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Description:         "Systems in Ctrlplane are the highest level of organizational units, designed to group related deployments and environments together.",
+		MarkdownDescription: "Systems in Ctrlplane are the highest level of organizational units, designed to group related deployments and environments together.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				Computed: true,
+				Computed:            true,
+				Description:         "The ID of the system",
+				MarkdownDescription: "The ID of the system",
 			},
 			"name": schema.StringAttribute{
-				Required: true,
+				Required:            true,
+				Description:         "The name of the system",
+				MarkdownDescription: "The name of the system",
 			},
 			"slug": schema.StringAttribute{
-				Required: true,
+				Required:            true,
+				Description:         "The slug of the system (must be unique to the workspace)",
+				MarkdownDescription: "The slug of the system (must be unique to the workspace)",
 			},
 			"description": schema.StringAttribute{
-				Optional: true,
+				Optional:            true,
+				Description:         "The description of the system",
+				MarkdownDescription: "The description of the system",
 			},
 		},
 	}

@@ -48,18 +48,23 @@ func (p *CtrlplaneProvider) Metadata(ctx context.Context, req provider.MetadataR
 
 func (p *CtrlplaneProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Description:         "The Ctrlplane provider is used to manage the lifecycle of your Ctrlplane constructs, including systems, policies, resources, and more. A provider is scoped to a workspace, and can be configured with a base URL and token.",
+		MarkdownDescription: "The Ctrlplane provider is used to manage the lifecycle of your Ctrlplane constructs, including systems, policies, resources, and more. A provider is scoped to a workspace, and can be configured with a base URL and token.",
 		Attributes: map[string]schema.Attribute{
 			"base_url": schema.StringAttribute{
+				Description:         "The URL of the Ctrlplane API endpoint. Can be set in the CTRLPLANE_BASE_URL environment variable. Defaults to `https://app.ctrlplane.com` if not set.",
 				MarkdownDescription: "The URL of the Ctrlplane API endpoint. Can be set in the CTRLPLANE_BASE_URL environment variable. Defaults to `https://app.ctrlplane.com` if not set.",
 				Optional:            true,
 			},
 			"token": schema.StringAttribute{
+				Description:         "The token to use for authentication. Can be set in the CTRLPLANE_TOKEN environment variable.",
 				MarkdownDescription: "The token to use for authentication. Can be set in the CTRLPLANE_TOKEN environment variable.",
 				Optional:            true,
 				Sensitive:           true,
 			},
 			"workspace": schema.StringAttribute{
-				MarkdownDescription: "The workspace to use. Can be set in the CTRLPLANE_WORKSPACE environment variable.",
+				Description:         "The workspace to use. Can be set in the CTRLPLANE_WORKSPACE environment variable. Can be a workspace ID or slug.",
+				MarkdownDescription: "The workspace to use. Can be set in the CTRLPLANE_WORKSPACE environment variable. Can be a workspace ID or slug.",
 				Optional:            true,
 			},
 		},
