@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"terraform-provider-ctrlplane/client"
 
 	"github.com/google/uuid"
@@ -22,8 +21,8 @@ func NewSystemResource() resource.Resource {
 }
 
 type systemResource struct {
-	client      *client.ClientWithResponses
-	workspaceID uuid.UUID
+	client    *client.ClientWithResponses
+	workspace uuid.UUID
 }
 
 func (r *systemResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
@@ -41,7 +40,7 @@ func (r *systemResource) Configure(_ context.Context, req resource.ConfigureRequ
 	}
 
 	r.client = dataSourceModel.Client
-	r.workspaceID = dataSourceModel.Workspace
+	r.workspace = dataSourceModel.Workspace
 }
 
 // Metadata returns the resource type name.
@@ -106,7 +105,7 @@ func (r *systemResource) Create(ctx context.Context, req resource.CreateRequest,
 		Name:        plan.Name.ValueString(),
 		Slug:        plan.Slug.ValueString(),
 		Description: getDescription(plan.Description.ValueStringPointer()),
-		WorkspaceId: r.workspaceID,
+		WorkspaceId: r.workspace,
 	})
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create system", fmt.Sprintf("Failed to create system: %s", err))
@@ -244,14 +243,24 @@ func (r *systemResource) Delete(ctx context.Context, req resource.DeleteRequest,
 		return
 	}
 
-	clientResp, err := r.client.DeleteSystem(ctx, state.Id.ValueString())
+	clientResp, err := r.client.DeleteSystemWithResponse(ctx, state.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to delete system", fmt.Sprintf("Failed to delete system: %s", err))
 		return
 	}
 
-	if clientResp.StatusCode != http.StatusOK {
-		resp.Diagnostics.AddError("Failed to delete system", fmt.Sprintf("Failed to delete system: %s", clientResp.Status))
+	if clientResp.JSON404 != nil && clientResp.JSON404.Error != nil {
+		resp.Diagnostics.AddError("Failed to delete system", fmt.Sprintf("Failed to delete system: %s", *clientResp.JSON404.Error))
+		return
+	}
+
+	if clientResp.JSON500 != nil && clientResp.JSON500.Error != nil {
+		resp.Diagnostics.AddError("Failed to delete system", fmt.Sprintf("Failed to delete system: %s", *clientResp.JSON500.Error))
+		return
+	}
+
+	if clientResp.JSON200 == nil {
+		resp.Diagnostics.AddError("Failed to delete system", fmt.Sprintf("Failed to delete system: %s", clientResp.Status()))
 		return
 	}
 }
