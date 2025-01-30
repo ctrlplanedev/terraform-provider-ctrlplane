@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package provider
 
 import (
@@ -126,8 +129,6 @@ func (r *systemResource) Create(ctx context.Context, req resource.CreateRequest,
 		resp.Diagnostics.AddError("Failed to create system", fmt.Sprintf("Failed to create system: %s", system.Status()))
 		return
 	}
-
-	fmt.Println("system from the api", *system.JSON201)
 	setSystemResourceData(&plan, system.JSON201)
 
 	diags = resp.State.Set(ctx, plan)

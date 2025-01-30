@@ -13,8 +13,17 @@ description: |-
 ## Example Usage
 
 ```terraform
-provider "scaffolding" {
-  # example configuration here
+terraform {
+  required_providers {
+    ctrlplane = {
+      source = "ctrlplane/ctrlplane"
+    }
+  }
+}
+
+provider "ctrlplane" {
+  base_url  = "http://localhost:3000"
+  workspace = "ctrlplane"
 }
 ```
 
@@ -23,4 +32,6 @@ provider "scaffolding" {
 
 ### Optional
 
-- `endpoint` (String) Example provider attribute
+- `base_url` (String) The URL of the Ctrlplane API endpoint
+- `token` (String) The token to use for authentication
+- `workspace` (String) The workspace to use

@@ -21,4 +21,10 @@ test:
 testacc:
 	TF_ACC=1 go test -v -cover -timeout 120m ./...
 
+test-acceptance:
+	TF_ACC=1 \
+	CTRLPLANE_TOKEN=$(CTRLPLANE_PROVIDER_TESTING_API_KEY) \
+	CTRLPLANE_WORKSPACE=$(CTRLPLANE_PROVIDER_TESTING_WORKSPACE) \
+	go test -v -cover -timeout 120m ./...
+
 .PHONY: fmt lint test testacc build install generate

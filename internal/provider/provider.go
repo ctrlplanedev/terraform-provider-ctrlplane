@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -85,7 +86,7 @@ func getWorkspaceById(ctx context.Context, workspaceID uuid.UUID, client *client
 		return uuid.Nil, errors.New("workspace not found")
 	}
 
-	return uuid.Nil, errors.New("failed to get workspace")
+	return uuid.Nil, errors.New("failed to get workspace by id")
 }
 
 func getWorkspaceBySlug(ctx context.Context, slug string, client *client.ClientWithResponses) (uuid.UUID, error) {
@@ -95,14 +96,14 @@ func getWorkspaceBySlug(ctx context.Context, slug string, client *client.ClientW
 	}
 
 	if validatedWorkspace.JSON200 != nil {
-		return getWorkspaceById(ctx, validatedWorkspace.JSON200.Id, client)
+		return validatedWorkspace.JSON200.Id, nil
 	}
 
 	if validatedWorkspace.JSON404 != nil {
 		return uuid.Nil, errors.New("workspace not found")
 	}
 
-	return uuid.Nil, errors.New("failed to get workspace")
+	return uuid.Nil, fmt.Errorf("failed to get workspace by slug: %s", slug)
 }
 
 func getWorkspace(ctx context.Context, workspace string, client *client.ClientWithResponses) (uuid.UUID, error) {
@@ -130,7 +131,7 @@ func (p *CtrlplaneProvider) Configure(ctx context.Context, req provider.Configur
 		if envBaseURL != "" {
 			data.BaseURL = types.StringValue(envBaseURL)
 		} else {
-			data.BaseURL = types.StringValue("https://api.ctrlplane.dev")
+			data.BaseURL = types.StringValue("https://app.ctrlplane.dev")
 		}
 	}
 
@@ -141,6 +142,15 @@ func (p *CtrlplaneProvider) Configure(ctx context.Context, req provider.Configur
 			return
 		}
 		data.Token = types.StringValue(envToken)
+	}
+
+	if data.Workspace.IsNull() {
+		envWorkspace := os.Getenv("CTRLPLANE_WORKSPACE")
+		if envWorkspace == "" {
+			resp.Diagnostics.AddError("Missing workspace", "The workspace must be set either in the provider configuration or in the CTRLPLANE_WORKSPACE environment variable")
+			return
+		}
+		data.Workspace = types.StringValue(envWorkspace)
 	}
 
 	server := data.BaseURL.ValueString()
