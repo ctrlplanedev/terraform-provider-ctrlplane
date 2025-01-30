@@ -32,6 +32,6 @@ provider "ctrlplane" {
 
 ### Optional
 
-- `base_url` (String) The URL of the Ctrlplane API endpoint
-- `token` (String) The token to use for authentication
-- `workspace` (String) The workspace to use
+- `base_url` (String) The URL of the Ctrlplane API endpoint. Can be set in the CTRLPLANE_BASE_URL environment variable. Defaults to `https://app.ctrlplane.com` if not set.
+- `token` (String, Sensitive) The token to use for authentication. Can be set in the CTRLPLANE_TOKEN environment variable.
+- `workspace` (String) The workspace to use. Can be set in the CTRLPLANE_WORKSPACE environment variable.

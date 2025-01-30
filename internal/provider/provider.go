@@ -50,15 +50,16 @@ func (p *CtrlplaneProvider) Schema(ctx context.Context, req provider.SchemaReque
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"base_url": schema.StringAttribute{
-				MarkdownDescription: "The URL of the Ctrlplane API endpoint",
+				MarkdownDescription: "The URL of the Ctrlplane API endpoint. Can be set in the CTRLPLANE_BASE_URL environment variable. Defaults to `https://app.ctrlplane.com` if not set.",
 				Optional:            true,
 			},
 			"token": schema.StringAttribute{
-				MarkdownDescription: "The token to use for authentication",
+				MarkdownDescription: "The token to use for authentication. Can be set in the CTRLPLANE_TOKEN environment variable.",
 				Optional:            true,
+				Sensitive:           true,
 			},
 			"workspace": schema.StringAttribute{
-				MarkdownDescription: "The workspace to use",
+				MarkdownDescription: "The workspace to use. Can be set in the CTRLPLANE_WORKSPACE environment variable.",
 				Optional:            true,
 			},
 		},
