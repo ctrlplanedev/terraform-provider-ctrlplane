@@ -130,7 +130,7 @@ func (p *CtrlplaneProvider) Configure(ctx context.Context, req provider.Configur
 		if envBaseURL != "" {
 			data.BaseURL = types.StringValue(envBaseURL)
 		} else {
-			data.BaseURL = types.StringValue("https://api.ctrlplane.dev")
+			data.BaseURL = types.StringValue("https://app.ctrlplane.dev")
 		}
 	}
 
