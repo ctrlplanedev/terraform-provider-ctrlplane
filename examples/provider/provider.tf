@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     ctrlplane = {
-      source = "ctrlplane/ctrlplane"
+      source = "ctrlplanedev/ctrlplane"
     }
   }
 }

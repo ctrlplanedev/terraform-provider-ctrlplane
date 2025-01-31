@@ -16,7 +16,7 @@ The Ctrlplane provider is used to manage the lifecycle of your Ctrlplane constru
 terraform {
   required_providers {
     ctrlplane = {
-      source = "ctrlplane/ctrlplane"
+      source = "ctrlplanedev/ctrlplane"
     }
   }
 }
