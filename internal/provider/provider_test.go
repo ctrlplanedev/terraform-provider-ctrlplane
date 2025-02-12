@@ -9,21 +9,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
-)
 
-const (
-	providerConfig = `
-	terraform {
-		required_providers {
-			ctrlplane = {
-				source = "hashicorp/ctrlplane"
-				version = "0.0.1"
-			}
-		}
-	}
-
-	provider "ctrlplane" {}
-	`
+	"terraform-provider-ctrlplane/testing/acctest"
 )
 
 // testAccProtoV6ProviderFactories are used to instantiate a provider during
@@ -35,10 +22,26 @@ var testAccProtoV6ProviderFactories = map[string]func() (tfprotov6.ProviderServe
 }
 
 func testAccPreCheck(t *testing.T) {
-	if v := os.Getenv("CTRLPLANE_TOKEN"); v == "" {
-		t.Fatal("CTRLPLANE_TOKEN must be set for acceptance tests")
+	// Enable Terraform debug logging
+	if os.Getenv("TF_LOG") == "" {
+		os.Setenv("TF_LOG", "DEBUG")
 	}
-	if v := os.Getenv("CTRLPLANE_WORKSPACE"); v == "" {
-		t.Fatal("CTRLPLANE_WORKSPACE must be set for acceptance tests")
+
+	// Check for required environment variables
+	requiredEnvVars := []string{
+		"CTRLPLANE_TOKEN",
+		"CTRLPLANE_WORKSPACE",
+		"CTRLPLANE_BASE_URL",
 	}
+
+	for _, envVar := range requiredEnvVars {
+		if value := acctest.GetTestEnv(t, envVar); value == "" {
+			t.Fatalf("%s must be set for acceptance tests", envVar)
+		} else {
+			t.Logf("%s is set to: %s", envVar, value)
+		}
+	}
+
+	// Call the common pre-check function
+	acctest.PreCheck(t)
 }

@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 // Ensure CtrlplaneProvider satisfies various provider interfaces.
@@ -74,15 +75,28 @@ func (p *CtrlplaneProvider) Schema(ctx context.Context, req provider.SchemaReque
 func addAPIKey(apiKey string) client.RequestEditorFn {
 	return func(ctx context.Context, req *http.Request) error {
 		req.Header.Add("x-api-key", apiKey)
+		tflog.Debug(ctx, "Adding API key to request", map[string]interface{}{
+			"header_name": "x-api-key",
+			"key_length":  len(apiKey),
+		})
 		return nil
 	}
 }
 
 func getWorkspaceById(ctx context.Context, workspaceID uuid.UUID, client *client.ClientWithResponses) (uuid.UUID, error) {
+	tflog.Debug(ctx, "Getting workspace by ID", map[string]interface{}{
+		"workspace_id": workspaceID.String(),
+	})
+
 	validatedWorkspace, err := client.GetWorkspaceWithResponse(ctx, workspaceID)
 	if err != nil {
 		return uuid.Nil, err
 	}
+
+	tflog.Debug(ctx, "API response received", map[string]interface{}{
+		"status_code":    validatedWorkspace.StatusCode(),
+		"error_response": validatedWorkspace.HTTPResponse.Status,
+	})
 
 	if validatedWorkspace.JSON200 != nil {
 		return validatedWorkspace.JSON200.Id, nil
@@ -96,10 +110,19 @@ func getWorkspaceById(ctx context.Context, workspaceID uuid.UUID, client *client
 }
 
 func getWorkspaceBySlug(ctx context.Context, slug string, client *client.ClientWithResponses) (uuid.UUID, error) {
+	tflog.Debug(ctx, "Getting workspace by slug", map[string]interface{}{
+		"workspace_slug": slug,
+	})
+
 	validatedWorkspace, err := client.GetWorkspaceBySlugWithResponse(ctx, slug)
 	if err != nil {
 		return uuid.Nil, err
 	}
+
+	tflog.Debug(ctx, "API response received", map[string]interface{}{
+		"status_code":    validatedWorkspace.StatusCode(),
+		"error_response": validatedWorkspace.HTTPResponse.Status,
+	})
 
 	if validatedWorkspace.JSON200 != nil {
 		return validatedWorkspace.JSON200.Id, nil
@@ -137,7 +160,7 @@ func (p *CtrlplaneProvider) Configure(ctx context.Context, req provider.Configur
 		if envBaseURL != "" {
 			data.BaseURL = types.StringValue(envBaseURL)
 		} else {
-			data.BaseURL = types.StringValue("https://app.ctrlplane.dev")
+			data.BaseURL = types.StringValue("https://app.ctrlplane.com")
 		}
 	}
 
@@ -164,6 +187,12 @@ func (p *CtrlplaneProvider) Configure(ctx context.Context, req provider.Configur
 	server = strings.TrimSuffix(server, "/api")
 	server = server + "/api"
 
+	tflog.Debug(ctx, "Configuring provider", map[string]interface{}{
+		"base_url":  server,
+		"workspace": data.Workspace.ValueString(),
+		"token_set": data.Token.ValueString() != "",
+	})
+
 	client, err := client.NewClientWithResponses(
 		server,
 		client.WithRequestEditorFn(addAPIKey(data.Token.ValueString())),
@@ -180,6 +209,10 @@ func (p *CtrlplaneProvider) Configure(ctx context.Context, req provider.Configur
 		return
 	}
 
+	tflog.Debug(ctx, "Successfully configured provider", map[string]interface{}{
+		"workspace_id": workspaceID.String(),
+	})
+
 	dataSourceModel := &DataSourceModel{
 		Workspace: workspaceID,
 		Client:    client,
@@ -192,11 +225,14 @@ func (p *CtrlplaneProvider) Configure(ctx context.Context, req provider.Configur
 func (p *CtrlplaneProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewSystemResource,
+		NewEnvironmentResource,
 	}
 }
 
 func (p *CtrlplaneProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
-	return []func() datasource.DataSource{}
+	return []func() datasource.DataSource{
+		NewEnvironmentDataSource,
+	}
 }
 
 func (p *CtrlplaneProvider) Functions(ctx context.Context) []func() function.Function {

@@ -9,6 +9,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+
+	ctrlacctest "terraform-provider-ctrlplane/testing/acctest"
 )
 
 func TestAccSystemResource(t *testing.T) {
@@ -16,7 +18,7 @@ func TestAccSystemResource(t *testing.T) {
 	secondName := acctest.RandString(10)
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:                 func() { testAccPreCheck(t) },
+		PreCheck:                 func() { ctrlacctest.PreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			// Create and Read testing
@@ -54,5 +56,5 @@ resource "ctrlplane_system" "test" {
 
 	resourceConfig := fmt.Sprintf(configTemplate, name, slug, descriptionBlock)
 
-	return fmt.Sprintf("%s\n%s", providerConfig, resourceConfig)
+	return fmt.Sprintf("%s\n%s", ctrlacctest.ProviderConfig(), resourceConfig)
 }
