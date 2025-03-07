@@ -12,14 +12,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
-// Ensure provider defined types fully satisfy framework interfaces
 var _ resource.Resource = &EnvironmentResource{}
 var _ resource.ResourceWithImportState = &EnvironmentResource{}
 
@@ -27,27 +23,9 @@ func NewEnvironmentResource() resource.Resource {
 	return &EnvironmentResource{}
 }
 
-// ResourceFilter describes the resource filter configuration
-type ResourceFilter struct {
-	FilterType types.String `tfsdk:"filter_type"`
-	Namespace  types.String `tfsdk:"namespace"`
-}
-
-// EnvironmentResource defines the resource implementation.
 type EnvironmentResource struct {
 	client    *client.ClientWithResponses
 	workspace uuid.UUID
-}
-
-// EnvironmentResourceModel describes the resource data model.
-type EnvironmentResourceModel struct {
-	ID             types.String  `tfsdk:"id"`
-	Name           types.String  `tfsdk:"name"`
-	Description    types.String  `tfsdk:"description"`
-	SystemID       types.String  `tfsdk:"system_id"`
-	PolicyID       types.String  `tfsdk:"policy_id"`
-	Metadata       types.Map     `tfsdk:"metadata"`
-	ResourceFilter types.Dynamic `tfsdk:"resource_filter"`
 }
 
 func (r *EnvironmentResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -55,51 +33,13 @@ func (r *EnvironmentResource) Metadata(ctx context.Context, req resource.Metadat
 }
 
 func (r *EnvironmentResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
-	resp.Schema = schema.Schema{
-		MarkdownDescription: "Environment resource",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Computed:            true,
-				MarkdownDescription: "Environment identifier",
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"name": schema.StringAttribute{
-				MarkdownDescription: "Name of the environment",
-				Required:            true,
-			},
-			"description": schema.StringAttribute{
-				MarkdownDescription: "Description of the environment",
-				Optional:            true,
-			},
-			"system_id": schema.StringAttribute{
-				MarkdownDescription: "System ID the environment belongs to",
-				Required:            true,
-			},
-			"policy_id": schema.StringAttribute{
-				MarkdownDescription: "Policy ID for the environment",
-				Optional:            true,
-			},
-			"metadata": schema.MapAttribute{
-				ElementType:         types.StringType,
-				MarkdownDescription: "Metadata for the environment",
-				Optional:            true,
-			},
-			"resource_filter": schema.DynamicAttribute{
-				MarkdownDescription: "Resource filter for the environment",
-				Optional:           true,
-			},
-		},
-	}
+	resp.Schema = GetEnvironmentResourceSchema()
 }
 
 func (r *EnvironmentResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
-
 	dataSourceModel, ok := req.ProviderData.(*DataSourceModel)
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -108,22 +48,67 @@ func (r *EnvironmentResource) Configure(ctx context.Context, req resource.Config
 		)
 		return
 	}
-
 	r.client = dataSourceModel.Client
 	r.workspace = dataSourceModel.Workspace
 }
 
 func (r *EnvironmentResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var data *EnvironmentResourceModel
+	defer func() {
+		var data EnvironmentModel
+		diags := resp.State.Get(ctx, &data)
+		if diags.HasError() {
+			return
+		}
+		if data.ResourceFilter != nil {
+			DeepFixResourceFilter(data.ResourceFilter)
+			resp.State.Set(ctx, &data)
+		}
+	}()
 
-	// Read Terraform plan data into the model
+	var data EnvironmentModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
-
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// Convert metadata to map[string]string
+	// Validate mutually exclusive resource_filter and resource_filter_id.
+	if !data.ResourceFilterID.IsNull() && data.ResourceFilter != nil {
+		resp.Diagnostics.AddError(
+			"Conflicting Resource Filter Configuration",
+			"Both resource_filter and resource_filter_id are specified. Only one can be used at a time.",
+		)
+		return
+	}
+
+	tflog.Debug(ctx, "Resource filter details", map[string]interface{}{
+		"has_resource_filter":    data.ResourceFilter != nil,
+		"has_resource_filter_id": !data.ResourceFilterID.IsNull(),
+		"type":                   getFilterTypeForLog(data.ResourceFilter),
+		"conditions_count":       getConditionsCountForLog(data.ResourceFilter),
+	})
+
+	if data.ResourceFilter != nil {
+		data.ResourceFilter.InitConditions()
+		tflog.Debug(ctx, "Resource filter after initialization", map[string]interface{}{
+			"type":                   getFilterTypeForLog(data.ResourceFilter),
+			"conditions_count":       getConditionsCountForLog(data.ResourceFilter),
+			"conditions_initialized": data.ResourceFilter.Conditions != nil,
+		})
+	}
+
+	if data.Description.IsNull() {
+		data.Description = types.StringValue("")
+	}
+	if data.Metadata.IsNull() {
+		data.Metadata = types.MapNull(types.StringType)
+	}
+
+	tflog.Debug(ctx, "PolicyID state before API call", map[string]interface{}{
+		"is_null":        data.PolicyID.IsNull(),
+		"is_unknown":     data.PolicyID.IsUnknown(),
+		"policy_id_type": fmt.Sprintf("%T", data.PolicyID),
+	})
+
 	metadata := make(map[string]string)
 	if !data.Metadata.IsNull() {
 		resp.Diagnostics.Append(data.Metadata.ElementsAs(ctx, &metadata, false)...)
@@ -132,135 +117,354 @@ func (r *EnvironmentResource) Create(ctx context.Context, req resource.CreateReq
 		}
 	}
 
-	// Convert resource filter to map[string]interface{}
-	var resourceFilter map[string]interface{}
-	if !data.ResourceFilter.IsNull() {
-		val, err := data.ResourceFilter.ToTerraformValue(ctx)
-		if err != nil {
-			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read resource filter: %s", err))
+	var resourceFilter *map[string]interface{}
+	if data.ResourceFilter != nil {
+		// Process inline resource filter.
+		DeepFixResourceFilter(data.ResourceFilter)
+		data.ResourceFilter.InitConditions()
+		if data.ResourceFilter.Type.IsNull() {
+			resp.Diagnostics.AddError("Invalid Resource Filter", "Resource filter must have a type")
 			return
 		}
-		if err := val.As(&resourceFilter); err != nil {
-			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to parse resource filter: %s", err))
+		filterMap, err := data.ResourceFilter.ToAPIFilter(ctx)
+		if err != nil {
+			resp.Diagnostics.AddError("ResourceFilter Conversion Error", fmt.Sprintf("Error converting inline resource filter: %v", err))
 			return
+		}
+		// Validate and normalize the filter.
+		validatedFilter := ValidateAPIFilter(filterMap)
+		resourceFilter = &validatedFilter
+		tflog.Info(ctx, "Converted inline resource filter to API format", map[string]interface{}{
+			"filter_type":    validatedFilter["type"],
+			"has_conditions": validatedFilter["conditions"] != nil,
+			"filter_payload": fmt.Sprintf("%+v", validatedFilter),
+		})
+	} else if !data.ResourceFilterID.IsNull() {
+		// Use referenced resource filter.
+		filterID := data.ResourceFilterID.ValueString()
+		tflog.Debug(ctx, "Using referenced resource filter", map[string]interface{}{
+			"resource_filter_id": filterID,
+		})
+		refFilter, err := GetResourceFilterByID(ctx, filterID)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Failed to Retrieve ResourceFilter",
+				fmt.Sprintf("Unable to retrieve filter with ID %s: %v\n\n"+
+					"This may occur if the resource filter resource has not been created yet. "+
+					"Consider adding a depends_on = [ctrlplane_resource_filter.your_filter] "+
+					"to ensure the filter is created before the environment.",
+					filterID, err),
+			)
+			return
+		}
+		apiFilter, err := refFilter.ToAPIFilter(ctx)
+		if err != nil {
+			resp.Diagnostics.AddError("ResourceFilter Conversion Error", fmt.Sprintf("Error converting referenced resource filter: %v", err))
+			return
+		}
+		resourceFilter = &apiFilter
+		tflog.Info(ctx, "Converted referenced resource filter to API format", map[string]interface{}{
+			"filter_type":    apiFilter["type"],
+			"has_conditions": apiFilter["conditions"] != nil,
+			"filter_details": fmt.Sprintf("%+v", apiFilter),
+		})
+	}
+
+	releaseChannels := make([]string, 0)
+	for _, ch := range data.ReleaseChannels {
+		if !ch.IsNull() && !ch.IsUnknown() {
+			releaseChannels = append(releaseChannels, ch.ValueString())
 		}
 	}
 
-	// Create new environment
-	createResp, err := r.client.CreateEnvironmentWithResponse(ctx, client.CreateEnvironmentJSONRequestBody{
-		Name:           data.Name.ValueString(),
-		Description:    stringToPtr(data.Description.ValueString()),
-		SystemId:       data.SystemID.ValueString(),
-		PolicyId:       stringToPtr(data.PolicyID.ValueString()),
-		Metadata:       &metadata,
-		ResourceFilter: &resourceFilter,
+	createReq := client.CreateEnvironmentJSONRequestBody{
+		Name:            data.Name.ValueString(),
+		Description:     stringToPtr(data.Description.ValueString()),
+		SystemId:        data.SystemID.ValueString(),
+		Metadata:        &metadata,
+		ResourceFilter:  resourceFilter,
+		ReleaseChannels: &releaseChannels,
+	}
+
+	tflog.Info(ctx, "API request details", map[string]interface{}{
+		"name":             data.Name.ValueString(),
+		"description":      data.Description.ValueString(),
+		"system_id":        data.SystemID.ValueString(),
+		"metadata":         metadata,
+		"resource_filter":  fmt.Sprintf("%+v", resourceFilter),
+		"release_channels": releaseChannels,
 	})
 
+	createResp, err := r.client.CreateEnvironmentWithResponse(ctx, createReq)
 	if err != nil {
-		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create environment, got error: %s", err))
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create environment: %v", err))
+		return
+	}
+	if createResp.StatusCode() >= 400 {
+		respBody := string(createResp.Body)
+		tflog.Error(ctx, "API error response", map[string]interface{}{
+			"status_code":             createResp.StatusCode(),
+			"response_body":           respBody,
+			"resource_filter_present": resourceFilter != nil,
+		})
+		resp.Diagnostics.AddError("API Error", fmt.Sprintf("Received error response: %d, body: %s", createResp.StatusCode(), respBody))
 		return
 	}
 
-	if createResp.JSON200 == nil {
-		resp.Diagnostics.AddError("Client Error", "Unable to create environment, got empty response")
-		return
-	}
-
-	// Map response body to schema
 	data.ID = types.StringValue(createResp.JSON200.Id.String())
-
-	// Save data into Terraform state
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
-}
-
-func (r *EnvironmentResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var data *EnvironmentResourceModel
-	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	getResp, err := r.client.GetEnvironmentWithResponse(ctx, data.ID.ValueString())
-	if err != nil {
-		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read environment, got error: %s", err))
-		return
-	}
-
-	if getResp.JSON200 == nil {
-		resp.State.RemoveResource(ctx)
-		return
-	}
-
-	data.Name = types.StringValue(getResp.JSON200.Name)
-	if getResp.JSON200.Description != nil {
-		data.Description = types.StringValue(*getResp.JSON200.Description)
-	} else {
-		data.Description = types.StringNull()
-	}
-	data.SystemID = types.StringValue(getResp.JSON200.SystemId.String())
-	if getResp.JSON200.PolicyId != nil {
-		data.PolicyID = types.StringValue(getResp.JSON200.PolicyId.String())
+	data.Name = types.StringValue(createResp.JSON200.Name)
+	data.Description = types.StringValue(*createResp.JSON200.Description)
+	data.SystemID = types.StringValue(createResp.JSON200.SystemId.String())
+	if createResp.JSON200.PolicyId != nil {
+		data.PolicyID = types.StringValue(createResp.JSON200.PolicyId.String())
 	} else {
 		data.PolicyID = types.StringNull()
 	}
 
-	if getResp.JSON200.Metadata != nil {
-		metadata := make(map[string]attr.Value)
-		for k, v := range *getResp.JSON200.Metadata {
-			metadata[k] = types.StringValue(v)
+	if createResp.JSON200.Metadata != nil {
+		metadataMap, diags := types.MapValueFrom(ctx, types.StringType, *createResp.JSON200.Metadata)
+		resp.Diagnostics.Append(diags...)
+		if !resp.Diagnostics.HasError() {
+			data.Metadata = metadataMap
 		}
-		data.Metadata = types.MapValueMust(types.StringType, metadata)
-	} else {
-		data.Metadata = types.MapNull(types.StringType)
 	}
 
-	if getResp.JSON200.ResourceFilter != nil {
-		data.ResourceFilter = types.DynamicValue(types.ObjectValueMust(
-			map[string]attr.Type{
-				"filter_type": types.StringType,
-				"namespace":   types.StringType,
-			},
-			map[string]attr.Value{
-				"filter_type": types.StringValue((*getResp.JSON200.ResourceFilter)["type"].(string)),
-				"namespace":   types.StringValue((*getResp.JSON200.ResourceFilter)["namespace"].(string)),
-			},
-		))
-	} else {
-		data.ResourceFilter = types.DynamicNull()
+	if createResp.JSON200 != nil && createResp.JSON200.ResourceFilter == nil {
+		tflog.Debug(ctx, "API response has ResourceFilter as nil, setting Terraform state accordingly")
+		data.ResourceFilter = nil
+	} else if createResp.JSON200.ResourceFilter != nil {
+		if !data.ResourceFilterID.IsNull() {
+			tflog.Debug(ctx, "Using resource_filter_id, setting resource_filter to nil in state")
+			data.ResourceFilter = nil
+		} else {
+			rf := *createResp.JSON200.ResourceFilter
+			var filter ResourceFilterModel
+			err = filter.FromAPIFilter(ctx, rf)
+			if err != nil {
+				resp.Diagnostics.AddWarning("ResourceFilter Conversion Error", fmt.Sprintf("Error converting resource filter: %v", err))
+			} else {
+				data.ResourceFilter = &filter
+				PostProcessResourceFilter(ctx, data.ResourceFilter)
+			}
+		}
 	}
 
+	tflog.Debug(ctx, "Saving environment state", map[string]interface{}{
+		"environment_id": data.ID.ValueString(),
+	})
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-func (r *EnvironmentResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var data *EnvironmentResourceModel
+func (r *EnvironmentResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	defer func() {
+		var data EnvironmentModel
+		diags := resp.State.Get(ctx, &data)
+		if diags.HasError() {
+			return
+		}
+		// Additional processing if needed.
+	}()
 
-	// Read Terraform plan data into the model
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
-
+	var state EnvironmentModel
+	diags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// Update environment using API - Note: The API doesn't seem to have a direct update endpoint
-	// We might need to delete and recreate, or implement a different update strategy
-	resp.Diagnostics.AddError(
-		"Update Not Implemented",
-		"The provider does not support updating environments at this time",
-	)
+	if state.ID.ValueString() == "" {
+		resp.Diagnostics.AddError("ID is missing", "Environment ID is required")
+		return
+	}
+
+	getEnvResponse, err := r.client.GetEnvironmentWithResponse(ctx, state.ID.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to get environment", err.Error())
+		return
+	}
+	if getEnvResponse.StatusCode() != 200 {
+		resp.Diagnostics.AddError("Failed to get environment", fmt.Sprintf("Status code: %d", getEnvResponse.StatusCode()))
+		return
+	}
+
+	envData := getEnvResponse.JSON200
+	state.ID = types.StringValue(envData.Id.String())
+	state.Name = types.StringValue(envData.Name)
+	if envData.Description != nil {
+		state.Description = types.StringValue(*envData.Description)
+	} else {
+		state.Description = types.StringValue("")
+	}
+	state.SystemID = types.StringValue(envData.SystemId.String())
+	if envData.PolicyId != nil {
+		state.PolicyID = types.StringValue(envData.PolicyId.String())
+	} else {
+		state.PolicyID = types.StringNull()
+	}
+
+	if envData.Metadata != nil {
+		metadataMap := make(map[string]attr.Value)
+		for k, v := range *envData.Metadata {
+			metadataMap[k] = types.StringValue(v)
+		}
+		metadata, metadataDiags := types.MapValueFrom(ctx, types.StringType, metadataMap)
+		resp.Diagnostics.Append(metadataDiags...)
+		if !resp.Diagnostics.HasError() {
+			state.Metadata = metadata
+		}
+	} else {
+		state.Metadata = types.MapNull(types.StringType)
+	}
+
+	if envData.ResourceFilter == nil {
+		tflog.Debug(ctx, "ResourceFilter is nil in API response, setting Terraform state to null")
+		state.ResourceFilter = nil
+	} else {
+		if !state.ResourceFilterID.IsNull() {
+			tflog.Debug(ctx, "Using resource_filter_id, setting resource_filter to nil in state")
+			state.ResourceFilter = nil
+		} else {
+			filter, err := CreateResourceFilterModel(ctx, *envData.ResourceFilter)
+			if err != nil {
+				resp.Diagnostics.AddError("Failed to convert resource filter", err.Error())
+				return
+			}
+			state.ResourceFilter = filter
+			PostProcessResourceFilter(ctx, state.ResourceFilter)
+		}
+	}
+
+	if state.ResourceFilter != nil && state.ResourceFilter.Conditions != nil && len(state.ResourceFilter.Conditions) > 0 {
+		DeepFixResourceFilter(state.ResourceFilter)
+	}
+
+	diags = resp.State.Set(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+}
+
+func (r *EnvironmentResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var state EnvironmentModel
+	diags := req.Plan.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	defer func() {
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		var data EnvironmentModel
+		diags := resp.State.Get(ctx, &data)
+		if diags.HasError() {
+			resp.Diagnostics.Append(diags...)
+			return
+		}
+		modified := false
+		if data.ResourceFilter != nil {
+			for i, condition := range data.ResourceFilter.Conditions {
+				if condition.Type.ValueString() == string(FilterTypeComparison) && len(condition.Conditions) > 0 {
+					data.ResourceFilter.Conditions[i].Value = types.StringValue("")
+					modified = true
+					tflog.Debug(ctx, "Deferred update: Set nested comparison condition value to empty string", map[string]interface{}{
+						"index": i,
+					})
+				}
+			}
+			if modified {
+				diags = resp.State.Set(ctx, &data)
+				resp.Diagnostics.Append(diags...)
+			}
+		}
+	}()
+
+	if !state.ResourceFilterID.IsNull() && state.ResourceFilter != nil {
+		resp.Diagnostics.AddError(
+			"Conflicting Resource Filter Configuration",
+			"Both resource_filter and resource_filter_id are specified. Only one can be used at a time.",
+		)
+		return
+	}
+
+	tflog.Debug(ctx, "Updating environment (non-filter attributes only)", map[string]interface{}{
+		"environment_id":         state.ID.ValueString(),
+		"has_resource_filter":    state.ResourceFilter != nil,
+		"has_resource_filter_id": !state.ResourceFilterID.IsNull(),
+	})
+
+	currentState, err := r.client.GetEnvironmentWithResponse(ctx, state.ID.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to get environment: %v", err))
+		return
+	}
+	if currentState.StatusCode() != 200 {
+		resp.Diagnostics.AddError("API Error", fmt.Sprintf("Received error response: %d, body: %s", currentState.StatusCode(), string(currentState.Body)))
+		return
+	}
+
+	envData := currentState.JSON200
+	state.ID = types.StringValue(envData.Id.String())
+	state.Name = types.StringValue(envData.Name)
+	if envData.Description != nil {
+		state.Description = types.StringValue(*envData.Description)
+	} else {
+		state.Description = types.StringValue("")
+	}
+	state.SystemID = types.StringValue(envData.SystemId.String())
+	if envData.PolicyId != nil {
+		state.PolicyID = types.StringValue(envData.PolicyId.String())
+	} else {
+		state.PolicyID = types.StringNull()
+	}
+
+	if envData.Metadata != nil {
+		metadataMap := make(map[string]attr.Value)
+		for k, v := range *envData.Metadata {
+			metadataMap[k] = types.StringValue(v)
+		}
+		metadata, metadataDiags := types.MapValueFrom(ctx, types.StringType, metadataMap)
+		resp.Diagnostics.Append(metadataDiags...)
+		if !resp.Diagnostics.HasError() {
+			state.Metadata = metadata
+		}
+	} else {
+		state.Metadata = types.MapNull(types.StringType)
+	}
+
+	if envData.ResourceFilter == nil {
+		tflog.Debug(ctx, "ResourceFilter is nil in API response, setting Terraform state to null")
+		state.ResourceFilter = nil
+	} else {
+		if !state.ResourceFilterID.IsNull() {
+			tflog.Debug(ctx, "Using resource_filter_id, setting resource_filter to nil in state")
+			state.ResourceFilter = nil
+		} else {
+			filter, err := CreateResourceFilterModel(ctx, *envData.ResourceFilter)
+			if err != nil {
+				resp.Diagnostics.AddError("Failed to convert resource filter", err.Error())
+				return
+			}
+			state.ResourceFilter = filter
+			PostProcessResourceFilter(ctx, state.ResourceFilter)
+		}
+	}
+
+	if state.ResourceFilter != nil && state.ResourceFilter.Conditions != nil && len(state.ResourceFilter.Conditions) > 0 {
+		DeepFixResourceFilter(state.ResourceFilter)
+	}
+
+	tflog.Debug(ctx, "Saving updated environment state", map[string]interface{}{
+		"environment_id": state.ID.ValueString(),
+	})
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
 func (r *EnvironmentResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var data *EnvironmentResourceModel
-
-	// Read Terraform prior state data into the model
+	var data *EnvironmentModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
-
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
-	// Delete environment
 	_, err := r.client.DeleteEnvironmentWithResponse(ctx, data.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to delete environment, got error: %s", err))
@@ -272,28 +476,32 @@ func (r *EnvironmentResource) ImportState(ctx context.Context, req resource.Impo
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func stringToPtr(s string) *string {
-	if s == "" {
-		return nil
+func getFilterTypeForLog(filter *ResourceFilterModel) string {
+	if filter != nil && !filter.Type.IsNull() {
+		return filter.Type.ValueString()
 	}
-	return &s
+	return "null"
 }
 
-func (r *ResourceFilter) IsNull() bool {
-	return r == nil
+func getConditionsCountForLog(filter *ResourceFilterModel) int {
+	if filter != nil {
+		return len(filter.Conditions)
+	}
+	return 0
 }
 
-func (r *ResourceFilter) ToTerraformValue(ctx context.Context) (tftypes.Value, error) {
-	if r == nil {
-		return tftypes.NewValue(tftypes.Object{}, nil), nil
+func getStringValOrEmpty(s types.String) string {
+	if s.IsNull() || s.IsUnknown() {
+		return ""
 	}
-	return tftypes.NewValue(tftypes.Object{
-		AttributeTypes: map[string]tftypes.Type{
-			"filter_type": tftypes.String,
-			"namespace":   tftypes.String,
-		},
-	}, map[string]tftypes.Value{
-		"filter_type": tftypes.NewValue(tftypes.String, r.FilterType.ValueString()),
-		"namespace":   tftypes.NewValue(tftypes.String, r.Namespace.ValueString()),
-	}), nil
+	return s.ValueString()
+}
+
+func CreateResourceFilterModel(ctx context.Context, rf map[string]interface{}) (*ResourceFilterModel, error) {
+	filter := &ResourceFilterModel{}
+	err := filter.FromAPIFilter(ctx, rf)
+	if err != nil {
+		return nil, err
+	}
+	return filter, nil
 }

@@ -3,12 +3,12 @@
 page_title: "ctrlplane_environment Data Source - ctrlplane"
 subcategory: ""
 description: |-
-  Environment data source
+  Data source for a CtrlPlane environment.
 ---
 
 # ctrlplane_environment (Data Source)
 
-Environment data source
+Data source for a CtrlPlane environment.
 
 
 
@@ -17,21 +17,70 @@ Environment data source
 
 ### Required
 
-- `id` (String) Environment identifier
+- `name` (String) Name of the environment.
+- `system_id` (String) ID of the system this environment belongs to.
 
 ### Read-Only
 
-- `description` (String) Description of the environment
-- `metadata` (Map of String) Metadata for the environment
-- `name` (String) Name of the environment
-- `policy_id` (String) Policy ID for the environment
-- `resource_filter` (Attributes) Resource filter for the environment (see [below for nested schema](#nestedatt--resource_filter))
-- `system_id` (String) System ID the environment belongs to
+- `description` (String) Description of the environment.
+- `id` (String) Unique identifier for the environment.
+- `metadata` (Map of String) Metadata for the environment.
+- `policy_id` (String) ID of the policy associated with this environment.
+- `release_channels` (List of String) Release channels for the environment.
+- `resource_filter` (Attributes) Resource filter for the environment. (see [below for nested schema](#nestedatt--resource_filter))
 
 <a id="nestedatt--resource_filter"></a>
 ### Nested Schema for `resource_filter`
 
 Read-Only:
 
-- `filter_type` (String) Type of resource filter
-- `namespace` (String) Namespace for resource filter
+- `conditions` (Attributes List) Nested filter conditions. (see [below for nested schema](#nestedatt--resource_filter--conditions))
+- `key` (String) Key to compare against.
+- `not` (Boolean) Negates the condition.
+- `operator` (String) Comparison operator.
+- `type` (String) Filter type (e.g., comparison, selector).
+- `value` (String) Value to compare.
+
+<a id="nestedatt--resource_filter--conditions"></a>
+### Nested Schema for `resource_filter.conditions`
+
+Required:
+
+- `operator` (String) Condition operator.
+- `type` (String) Condition type.
+
+Optional:
+
+- `conditions` (Attributes List) Nested filter conditions. (see [below for nested schema](#nestedatt--resource_filter--conditions--conditions))
+- `key` (String) Metadata key.
+- `not` (Boolean) Negate condition.
+- `value` (String) Condition value.
+
+<a id="nestedatt--resource_filter--conditions--conditions"></a>
+### Nested Schema for `resource_filter.conditions.conditions`
+
+Required:
+
+- `operator` (String) Condition operator.
+- `type` (String) Condition type.
+
+Optional:
+
+- `conditions` (Attributes List) Nested filter conditions. (see [below for nested schema](#nestedatt--resource_filter--conditions--conditions--conditions))
+- `key` (String) Metadata key.
+- `not` (Boolean) Negate condition.
+- `value` (String) Condition value.
+
+<a id="nestedatt--resource_filter--conditions--conditions--conditions"></a>
+### Nested Schema for `resource_filter.conditions.conditions.conditions`
+
+Required:
+
+- `operator` (String) Condition operator.
+- `type` (String) Condition type.
+
+Optional:
+
+- `key` (String) Metadata key.
+- `not` (Boolean) Negate condition.
+- `value` (String) Condition value.

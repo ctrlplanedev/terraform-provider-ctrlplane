@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strings"
 	"terraform-provider-ctrlplane/client"
 
 	"github.com/google/uuid"
@@ -121,22 +122,58 @@ func (r *systemResource) Create(ctx context.Context, req resource.CreateRequest,
 		WorkspaceId: r.workspace,
 	})
 	if err != nil {
-		resp.Diagnostics.AddError("Failed to create system", fmt.Sprintf("Failed to create system: %s", err))
+		resp.Diagnostics.AddError(
+			"Failed to create system",
+			fmt.Sprintf("Failed to create system with slug '%s': %s", plan.Slug.ValueString(), err),
+		)
 		return
 	}
 
 	if system.JSON201 == nil {
-		if system.JSON400 != nil && system.JSON400.Error != nil {
-			resp.Diagnostics.AddError("Failed to create system", fmt.Sprintf("Failed to create system: %s", *system.JSON400.Error))
+		if system.JSON400 != nil {
+			// Handle 400 Bad Request
+			errorMsg := "Bad Request"
+			if system.JSON400.Error != nil && len(*system.JSON400.Error) > 0 {
+				// Extract the first error message
+				firstError := (*system.JSON400.Error)[0]
+				errorMsg = firstError.Message
+			}
+
+			if strings.Contains(strings.ToLower(errorMsg), "slug already exists") {
+				resp.Diagnostics.AddError(
+					"System already exists",
+					fmt.Sprintf("A system with slug '%s' already exists. Please use a different slug.", plan.Slug.ValueString()),
+				)
+			} else {
+				resp.Diagnostics.AddError(
+					"Failed to create system",
+					fmt.Sprintf("Failed to create system: %s", errorMsg),
+				)
+			}
 			return
 		}
 
-		if system.JSON500 != nil && system.JSON500.Error != nil {
-			resp.Diagnostics.AddError("Failed to create system", fmt.Sprintf("Failed to create system: %s", *system.JSON500.Error))
+		if system.JSON500 != nil {
+			// Handle 500 Internal Server Error
+			errorMsg := "Internal Server Error"
+			if system.JSON500.Error != nil {
+				errorMsg = *system.JSON500.Error
+			}
+
+			resp.Diagnostics.AddError(
+				"Failed to create system",
+				fmt.Sprintf("An internal server error occurred while creating system with slug '%s'. This might be because a system with this slug already exists. Try using a different slug. Error: %s",
+					plan.Slug.ValueString(), errorMsg),
+			)
 			return
 		}
 
-		resp.Diagnostics.AddError("Failed to create system", fmt.Sprintf("Failed to create system: %s", system.Status()))
+		// Handle other status codes
+		resp.Diagnostics.AddError(
+			"Failed to create system",
+			fmt.Sprintf("Failed to create system with slug '%s'. Server returned status: %s",
+				plan.Slug.ValueString(), system.Status()),
+		)
 		return
 	}
 	setSystemResourceData(&plan, system.JSON201)

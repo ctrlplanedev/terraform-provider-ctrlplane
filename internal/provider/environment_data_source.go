@@ -6,37 +6,25 @@ package provider
 import (
 	"context"
 	"fmt"
-
 	"terraform-provider-ctrlplane/client"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
-// Ensure provider defined types fully satisfy framework interfaces
 var _ datasource.DataSource = &EnvironmentDataSource{}
 
 func NewEnvironmentDataSource() datasource.DataSource {
 	return &EnvironmentDataSource{}
 }
 
-// EnvironmentDataSource defines the data source implementation.
 type EnvironmentDataSource struct {
 	client    *client.ClientWithResponses
 	workspace uuid.UUID
-}
-
-// EnvironmentDataSourceModel describes the data source data model.
-type EnvironmentDataSourceModel struct {
-	ID             types.String      `tfsdk:"id"`
-	Name           types.String      `tfsdk:"name"`
-	Description    types.String      `tfsdk:"description"`
-	SystemID       types.String      `tfsdk:"system_id"`
-	PolicyID       types.String      `tfsdk:"policy_id"`
-	Metadata       types.Map         `tfsdk:"metadata"`
-	ResourceFilter *ResourceFilter   `tfsdk:"resource_filter"`
 }
 
 func (d *EnvironmentDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -44,58 +32,13 @@ func (d *EnvironmentDataSource) Metadata(ctx context.Context, req datasource.Met
 }
 
 func (d *EnvironmentDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
-	resp.Schema = schema.Schema{
-		MarkdownDescription: "Environment data source",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Required:            true,
-				MarkdownDescription: "Environment identifier",
-			},
-			"name": schema.StringAttribute{
-				Computed:            true,
-				MarkdownDescription: "Name of the environment",
-			},
-			"description": schema.StringAttribute{
-				Computed:            true,
-				MarkdownDescription: "Description of the environment",
-			},
-			"system_id": schema.StringAttribute{
-				Computed:            true,
-				MarkdownDescription: "System ID the environment belongs to",
-			},
-			"policy_id": schema.StringAttribute{
-				Computed:            true,
-				MarkdownDescription: "Policy ID for the environment",
-			},
-			"metadata": schema.MapAttribute{
-				ElementType:         types.StringType,
-				Computed:            true,
-				MarkdownDescription: "Metadata for the environment",
-			},
-			"resource_filter": schema.SingleNestedAttribute{
-				Computed:            true,
-				MarkdownDescription: "Resource filter for the environment",
-				Attributes: map[string]schema.Attribute{
-					"filter_type": schema.StringAttribute{
-						Computed:            true,
-						MarkdownDescription: "Type of resource filter",
-					},
-					"namespace": schema.StringAttribute{
-						Computed:            true,
-						MarkdownDescription: "Namespace for resource filter",
-					},
-				},
-			},
-		},
-	}
+	resp.Schema = GetEnvironmentDataSourceSchema()
 }
 
 func (d *EnvironmentDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
-
 	dataSourceModel, ok := req.ProviderData.(*DataSourceModel)
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -104,62 +47,130 @@ func (d *EnvironmentDataSource) Configure(ctx context.Context, req datasource.Co
 		)
 		return
 	}
-
 	d.client = dataSourceModel.Client
 	d.workspace = dataSourceModel.Workspace
 }
 
 func (d *EnvironmentDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var data EnvironmentDataSourceModel
-
-	// Read Terraform configuration data into the model
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
-
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// Get environment from API
-	getResp, err := d.client.GetEnvironmentWithResponse(ctx, data.ID.ValueString())
+	data.SetDefaults()
+
+	if data.SystemID.IsNull() || data.Name.IsNull() {
+		resp.Diagnostics.AddError("Missing Required Parameters", "Both system_id and name are required to identify an environment")
+		return
+	}
+
+	systemID, err := uuid.Parse(data.SystemID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read environment, got error: %s", err))
+		resp.Diagnostics.AddError("Invalid System ID", fmt.Sprintf("Unable to parse system_id as UUID: %s", err))
 		return
 	}
 
-	if getResp.JSON200 == nil {
-		resp.Diagnostics.AddError("Client Error", "Unable to read environment, got empty response")
+	cfg := RetryConfig{
+		MaxRetries:    5,
+		TotalWaitTime: 10 * time.Second,
+		RetryDelay:    2 * time.Second,
+	}
+
+	var sysResp *client.GetSystemResponse
+	err = Retry(ctx, cfg, func() (bool, error) {
+		var err error
+		sysResp, err = d.client.GetSystemWithResponse(ctx, systemID)
+		if err != nil || sysResp.JSON200 == nil || sysResp.JSON200.Environments == nil || len(*sysResp.JSON200.Environments) == 0 {
+			return false, err
+		}
+		return true, nil
+	})
+	if err != nil || sysResp == nil {
+		tflog.Warn(ctx, "Could not retrieve system after multiple attempts", map[string]interface{}{
+			"system_id": systemID.String(),
+		})
+		resp.Diagnostics.AddError("System Retrieval Error", fmt.Sprintf("Could not retrieve system with ID %s", systemID.String()))
 		return
 	}
 
-	// Map response body to schema
-	data.Name = types.StringValue(getResp.JSON200.Name)
-	if getResp.JSON200.Description != nil {
-		data.Description = types.StringValue(*getResp.JSON200.Description)
+	var environmentID string
+	for _, env := range *sysResp.JSON200.Environments {
+		if env.Name == data.Name.ValueString() {
+			environmentID = env.Id.String()
+			break
+		}
 	}
-	data.SystemID = types.StringValue(getResp.JSON200.SystemId.String())
-	if getResp.JSON200.PolicyId != nil {
-		data.PolicyID = types.StringValue(getResp.JSON200.PolicyId.String())
+	if environmentID == "" {
+		resp.Diagnostics.AddError("Environment Not Found",
+			fmt.Sprintf("Could not find environment with name %s in system %s after multiple attempts",
+				data.Name.ValueString(), data.SystemID.ValueString()))
+		return
 	}
 
-	if getResp.JSON200.Metadata != nil {
-		metadata, diag := types.MapValueFrom(ctx, types.StringType, *getResp.JSON200.Metadata)
-		resp.Diagnostics.Append(diag...)
-		if resp.Diagnostics.HasError() {
-			return
+	var envResp *client.GetEnvironmentResponse
+	err = Retry(ctx, cfg, func() (bool, error) {
+		var err error
+		envResp, err = d.client.GetEnvironmentWithResponse(ctx, environmentID)
+		if err != nil || envResp.JSON200 == nil {
+			return false, err
 		}
-		data.Metadata = metadata
+		if envResp.JSON200.PolicyId != nil && envResp.JSON200.Description != nil && envResp.JSON200.Metadata != nil {
+			return true, nil
+		}
+		return false, nil
+	})
+	if err != nil || envResp == nil || envResp.JSON200 == nil {
+		resp.Diagnostics.AddError("Client Error",
+			fmt.Sprintf("Could not retrieve environment details for ID %s after multiple attempts", environmentID))
+		return
 	}
 
-	if getResp.JSON200.ResourceFilter != nil {
-		resourceFilter := *getResp.JSON200.ResourceFilter
-		data.ResourceFilter = &ResourceFilter{
-			FilterType: types.StringValue(resourceFilter["type"].(string)),
-			Namespace:  types.StringValue(resourceFilter["namespace"].(string)),
-		}
+	if !(envResp.JSON200.PolicyId != nil && envResp.JSON200.Description != nil && envResp.JSON200.Metadata != nil) {
+		tflog.Warn(ctx, "Environment data incomplete", map[string]interface{}{
+			"environment_id": environmentID,
+		})
+		resp.Diagnostics.AddWarning(
+			"Environment Data Incomplete",
+			"Not all required environment data is available yet. This is normal during creation and will be resolved on subsequent applies.",
+		)
+	}
+
+	data.ID = types.StringValue(envResp.JSON200.Id.String())
+	data.Name = types.StringValue(envResp.JSON200.Name)
+	if envResp.JSON200.Description != nil {
+		data.Description = types.StringValue(*envResp.JSON200.Description)
 	} else {
-		data.ResourceFilter = nil
+		data.Description = types.StringNull()
+	}
+	data.SystemID = types.StringValue(envResp.JSON200.SystemId.String())
+
+	if envResp.JSON200.PolicyId != nil && *envResp.JSON200.PolicyId != uuid.Nil && envResp.JSON200.PolicyId.String() != "00000000-0000-0000-0000-000000000000" {
+		data.PolicyID = types.StringValue(envResp.JSON200.PolicyId.String())
+	} else {
+		data.PolicyID = types.StringNull()
 	}
 
-	// Save data into Terraform state
+	if envResp.JSON200.Metadata != nil {
+		metadata := make(map[string]attr.Value)
+		for k, v := range *envResp.JSON200.Metadata {
+			metadata[k] = types.StringValue(v)
+		}
+		data.Metadata = types.MapValueMust(types.StringType, metadata)
+	} else {
+		data.Metadata = types.MapNull(types.StringType)
+	}
+
+	if envResp.JSON200.ResourceFilter != nil {
+		rf := *envResp.JSON200.ResourceFilter
+		var filter ResourceFilterModel
+		err = filter.FromAPIFilter(ctx, rf)
+		if err != nil {
+			resp.Diagnostics.AddWarning("Resource Filter Conversion", fmt.Sprintf("Error converting resource filter from API: %v", err))
+		} else {
+			data.ResourceFilter = &filter
+		}
+	}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

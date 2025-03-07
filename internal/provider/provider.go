@@ -155,6 +155,10 @@ func (p *CtrlplaneProvider) Configure(ctx context.Context, req provider.Configur
 		return
 	}
 
+	// Initialize the resource filter registry
+	InitFilterRegistry()
+	tflog.Debug(ctx, "Resource filter registry initialized by provider")
+
 	if data.BaseURL.IsNull() {
 		envBaseURL := os.Getenv("CTRLPLANE_BASE_URL")
 		if envBaseURL != "" {
@@ -226,6 +230,7 @@ func (p *CtrlplaneProvider) Resources(ctx context.Context) []func() resource.Res
 	return []func() resource.Resource{
 		NewSystemResource,
 		NewEnvironmentResource,
+		NewResourceFilterResource,
 	}
 }
 
