@@ -139,6 +139,7 @@ func setSystemResourceData(plan *systemResourceModel, system interface{}) {
 	plan.Slug = types.StringValue(slug)
 	
 	// Handle description field properly
+	// If description is nil or empty, set it to null
 	if description == nil || (description != nil && *description == "") {
 		plan.Description = types.StringNull()
 	} else {
@@ -173,11 +174,21 @@ func (r *systemResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
+	// Prepare the description field
+	var descriptionPtr *string
+	if data.Description.IsNull() {
+		// If description is null in the plan, explicitly set it to nil
+		descriptionPtr = nil
+	} else {
+		// Otherwise, use the value from the plan
+		descriptionPtr = data.Description.ValueStringPointer()
+	}
+
 	// Create new system
 	system, err := r.client.CreateSystemWithResponse(ctx, client.CreateSystemJSONRequestBody{
 		Name:        data.Name.ValueString(),
 		Slug:        data.Slug.ValueString(),
-		Description: getDescription(data.Description.ValueStringPointer()),
+		Description: descriptionPtr,
 		WorkspaceId: r.workspace,
 	})
 	if err != nil {
@@ -278,6 +289,13 @@ func (r *systemResource) Read(ctx context.Context, req resource.ReadRequest, res
 	// Update the state with the response
 	setSystemResourceData(&state, system.JSON200)
 	
+	// If the original description was null, keep it null
+	// This is necessary because the API might return a non-null value even when we set it to null
+	if originalDescription.IsNull() {
+		state.Description = types.StringNull()
+	}
+
+	// Save updated data into Terraform state
 	// Always use the original description value to maintain consistency
 	// This is necessary because the API might return a different value than what was in the state
 	state.Description = originalDescription
@@ -327,11 +345,22 @@ func (r *systemResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 
+	// Prepare the description field
+	var descriptionPtr *string
+	if data.Description.IsNull() {
+		// If description is null in the plan, explicitly set it to nil
+		// This ensures we're sending a null value to the API
+		descriptionPtr = nil
+	} else {
+		// Otherwise, use the value from the plan
+		descriptionPtr = data.Description.ValueStringPointer()
+	}
+
 	// Update system
 	system, err := r.client.UpdateSystemWithResponse(ctx, uuid.MustParse(systemID), client.UpdateSystemJSONRequestBody{
 		Name:        data.Name.ValueStringPointer(),
 		Slug:        data.Slug.ValueStringPointer(),
-		Description: data.Description.ValueStringPointer(),
+		Description: descriptionPtr,
 	})
 	if err != nil {
 		resp.Diagnostics.AddError(
