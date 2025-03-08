@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 var (
@@ -159,32 +160,69 @@ func (r *systemResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
-	// If slug is not provided, generate it from the name
-	if data.Slug.IsNull() {
+	// Generate slug in these cases:
+	// 1. If slug is null in the config (IsNull)
+	// 2. If slug is empty string (ValueString() == "")
+	shouldGenerateSlug := data.Slug.IsNull() || data.Slug.ValueString() == ""
+	
+	tflog.Info(ctx, "Checking slug in Create", map[string]interface{}{
+		"slug_is_null": data.Slug.IsNull(),
+		"slug_value": data.Slug.ValueString(),
+		"should_generate": shouldGenerateSlug,
+	})
+	
+	if shouldGenerateSlug {
 		slug := Slugify(data.Name.ValueString())
 		data.Slug = types.StringValue(slug)
-	}
+		
+		// Log the generated slug for debugging
+		tflog.Info(ctx, "Generated slug from name", map[string]interface{}{
+			"name": data.Name.ValueString(),
+			"slug": slug,
+		})
+		
+		// Skip validation for auto-generated slugs - they're guaranteed to be valid
+		// Just check length to be safe
+		if err := ValidateSlugLength(slug); err != nil {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("slug"),
+				"Invalid Slug Length",
+				err.Error(),
+			)
+			return
+		}
+	} else {
+		// Only validate manually provided slugs
+		slugValue := data.Slug.ValueString()
+		
+		// Check if the slug exceeds the maximum length
+		if err := ValidateSlugLength(slugValue); err != nil {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("slug"),
+				"Invalid Slug Length",
+				err.Error(),
+			)
+			return
+		}
 
-	// Check if the slug exceeds the maximum length
-	if err := ValidateSlugLength(data.Slug.ValueString()); err != nil {
-		resp.Diagnostics.AddAttributeError(
-			path.Root("slug"),
-			"Invalid Slug Length",
-			err.Error(),
-		)
-		return
-	}
+		// Validate slug format (should have been caught by validator, but double-check)
+		pattern := `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`
+		regex := regexp.MustCompile(pattern)
 
-	// Validate slug format (should have been caught by validator, but double-check)
-	pattern := `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`
-	regex := regexp.MustCompile(pattern)
-	if !regex.MatchString(data.Slug.ValueString()) {
-		resp.Diagnostics.AddAttributeError(
-			path.Root("slug"),
-			"Invalid Slug Format",
-			"Slug must contain only lowercase alphanumeric characters and hyphens, and must start and end with an alphanumeric character.",
-		)
-		return
+		tflog.Info(ctx, "Validating slug format in Create", map[string]interface{}{
+			"slug":           slugValue,
+			"pattern":        pattern,
+			"matches_regex":  regex.MatchString(slugValue),
+		})
+
+		if !regex.MatchString(slugValue) {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("slug"),
+				"Invalid Slug Format",
+				"Slug must contain only lowercase alphanumeric characters and hyphens, and must start and end with an alphanumeric character.",
+			)
+			return
+		}
 	}
 
 	// Prepare the description field

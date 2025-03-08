@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 // stringToPtr returns a pointer to the given string.
@@ -90,13 +91,30 @@ func (v SlugValidator) MarkdownDescription(ctx context.Context) string {
 func (v SlugValidator) ValidateString(ctx context.Context, req validator.StringRequest, resp *validator.StringResponse) {
 	// If the value is unknown or null, there is nothing to validate
 	if req.ConfigValue.IsUnknown() || req.ConfigValue.IsNull() {
+		tflog.Debug(ctx, "Slug validation skipped for unknown or null value", map[string]interface{}{
+			"is_unknown": req.ConfigValue.IsUnknown(),
+			"is_null":    req.ConfigValue.IsNull(),
+			"path":       req.Path.String(),
+		})
 		return
 	}
 
 	value := req.ConfigValue.ValueString()
 	
+	// Log the value being validated
+	tflog.Debug(ctx, "Validating slug", map[string]interface{}{
+		"value": value,
+		"path":  req.Path.String(),
+	})
+	
 	// Check if the slug exceeds the maximum length
 	if err := ValidateSlugLength(value); err != nil {
+		tflog.Debug(ctx, "Slug length validation failed", map[string]interface{}{
+			"value":       value,
+			"path":        req.Path.String(),
+			"max_length":  MaxSlugLength,
+			"actual_length": len(value),
+		})
 		resp.Diagnostics.AddAttributeError(
 			req.Path,
 			"Invalid Slug Length",
@@ -110,10 +128,20 @@ func (v SlugValidator) ValidateString(ctx context.Context, req validator.StringR
 	regex := regexp.MustCompile(pattern)
 
 	if !regex.MatchString(value) {
+		tflog.Debug(ctx, "Slug format validation failed", map[string]interface{}{
+			"value":   value,
+			"path":    req.Path.String(),
+			"pattern": pattern,
+		})
 		resp.Diagnostics.AddAttributeError(
 			req.Path,
 			"Invalid Slug Format",
 			"Slug must contain only lowercase alphanumeric characters and hyphens, and must start and end with an alphanumeric character.",
 		)
+	} else {
+		tflog.Debug(ctx, "Slug validation passed", map[string]interface{}{
+			"value": value,
+			"path":  req.Path.String(),
+		})
 	}
 }
