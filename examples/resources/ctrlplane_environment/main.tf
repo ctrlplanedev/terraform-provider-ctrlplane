@@ -6,7 +6,11 @@ terraform {
   }
 }
 
-provider "ctrlplane" {}
+provider "ctrlplane" {
+  base_url  = "http://localhost:3000"
+  token     = "ec2dcd404a4a53c4.41c876a1055cb2e636721fdd394be83dbdc901ab57aeccb14b0ca57eb687e26a"
+  workspace = "zacharyblasczyk"
+}
 
 resource "ctrlplane_system" "example" {
   name        = "example-system"
@@ -824,7 +828,7 @@ resource "ctrlplane_environment" "production_postgres" {
       {
         type     = "name"
         operator = "contains"
-        value    = "xpostgres"
+        value    = "postgres"
       }
     ]
   }

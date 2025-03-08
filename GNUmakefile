@@ -22,7 +22,7 @@ update:
 	go get -u ./...
 
 test:
-	go test -v -cover -timeout=120s -parallel=10 ./...
+	go test -v -cover -timeout=120s -parallel=10 ./... -skip TestIntegration TestAcc
 
 testacc:
 	@if [ ! -f .env ]; then \
@@ -35,11 +35,11 @@ testacc:
 		CTRLPLANE_TOKEN="$${CTRLPLANE_PROVIDER_TESTING_API_KEY}" \
 		CTRLPLANE_WORKSPACE="$${CTRLPLANE_PROVIDER_TESTING_WORKSPACE}" \
 		CTRLPLANE_BASE_URL="$${CTRLPLANE_PROVIDER_TESTING_BASE_URL}" \
-		go test -v \
+		go test \
 		-timeout=$${GO_TEST_TIMEOUT:-120m} \
 		-parallel=$${GO_TEST_PARALLEL:-4} \
 		-cover \
-		./internal/provider/...
+		$${TEST:-./internal/provider/...} $${TESTARGS}
 
 testint:
 	@if [ ! -f .env ]; then \
@@ -54,6 +54,15 @@ testint:
 	CTRLPLANE_BASE_URL="$${CTRLPLANE_PROVIDER_TESTING_BASE_URL}" \
 	go run github.com/onsi/ginkgo/v2/ginkgo run -v ./internal/integration
 
+testexamples: build
+	for dir in examples/resources/*; do \
+		cd $$dir && \
+		terraform init && \
+		terraform plan -out=plan.tfplan && \
+		terraform apply plan.tfplan -auto-approve; \
+		terraform destroy -auto-approve; \
+	done
+
 # Clean test artifacts
 clean:
 	rm -f terraform.log
@@ -61,4 +70,4 @@ clean:
 	rm -f .terraform.lock.hcl
 	rm -f terraform.tfstate*
 
-.PHONY: fmt lint test testacc testint build install generate clean install-local
+.PHONY: fmt lint test testacc testint testexamples build install generate clean install-local

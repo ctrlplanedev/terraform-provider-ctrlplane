@@ -35,3 +35,5 @@ website/vendor
 *.winfile eol=crlf
 
 .env
+*.out
+.cursor

@@ -6,7 +6,11 @@ terraform {
   }
 }
 
-provider "ctrlplane" {}
+provider "ctrlplane" {
+  base_url  = "http://localhost:3000"
+  token     = "ec2dcd404a4a53c4.41c876a1055cb2e636721fdd394be83dbdc901ab57aeccb14b0ca57eb687e26a"
+  workspace = "zacharyblasczyk"
+}
 
 resource "ctrlplane_system" "example" {
   name        = "resource-filter-example-system"
@@ -32,24 +36,41 @@ resource "ctrlplane_resource_filter" "statefulset_filter" {
   ]
 }
 
-# Use the resource filter in an environment
-resource "ctrlplane_environment" "production_postgres" {
-  name        = "filter-reference-example"
-  description = "Example using a referenced resource filter"
-  system_id   = ctrlplane_system.example.id
-
-  metadata = {
-    env  = "production"
-    team = "platform"
-    app  = "postgres"
-  }
-
-  # Reference the resource filter by ID
-  resource_filter_id = ctrlplane_resource_filter.statefulset_filter.id
-
-  # Explicitly depend on the resource filter to ensure it's created first
-  depends_on = [ctrlplane_resource_filter.statefulset_filter]
+data "ctrlplane_resource_filter" "statefulset_filter" {
+  type     = "comparison"
+  operator = "and"
+  conditions = [
+    {
+      type     = "kind"
+      operator = "equals"
+      value    = "StatefulSet"
+    },
+    {
+      type     = "name"
+      operator = "contains"
+      value    = "postgres"
+    }
+  ]
 }
+
+# # Use the resource filter in an environment
+# resource "ctrlplane_environment" "production_postgres" {
+#   name        = "filter-reference-example"
+#   description = "Example using a referenced resource filter"
+#   system_id   = ctrlplane_system.example.id
+
+#   metadata = {
+#     env  = "production"
+#     team = "platform"
+#     app  = "postgres"
+#   }
+
+#   # Reference the resource filter by ID
+#   resource_filter_id = data.ctrlplane_resource_filter.statefulset_filter.id
+
+#   # Explicitly depend on the resource filter to ensure it's created first
+#   depends_on = [data.ctrlplane_resource_filter.statefulset_filter]
+# }
 
 # Add a simple example using an inline filter
 resource "ctrlplane_environment" "inline_filter" {
@@ -85,34 +106,34 @@ resource "ctrlplane_environment" "inline_filter" {
   }
 }
 
-output "system" {
-  value = {
-    id   = ctrlplane_system.example.id
-    name = ctrlplane_system.example.name
-    slug = ctrlplane_system.example.slug
-  }
-}
+# output "system" {
+#   value = {
+#     id   = ctrlplane_system.example.id
+#     name = ctrlplane_system.example.name
+#     slug = ctrlplane_system.example.slug
+#   }
+# }
 
-output "resource_filter" {
-  value = {
-    id         = ctrlplane_resource_filter.statefulset_filter.id
-    type       = ctrlplane_resource_filter.statefulset_filter.type
-    conditions = ctrlplane_resource_filter.statefulset_filter.conditions
-  }
-}
+# output "resource_filter" {
+#   value = {
+#     id         = ctrlplane_resource_filter.statefulset_filter.id
+#     type       = ctrlplane_resource_filter.statefulset_filter.type
+#     conditions = ctrlplane_resource_filter.statefulset_filter.conditions
+#   }
+# }
 
-output "referenced_environment" {
-  value = {
-    id                 = ctrlplane_environment.production_postgres.id
-    name               = ctrlplane_environment.production_postgres.name
-    resource_filter_id = ctrlplane_environment.production_postgres.resource_filter_id
-  }
-}
+# output "referenced_environment" {
+#   value = {
+#     id                 = ctrlplane_environment.production_postgres.id
+#     name               = ctrlplane_environment.production_postgres.name
+#     resource_filter_id = ctrlplane_environment.production_postgres.resource_filter_id
+#   }
+# }
 
-output "inline_environment" {
-  value = {
-    id              = ctrlplane_environment.inline_filter.id
-    name            = ctrlplane_environment.inline_filter.name
-    resource_filter = ctrlplane_environment.inline_filter.resource_filter
-  }
-}
+# output "inline_environment" {
+#   value = {
+#     id              = ctrlplane_environment.inline_filter.id
+#     name            = ctrlplane_environment.inline_filter.name
+#     resource_filter = ctrlplane_environment.inline_filter.resource_filter
+#   }
+# }
