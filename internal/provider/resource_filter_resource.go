@@ -184,6 +184,34 @@ func (r *ResourceFilterResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 
+	// Validate required fields based on type
+	if plan.Type.IsNull() {
+		resp.Diagnostics.AddError(
+			"Missing Required Attribute",
+			"The 'type' attribute is required for all filter resources.",
+		)
+		return
+	}
+
+	// For non-comparison types, check that operator is set
+	filterType := plan.Type.ValueString()
+	if filterType != FilterTypeComparison && plan.Operator.IsNull() {
+		resp.Diagnostics.AddError(
+			"Missing Required Attribute",
+			fmt.Sprintf("The 'operator' attribute is required for filter type '%s'.", filterType),
+		)
+		return
+	}
+
+	// For metadata type, key is required
+	if filterType == "metadata" && plan.Key.IsNull() {
+		resp.Diagnostics.AddError(
+			"Missing Required Attribute",
+			"The 'key' attribute is required for filter type 'metadata'.",
+		)
+		return
+	}
+
 	filterModel := ResourceFilterModel{
 		Type:       plan.Type,
 		Key:        plan.Key,
@@ -294,5 +322,31 @@ func (r *ResourceFilterResource) Delete(ctx context.Context, req resource.Delete
 }
 
 func (r *ResourceFilterResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	// Import the ID
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), req.ID)...)
+	
+	// Get the filter from the registry
+	filterModel, err := GetResourceFilterByID(ctx, req.ID)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error Importing Resource Filter",
+			fmt.Sprintf("Could not find resource filter in registry with ID %s: %s", req.ID, err),
+		)
+		return
+	}
+	
+	// Set all the necessary attributes
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("type"), filterModel.Type)...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("key"), filterModel.Key)...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("operator"), filterModel.Operator)...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("value"), filterModel.Value)...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("not"), filterModel.Not)...)
+	
+	if len(filterModel.Conditions) > 0 {
+		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("conditions"), filterModel.Conditions)...)
+	}
+	
+	tflog.Info(ctx, "Imported resource filter", map[string]interface{}{
+		"id": req.ID,
+	})
 }

@@ -41,6 +41,25 @@ testacc:
 		-cover \
 		$${TEST:-./internal/provider/...} $${TESTARGS}
 
+testacc-quiet:
+	@if [ ! -f .env ]; then \
+		echo "Error: .env file not found. Copy .env.example to .env and configure it."; \
+		exit 1; \
+	fi
+	@echo "Running acceptance tests with reduced verbosity..."
+	source .env && \
+	TF_ACC=1 \
+	TF_LOG=ERROR \
+		CTRLPLANE_TOKEN="$${CTRLPLANE_PROVIDER_TESTING_API_KEY}" \
+		CTRLPLANE_WORKSPACE="$${CTRLPLANE_PROVIDER_TESTING_WORKSPACE}" \
+		CTRLPLANE_BASE_URL="$${CTRLPLANE_PROVIDER_TESTING_BASE_URL}" \
+		go test \
+		-timeout=$${GO_TEST_TIMEOUT:-120m} \
+		-parallel=$${GO_TEST_PARALLEL:-4} \
+		-cover \
+		-v=0 \
+		$${TEST:-./internal/provider/...} $${TESTARGS}
+
 testint:
 	@if [ ! -f .env ]; then \
 		echo "Error: .env file not found. Copy .env.example to .env and configure it."; \

@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 	"terraform-provider-ctrlplane/client"
 
@@ -174,6 +175,18 @@ func (r *systemResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
+	// Validate slug format (should have been caught by validator, but double-check)
+	pattern := `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`
+	regex := regexp.MustCompile(pattern)
+	if !regex.MatchString(data.Slug.ValueString()) {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("slug"),
+			"Invalid Slug Format",
+			"Slug must contain only lowercase alphanumeric characters and hyphens, and must start and end with an alphanumeric character.",
+		)
+		return
+	}
+
 	// Prepare the description field
 	var descriptionPtr *string
 	if data.Description.IsNull() {
@@ -207,11 +220,26 @@ func (r *systemResource) Create(ctx context.Context, req resource.CreateRequest,
 			firstError := (*system.JSON400.Error)[0]
 			errorMsg = firstError.Message
 			
+			// Add debug information about the error
+			fmt.Printf("BadRequest Error Details: %+v\n", *system.JSON400.Error)
+			
 			// Check for specific error messages
 			if strings.Contains(strings.ToLower(errorMsg), "slug must not exceed") {
 				resp.Diagnostics.AddAttributeError(
 					path.Root("slug"),
 					"Invalid Slug Length",
+					errorMsg,
+				)
+				return
+			}
+			
+			// Check for slug format errors
+			if strings.Contains(strings.ToLower(errorMsg), "slug format") || 
+			   strings.Contains(strings.ToLower(errorMsg), "invalid slug") ||
+			   strings.Contains(strings.ToLower(errorMsg), "must contain only") {
+				resp.Diagnostics.AddAttributeError(
+					path.Root("slug"),
+					"Invalid Slug Format",
 					errorMsg,
 				)
 				return
@@ -295,11 +323,7 @@ func (r *systemResource) Read(ctx context.Context, req resource.ReadRequest, res
 		state.Description = types.StringNull()
 	}
 
-	// Save updated data into Terraform state
-	// Always use the original description value to maintain consistency
-	// This is necessary because the API might return a different value than what was in the state
-	state.Description = originalDescription
-
+	// Set the updated state
 	diags = resp.State.Set(ctx, state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -399,6 +423,16 @@ func (r *systemResource) Update(ctx context.Context, req resource.UpdateRequest,
 
 	// Update resource state with updated items
 	setSystemResourceData(&data, system.JSON200)
+	
+	// Ensure description from plan is maintained 
+	// This is needed because some APIs might return a default value even when we send null
+	// We want to respect the plan's description value
+	// Check if description in the plan is null
+	var planModel systemResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &planModel)...)
+	if planModel.Description.IsNull() {
+		data.Description = types.StringNull()
+	}
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

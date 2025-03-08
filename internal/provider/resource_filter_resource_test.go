@@ -99,7 +99,7 @@ func TestAccResourceFilterResourceErrorHandling(t *testing.T) {
 			// Test with invalid filter configuration (should fail)
 			{
 				Config:      testAccResourceFilterResourceConfigInvalidFilter(),
-				ExpectError: regexp.MustCompile(`The argument "operator" is required`),
+				ExpectError: regexp.MustCompile(`The 'operator' attribute is required for filter type 'metadata'`),
 			},
 		},
 	})
