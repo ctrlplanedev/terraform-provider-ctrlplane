@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+
 	"terraform-provider-ctrlplane/client"
 
 	"github.com/google/uuid"
@@ -21,8 +22,8 @@ import (
 )
 
 var (
-	_ resource.Resource              = &systemResource{}
-	_ resource.ResourceWithConfigure = &systemResource{}
+	_ resource.Resource                = &systemResource{}
+	_ resource.ResourceWithConfigure   = &systemResource{}
 	_ resource.ResourceWithImportState = &systemResource{}
 )
 
@@ -35,22 +36,23 @@ type systemResource struct {
 	workspace uuid.UUID
 }
 
+// Configure sets up the client and workspace using SystemModel.
 func (r *systemResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
 
-	dataSourceModel, ok := req.ProviderData.(*DataSourceModel)
+	systemModel, ok := req.ProviderData.(*DataSourceModel)
 	if !ok {
 		resp.Diagnostics.AddError(
-			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *client.ClientWithResponses, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			"Unexpected Provider Configure Type",
+			fmt.Sprintf("Expected *SystemModel, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 		return
 	}
 
-	r.client = dataSourceModel.Client
-	r.workspace = dataSourceModel.Workspace
+	r.client = systemModel.Client
+	r.workspace = systemModel.Workspace
 }
 
 // Metadata returns the resource type name.
@@ -80,7 +82,6 @@ func (r *systemResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				Description:         "The slug of the system (must be unique to the workspace). If not provided, it will be generated from the name.",
 				MarkdownDescription: "The slug of the system (must be unique to the workspace). If not provided, it will be generated from the name.",
 				Validators: []validator.String{
-					// Add a custom validator for the slug format
 					SlugValidator{},
 				},
 			},
@@ -100,146 +101,107 @@ type systemResourceModel struct {
 	Description types.String `tfsdk:"description"`
 }
 
-func getDescription(description *string) *string {
-	// If description is nil or an empty string, return nil
-	// This ensures consistent handling of "no description" across the API
-	if description == nil || (description != nil && *description == "") {
+// descriptionPtr returns a pointer to the string value if not null/empty.
+func descriptionPtr(attr types.String) *string {
+	if attr.IsNull() || attr.ValueString() == "" {
 		return nil
 	}
-	return description
+	return attr.ValueStringPointer()
 }
 
-func setSystemResourceData(plan *systemResourceModel, system interface{}) {
-	var id uuid.UUID
-	var name, slug string
-	var description *string
+// processSlug generates or validates the slug.
+func processSlug(ctx context.Context, slugAttr types.String, name string) (string, error) {
+	if slugAttr.IsNull() || slugAttr.ValueString() == "" {
+		generated := Slugify(name)
+		tflog.Info(ctx, "Generated slug from name", map[string]interface{}{
+			"name": name,
+			"slug": generated,
+		})
+		if err := ValidateSlugLength(generated); err != nil {
+			return "", err
+		}
+		return generated, nil
+	}
 
-	// Handle different types of system objects
+	value := slugAttr.ValueString()
+	if err := ValidateSlugLength(value); err != nil {
+		return "", err
+	}
+	pattern := `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`
+	regex := regexp.MustCompile(pattern)
+	tflog.Info(ctx, "Validating slug format", map[string]interface{}{
+		"slug":    value,
+		"pattern": pattern,
+		"matches": regex.MatchString(value),
+	})
+	if !regex.MatchString(value) {
+		return "", fmt.Errorf("slug must contain only lowercase alphanumeric characters and hyphens, and must start and end with an alphanumeric character")
+	}
+	return value, nil
+}
+
+// extractSystemAttributes extracts common attributes from different system types.
+func extractSystemAttributes(system interface{}) (uuid.UUID, string, string, *string, error) {
 	switch s := system.(type) {
 	case *client.System:
-		id = s.Id
-		name = s.Name
-		slug = s.Slug
-		description = s.Description
+		return s.Id, s.Name, s.Slug, s.Description, nil
 	case *struct {
-		Deployments  *[]client.Deployment "json:\"deployments,omitempty\""
-		Description  *string "json:\"description,omitempty\""
-		Environments *[]client.Environment "json:\"environments,omitempty\""
-		Id           uuid.UUID "json:\"id\""
-		Name         string "json:\"name\""
-		Slug         string "json:\"slug\""
-		WorkspaceId  uuid.UUID "json:\"workspaceId\""
+		Deployments  *[]client.Deployment `json:"deployments,omitempty"`
+		Description  *string              `json:"description,omitempty"`
+		Environments *[]client.Environment `json:"environments,omitempty"`
+		Id           uuid.UUID            `json:"id"`
+		Name         string               `json:"name"`
+		Slug         string               `json:"slug"`
+		WorkspaceId  uuid.UUID            `json:"workspaceId"`
 	}:
-		id = s.Id
-		name = s.Name
-		slug = s.Slug
-		description = s.Description
+		return s.Id, s.Name, s.Slug, s.Description, nil
+	default:
+		return uuid.Nil, "", "", nil, fmt.Errorf("unsupported system type: %T", system)
+	}
+}
+
+// setSystemResourceData maps system attributes into the Terraform state.
+func setSystemResourceData(plan *systemResourceModel, system interface{}) {
+	id, name, slug, description, err := extractSystemAttributes(system)
+	if err != nil {
+		tflog.Error(context.Background(), "Failed to extract system attributes", map[string]interface{}{"error": err.Error()})
+		return
 	}
 
 	plan.Id = types.StringValue(id.String())
 	plan.Name = types.StringValue(name)
 	plan.Slug = types.StringValue(slug)
-	
-	// Handle description field properly
-	// If description is nil or empty, set it to null
-	if description == nil || (description != nil && *description == "") {
+	if description == nil || *description == "" {
 		plan.Description = types.StringNull()
 	} else {
 		plan.Description = types.StringValue(*description)
 	}
 }
 
-// Create creates the resource and sets the initial Terraform state.
+// Create creates the system and sets the initial Terraform state.
 func (r *systemResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var data systemResourceModel
-
-	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
-
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// Generate slug in these cases:
-	// 1. If slug is null in the config (IsNull)
-	// 2. If slug is empty string (ValueString() == "")
-	shouldGenerateSlug := data.Slug.IsNull() || data.Slug.ValueString() == ""
-	
-	tflog.Info(ctx, "Checking slug in Create", map[string]interface{}{
-		"slug_is_null": data.Slug.IsNull(),
-		"slug_value": data.Slug.ValueString(),
-		"should_generate": shouldGenerateSlug,
-	})
-	
-	if shouldGenerateSlug {
-		slug := Slugify(data.Name.ValueString())
-		data.Slug = types.StringValue(slug)
-		
-		// Log the generated slug for debugging
-		tflog.Info(ctx, "Generated slug from name", map[string]interface{}{
-			"name": data.Name.ValueString(),
-			"slug": slug,
-		})
-		
-		// Skip validation for auto-generated slugs - they're guaranteed to be valid
-		// Just check length to be safe
-		if err := ValidateSlugLength(slug); err != nil {
-			resp.Diagnostics.AddAttributeError(
-				path.Root("slug"),
-				"Invalid Slug Length",
-				err.Error(),
-			)
-			return
-		}
-	} else {
-		// Only validate manually provided slugs
-		slugValue := data.Slug.ValueString()
-		
-		// Check if the slug exceeds the maximum length
-		if err := ValidateSlugLength(slugValue); err != nil {
-			resp.Diagnostics.AddAttributeError(
-				path.Root("slug"),
-				"Invalid Slug Length",
-				err.Error(),
-			)
-			return
-		}
-
-		// Validate slug format (should have been caught by validator, but double-check)
-		pattern := `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`
-		regex := regexp.MustCompile(pattern)
-
-		tflog.Info(ctx, "Validating slug format in Create", map[string]interface{}{
-			"slug":           slugValue,
-			"pattern":        pattern,
-			"matches_regex":  regex.MatchString(slugValue),
-		})
-
-		if !regex.MatchString(slugValue) {
-			resp.Diagnostics.AddAttributeError(
-				path.Root("slug"),
-				"Invalid Slug Format",
-				"Slug must contain only lowercase alphanumeric characters and hyphens, and must start and end with an alphanumeric character.",
-			)
-			return
-		}
+	newSlug, err := processSlug(ctx, data.Slug, data.Name.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("slug"),
+			"Invalid Slug",
+			err.Error(),
+		)
+		return
 	}
+	data.Slug = types.StringValue(newSlug)
+	descriptionValue := descriptionPtr(data.Description)
 
-	// Prepare the description field
-	var descriptionPtr *string
-	if data.Description.IsNull() {
-		// If description is null in the plan, explicitly set it to nil
-		descriptionPtr = nil
-	} else {
-		// Otherwise, use the value from the plan
-		descriptionPtr = data.Description.ValueStringPointer()
-	}
-
-	// Create new system
 	system, err := r.client.CreateSystemWithResponse(ctx, client.CreateSystemJSONRequestBody{
 		Name:        data.Name.ValueString(),
 		Slug:        data.Slug.ValueString(),
-		Description: descriptionPtr,
+		Description: descriptionValue,
 		WorkspaceId: r.workspace,
 	})
 	if err != nil {
@@ -250,18 +212,14 @@ func (r *systemResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
-	// Handle error responses
 	if system.StatusCode() == http.StatusBadRequest {
 		errorMsg := "Bad Request"
 		if system.JSON400 != nil && system.JSON400.Error != nil && len(*system.JSON400.Error) > 0 {
-			// Extract the first error message
 			firstError := (*system.JSON400.Error)[0]
 			errorMsg = firstError.Message
-			
-			// Add debug information about the error
-			fmt.Printf("BadRequest Error Details: %+v\n", *system.JSON400.Error)
-			
-			// Check for specific error messages
+			tflog.Info(ctx, "BadRequest Error Details", map[string]interface{}{
+				"error": *system.JSON400.Error,
+			})
 			if strings.Contains(strings.ToLower(errorMsg), "slug must not exceed") {
 				resp.Diagnostics.AddAttributeError(
 					path.Root("slug"),
@@ -270,11 +228,9 @@ func (r *systemResource) Create(ctx context.Context, req resource.CreateRequest,
 				)
 				return
 			}
-			
-			// Check for slug format errors
-			if strings.Contains(strings.ToLower(errorMsg), "slug format") || 
-			   strings.Contains(strings.ToLower(errorMsg), "invalid slug") ||
-			   strings.Contains(strings.ToLower(errorMsg), "must contain only") {
+			if strings.Contains(strings.ToLower(errorMsg), "slug format") ||
+				strings.Contains(strings.ToLower(errorMsg), "invalid slug") ||
+				strings.Contains(strings.ToLower(errorMsg), "must contain only") {
 				resp.Diagnostics.AddAttributeError(
 					path.Root("slug"),
 					"Invalid Slug Format",
@@ -283,8 +239,6 @@ func (r *systemResource) Create(ctx context.Context, req resource.CreateRequest,
 				return
 			}
 		}
-
-		// Check if the error is due to a duplicate slug
 		if strings.Contains(strings.ToLower(errorMsg), "already exists") {
 			resp.Diagnostics.AddError(
 				"System already exists",
@@ -302,7 +256,6 @@ func (r *systemResource) Create(ctx context.Context, req resource.CreateRequest,
 		if system.JSON500 != nil && system.JSON500.Error != nil {
 			errorMsg = *system.JSON500.Error
 		}
-
 		resp.Diagnostics.AddError(
 			"Failed to create system",
 			fmt.Sprintf("An internal server error occurred while creating system with slug '%s'. This might be because a system with this slug already exists. Try using a different slug. Error: %s",
@@ -318,8 +271,6 @@ func (r *systemResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 	setSystemResourceData(&data, system.JSON201)
-
-	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -349,42 +300,25 @@ func (r *systemResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 
-	// Save the current description value before updating the state
 	originalDescription := state.Description
-	
-	// Update the state with the response
 	setSystemResourceData(&state, system.JSON200)
-	
-	// If the original description was null, keep it null
-	// This is necessary because the API might return a non-null value even when we set it to null
 	if originalDescription.IsNull() {
 		state.Description = types.StringNull()
 	}
-
-	// Set the updated state
-	diags = resp.State.Set(ctx, state)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
 }
 
-// Update updates the resource and sets the updated Terraform state on success.
+// Update updates the system and sets the updated Terraform state.
 func (r *systemResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var data systemResourceModel
 	var state systemResourceModel
-
-	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
-	// Also read the current state to ensure we have the ID
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
-
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// Check if the slug exceeds the maximum length
-	if !data.Slug.IsNull() && len(data.Slug.ValueString()) > 0 {
+	if !data.Slug.IsNull() && data.Slug.ValueString() != "" {
 		if err := ValidateSlugLength(data.Slug.ValueString()); err != nil {
 			resp.Diagnostics.AddAttributeError(
 				path.Root("slug"),
@@ -395,10 +329,7 @@ func (r *systemResource) Update(ctx context.Context, req resource.UpdateRequest,
 		}
 	}
 
-	// Use the ID from the state, not from the plan
 	systemID := state.Id.ValueString()
-	
-	// Check if ID is empty
 	if systemID == "" {
 		resp.Diagnostics.AddError(
 			"Missing Resource ID",
@@ -407,22 +338,11 @@ func (r *systemResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 
-	// Prepare the description field
-	var descriptionPtr *string
-	if data.Description.IsNull() {
-		// If description is null in the plan, explicitly set it to nil
-		// This ensures we're sending a null value to the API
-		descriptionPtr = nil
-	} else {
-		// Otherwise, use the value from the plan
-		descriptionPtr = data.Description.ValueStringPointer()
-	}
-
-	// Update system
+	descriptionValue := descriptionPtr(data.Description)
 	system, err := r.client.UpdateSystemWithResponse(ctx, uuid.MustParse(systemID), client.UpdateSystemJSONRequestBody{
 		Name:        data.Name.ValueStringPointer(),
 		Slug:        data.Slug.ValueStringPointer(),
-		Description: descriptionPtr,
+		Description: descriptionValue,
 	})
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -432,7 +352,6 @@ func (r *systemResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 
-	// Handle error responses
 	if system.StatusCode() == http.StatusBadRequest {
 		resp.Diagnostics.AddError(
 			"Failed to update system",
@@ -459,24 +378,16 @@ func (r *systemResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 
-	// Update resource state with updated items
 	setSystemResourceData(&data, system.JSON200)
-	
-	// Ensure description from plan is maintained 
-	// This is needed because some APIs might return a default value even when we send null
-	// We want to respect the plan's description value
-	// Check if description in the plan is null
 	var planModel systemResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &planModel)...)
 	if planModel.Description.IsNull() {
 		data.Description = types.StringNull()
 	}
-
-	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-// Delete deletes the resource and removes the Terraform state on success.
+// Delete deletes the system and removes the Terraform state.
 func (r *systemResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var state systemResourceModel
 	diags := req.State.Get(ctx, &state)
@@ -509,10 +420,7 @@ func (r *systemResource) Delete(ctx context.Context, req resource.DeleteRequest,
 
 // ImportState imports an existing system into Terraform state.
 func (r *systemResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	// The import ID is expected to be the system ID
 	systemId := req.ID
-
-	// Validate the ID is a valid UUID
 	_, err := uuid.Parse(systemId)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -521,7 +429,5 @@ func (r *systemResource) ImportState(ctx context.Context, req resource.ImportSta
 		)
 		return
 	}
-
-	// Set the ID in the state
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), systemId)...)
 }

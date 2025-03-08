@@ -23,7 +23,6 @@ import (
 	ctrlacctest "terraform-provider-ctrlplane/testing/acctest"
 )
 
-
 func testAccSystemResourceConfig(name string, slug string, description *string) string {
 	configTemplate := `
 resource "ctrlplane_system" "test" {
@@ -227,7 +226,6 @@ func TestAccSystemResourceErrorHandling(t *testing.T) {
 	randomName := "testsys" + strings.ToLower(acctest.RandString(5))
 	randomSlug := "testslug" + strings.ToLower(acctest.RandString(5))
 	
-	// Print the generated names for debugging
 	t.Logf("Generated randomName: %s, randomSlug: %s", randomName, randomSlug)
 	
 	resource.Test(t, resource.TestCase{
@@ -250,7 +248,7 @@ func TestAccSystemResourceErrorHandling(t *testing.T) {
 			},
 			// Test provided slug is invalid (should fail)
 			{
-				Config: testAccSystemResourceConfigInvalidSlug(randomName),
+				Config:      testAccSystemResourceConfigInvalidSlug(randomName),
 				ExpectError: regexp.MustCompile(`Invalid Slug Format`),
 			},
 			// Test with missing slug (should succeed as slug is optional)
@@ -261,7 +259,6 @@ func TestAccSystemResourceErrorHandling(t *testing.T) {
 				),
 			},
 			// Test with duplicate slug (should fail)
-			// First we already created a system with randomSlug above, now try to create another
 			{
 				Config:      testAccSystemResourceConfigDuplicateSlug(randomSlug),
 				ExpectError: regexp.MustCompile(`Error: Failed to create system`),
@@ -270,7 +267,6 @@ func TestAccSystemResourceErrorHandling(t *testing.T) {
 	})
 }
 
-// TestAccSystemResourceInvalidSlug is a focused test for the invalid slug case
 func TestAccSystemResourceInvalidSlug(t *testing.T) {
 	randomName := acctest.RandString(10)
 	
@@ -279,7 +275,6 @@ func TestAccSystemResourceInvalidSlug(t *testing.T) {
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		CheckDestroy:             testAccCheckSystemDestroy,
 		Steps: []resource.TestStep{
-			// Test with invalid slug format (should fail with validation error)
 			{
 				Config:      testAccSystemResourceConfigInvalidSlug(randomName),
 				ExpectError: regexp.MustCompile(`Invalid Slug Format`),
@@ -293,11 +288,9 @@ func TestAccSystemResourceImportErrors(t *testing.T) {
 		PreCheck:                 func() { ctrlacctest.PreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
-			// Create a valid system first
 			{
 				Config: testAccSystemResourceConfig("import-test", "import-test", nil),
 			},
-			// Try to import with an invalid ID
 			{
 				ResourceName:      "ctrlplane_system.test",
 				ImportState:       true,
@@ -305,7 +298,6 @@ func TestAccSystemResourceImportErrors(t *testing.T) {
 				ImportStateVerify: false,
 				ExpectError:       regexp.MustCompile(`Invalid System ID`),
 			},
-			// Try to import with a non-existent but valid UUID format
 			{
 				ResourceName:      "ctrlplane_system.test",
 				ImportState:       true,
@@ -317,8 +309,6 @@ func TestAccSystemResourceImportErrors(t *testing.T) {
 	})
 }
 
-
-// TestSetSystemResourceData tests the setSystemResourceData function
 func TestSetSystemResourceData(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -376,28 +366,19 @@ func TestSetSystemResourceData(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var result systemResourceModel
 			setSystemResourceData(&result, tt.inputSystem)
-
-			// Check ID
 			if result.Id != tt.expectedResult.Id {
 				t.Errorf("ID mismatch: got %v, want %v", result.Id, tt.expectedResult.Id)
 			}
-
-			// Check Name
 			if result.Name != tt.expectedResult.Name {
 				t.Errorf("Name mismatch: got %v, want %v", result.Name, tt.expectedResult.Name)
 			}
-
-			// Check Slug
 			if result.Slug != tt.expectedResult.Slug {
 				t.Errorf("Slug mismatch: got %v, want %v", result.Slug, tt.expectedResult.Slug)
 			}
-
-			// Check Description
 			if result.Description.IsNull() != tt.expectedResult.Description.IsNull() {
 				t.Errorf("Description nullness mismatch: got IsNull=%v, want IsNull=%v", 
 					result.Description.IsNull(), tt.expectedResult.Description.IsNull())
 			}
-
 			if !result.Description.IsNull() && result.Description.ValueString() != tt.expectedResult.Description.ValueString() {
 				t.Errorf("Description value mismatch: got %v, want %v", 
 					result.Description.ValueString(), tt.expectedResult.Description.ValueString())
@@ -406,8 +387,6 @@ func TestSetSystemResourceData(t *testing.T) {
 	}
 }
 
-
-// Helper function to create a configuration with two systems having the same name but different slugs
 func testAccSystemResourceConfigSameNameDifferentSlug(name string, firstSlug string, secondSlug string) string {
 	return fmt.Sprintf(`%s
 resource "ctrlplane_system" "test" {
@@ -421,8 +400,6 @@ resource "ctrlplane_system" "second" {
 }`, ctrlacctest.ProviderConfig(), name, firstSlug, name, secondSlug)
 }
 
-// TestAccSystemResourceSameNameDifferentSlug tests that two resources with the same name
-// but different slugs can coexist
 func TestAccSystemResourceSameNameDifferentSlug(t *testing.T) {
 	sharedName := acctest.RandString(10)
 	firstSlug := fmt.Sprintf("%s-first", sharedName)
@@ -432,7 +409,6 @@ func TestAccSystemResourceSameNameDifferentSlug(t *testing.T) {
 		PreCheck:                 func() { ctrlacctest.PreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
-			// Create first system with the shared name and a specific slug
 			{
 				Config: testAccSystemResourceConfig(sharedName, firstSlug, nil),
 				Check: resource.ComposeAggregateTestCheckFunc(
@@ -440,7 +416,6 @@ func TestAccSystemResourceSameNameDifferentSlug(t *testing.T) {
 					resource.TestCheckResourceAttr("ctrlplane_system.test", "slug", firstSlug),
 				),
 			},
-			// Create second system with the same name but a different slug
 			{
 				Config: testAccSystemResourceConfigSameNameDifferentSlug(sharedName, firstSlug, secondSlug),
 				Check: resource.ComposeAggregateTestCheckFunc(
@@ -454,10 +429,7 @@ func TestAccSystemResourceSameNameDifferentSlug(t *testing.T) {
 	})
 }
 
-// TestAccSystemResourceAutoGeneratedSlug tests that when a slug is not provided,
-// it is automatically generated from the name
 func TestAccSystemResourceAutoGeneratedSlug(t *testing.T) {
-	// Use a simpler name without special characters
 	randomName := acctest.RandString(5)
 	complexName := "Test System " + randomName
 	expectedSlug := "test-system-" + strings.ToLower(randomName)
@@ -467,12 +439,10 @@ func TestAccSystemResourceAutoGeneratedSlug(t *testing.T) {
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		CheckDestroy:             testAccCheckSystemDestroy,
 		Steps: []resource.TestStep{
-			// Create a system without providing a slug
 			{
 				Config: testAccSystemResourceConfigMissingSlug(complexName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("ctrlplane_system.test", "name", complexName),
-					// The slug should be automatically generated from the name
 					resource.TestCheckResourceAttr("ctrlplane_system.test", "slug", expectedSlug),
 				),
 			},
@@ -480,10 +450,7 @@ func TestAccSystemResourceAutoGeneratedSlug(t *testing.T) {
 	})
 }
 
-// TestAccSystemResourceComplexNameSlugification tests that when a slug is not provided,
-// complex names with special characters are properly slugified
 func TestAccSystemResourceComplexNameSlugification(t *testing.T) {
-	// Use a complex name with special characters, but keep it short
 	complexName := "& and || A"
 	expectedSlug := "and-and-oror-a"
 	
@@ -492,12 +459,10 @@ func TestAccSystemResourceComplexNameSlugification(t *testing.T) {
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		CheckDestroy:             testAccCheckSystemDestroy,
 		Steps: []resource.TestStep{
-			// Create a system without providing a slug
 			{
 				Config: testAccSystemResourceConfigMissingSlug(complexName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("ctrlplane_system.test", "name", complexName),
-					// The slug should be automatically generated from the name with special characters handled
 					resource.TestCheckResourceAttr("ctrlplane_system.test", "slug", expectedSlug),
 				),
 			},
@@ -505,10 +470,7 @@ func TestAccSystemResourceComplexNameSlugification(t *testing.T) {
 	})
 }
 
-// TestAccSystemResourceLongSlug tests that when a slug is generated from a long name,
-// the provider fails with an appropriate error message if the slug exceeds 30 characters
 func TestAccSystemResourceLongSlug(t *testing.T) {
-	// Use a long name that would generate a slug longer than 30 characters
 	longName := "This is a very long name that will generate a slug exceeding thirty characters"
 	
 	resource.Test(t, resource.TestCase{
@@ -516,7 +478,6 @@ func TestAccSystemResourceLongSlug(t *testing.T) {
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		CheckDestroy:             testAccCheckSystemDestroy,
 		Steps: []resource.TestStep{
-			// Attempt to create a system with a long name that would generate a slug exceeding 30 characters
 			{
 				Config:      testAccSystemResourceConfigMissingSlug(longName),
 				ExpectError: regexp.MustCompile("Slug must not exceed 30 characters"),
@@ -525,10 +486,7 @@ func TestAccSystemResourceLongSlug(t *testing.T) {
 	})
 }
 
-// TestAccSystemResourceExplicitLongSlug tests that explicitly providing a slug that exceeds
-// the maximum length results in a validation error
 func TestAccSystemResourceExplicitLongSlug(t *testing.T) {
-	// Create a slug that exceeds the maximum length of 30 characters
 	longSlug := "this-is-a-very-long-slug-that-exceeds-thirty-characters"
 	
 	resource.Test(t, resource.TestCase{
@@ -536,7 +494,6 @@ func TestAccSystemResourceExplicitLongSlug(t *testing.T) {
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		CheckDestroy:             testAccCheckSystemDestroy,
 		Steps: []resource.TestStep{
-			// Attempt to create a system with an explicitly provided slug that exceeds 30 characters
 			{
 				Config:      testAccSystemResourceConfigWithLongSlug("Test System", longSlug),
 				ExpectError: regexp.MustCompile("Slug must not exceed 30 characters"),
@@ -545,7 +502,6 @@ func TestAccSystemResourceExplicitLongSlug(t *testing.T) {
 	})
 }
 
-// testAccSystemResourceConfigWithLongSlug creates a test configuration with an explicitly provided long slug
 func testAccSystemResourceConfigWithLongSlug(name string, slug string) string {
 	return fmt.Sprintf(`%s
 resource "ctrlplane_system" "test" {
@@ -554,8 +510,6 @@ resource "ctrlplane_system" "test" {
 }`, ctrlacctest.ProviderConfig(), name, slug)
 }
 
-// TestAccSystemResourceUpdateWithLongSlug tests that updating a system with a slug that exceeds
-// the maximum length results in a validation error
 func TestAccSystemResourceUpdateWithLongSlug(t *testing.T) {
 	resourceName := "ctrlplane_system.test"
 	initialName := fmt.Sprintf("Initial System %s", acctest.RandStringFromCharSet(5, acctest.CharSetAlphaNum))
@@ -568,7 +522,6 @@ func TestAccSystemResourceUpdateWithLongSlug(t *testing.T) {
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		CheckDestroy:             testAccCheckSystemDestroy,
 		Steps: []resource.TestStep{
-			// Step 1: Create a system with a valid slug
 			{
 				Config: testAccSystemResourceConfigWithLongSlug(initialName, initialSlug),
 				Check: resource.ComposeAggregateTestCheckFunc(
@@ -576,15 +529,11 @@ func TestAccSystemResourceUpdateWithLongSlug(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "slug", initialSlug),
 				),
 			},
-			// Step 2: Attempt to update the system with a slug that exceeds the maximum length
-			// This tests the validation but will not apply the changes
 			{
 				Config:      testAccSystemResourceConfigWithLongSlug(updatedName, longSlug),
 				ExpectError: regexp.MustCompile("Slug must not exceed 30 characters"),
-				PlanOnly:    true, // Only run the plan phase, not apply
+				PlanOnly:    true,
 			},
-			// Step 3: Verify resource is still as expected with original values
-			// This ensures we have a valid configuration for the destroy phase
 			{
 				Config: testAccSystemResourceConfigWithLongSlug(initialName, initialSlug),
 				Check: resource.ComposeAggregateTestCheckFunc(

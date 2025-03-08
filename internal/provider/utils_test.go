@@ -27,7 +27,7 @@ func TestSlugify(t *testing.T) {
 		{
 			name:     "String with multiple special characters",
 			input:    "Begin && & || | + @ # $ % * = ! ? ---   End -",
-			expected: "begin-andand-and-ororor-+-@-dollar-percent-*-!-end",
+			expected: "begin-andand-and-oror-or-+-@-dollar-percent-*-!-end",
 		},
 		{
 			name:     "String with multiple special characters no spaces",
@@ -120,21 +120,14 @@ func TestValidateSlugLength(t *testing.T) {
 }
 
 func TestSlugValidatorWithNullValue(t *testing.T) {
-	// Create a mock context, request, and response
 	ctx := context.Background()
 	v := SlugValidator{}
-	
-	// Create a mock request with a null value
 	req := validator.StringRequest{
 		ConfigValue: types.StringNull(),
 	}
 	resp := &validator.StringResponse{}
-	
-	// Call ValidateString
 	v.ValidateString(ctx, req, resp)
-	
-	// It should not add any diagnostics since the value is null
 	if resp.Diagnostics.HasError() {
 		t.Errorf("ValidateString added diagnostics for a null value: %v", resp.Diagnostics)
 	}
-} 
+}

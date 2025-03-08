@@ -43,9 +43,26 @@ func Slugify(s string) string {
 		{"?", ""},
 	}
 	
-	for _, replacement := range replacements {
-		s = strings.ReplaceAll(s, replacement.symbol, replacement.word)
+	// Process the string character by character to ensure each symbol is replaced properly
+	var result strings.Builder
+	for _, ch := range s {
+		charStr := string(ch)
+		replaced := false
+		
+		for _, replacement := range replacements {
+			if charStr == replacement.symbol {
+				result.WriteString(replacement.word)
+				replaced = true
+				break
+			}
+		}
+		
+		if !replaced {
+			result.WriteString(charStr)
+		}
 	}
+	
+	s = result.String()
 	
 	// Replace spaces with hyphens
 	spaceReg := regexp.MustCompile(`\s+`)
@@ -62,11 +79,11 @@ func Slugify(s string) string {
 	return s
 }
 
-// MaxSlugLength defines the maximum allowed length for slugs
+// MaxSlugLength defines the maximum allowed length for slugs.
 const MaxSlugLength = 30
 
-// ValidateSlugLength checks if a slug exceeds the maximum allowed length
-// Returns an error if the slug is too long, nil otherwise
+// ValidateSlugLength checks if a slug exceeds the maximum allowed length.
+// Returns an error if the slug is too long, or nil otherwise.
 func ValidateSlugLength(value string) error {
 	if len(value) > MaxSlugLength {
 		return fmt.Errorf("Slug must not exceed %d characters, got: %d characters", MaxSlugLength, len(value))
@@ -74,22 +91,18 @@ func ValidateSlugLength(value string) error {
 	return nil
 }
 
-// SlugValidator validates that a slug is in the correct format
+// SlugValidator validates that a slug is in the correct format.
 type SlugValidator struct{}
 
-// Description returns a plain text description of the validator's behavior
 func (v SlugValidator) Description(ctx context.Context) string {
-	return fmt.Sprintf("Validates that the slug is in the correct format (lowercase alphanumeric characters and hyphens, starting and ending with alphanumeric characters) and does not exceed %d characters.", MaxSlugLength)
+	return fmt.Sprintf("Validates that the slug is in the correct format (lowercase alphanumeric characters and hyphens, starting and ending with an alphanumeric character) and does not exceed %d characters.", MaxSlugLength)
 }
 
-// MarkdownDescription returns a markdown formatted description of the validator's behavior
 func (v SlugValidator) MarkdownDescription(ctx context.Context) string {
-	return fmt.Sprintf("Validates that the slug is in the correct format (lowercase alphanumeric characters and hyphens, starting and ending with alphanumeric characters) and does not exceed %d characters.", MaxSlugLength)
+	return fmt.Sprintf("Validates that the slug is in the correct format (lowercase alphanumeric characters and hyphens, starting and ending with an alphanumeric character) and does not exceed %d characters.", MaxSlugLength)
 }
 
-// ValidateString performs the validation
 func (v SlugValidator) ValidateString(ctx context.Context, req validator.StringRequest, resp *validator.StringResponse) {
-	// If the value is unknown or null, there is nothing to validate
 	if req.ConfigValue.IsUnknown() || req.ConfigValue.IsNull() {
 		tflog.Debug(ctx, "Slug validation skipped for unknown or null value", map[string]interface{}{
 			"is_unknown": req.ConfigValue.IsUnknown(),
@@ -98,21 +111,16 @@ func (v SlugValidator) ValidateString(ctx context.Context, req validator.StringR
 		})
 		return
 	}
-
 	value := req.ConfigValue.ValueString()
-	
-	// Log the value being validated
 	tflog.Debug(ctx, "Validating slug", map[string]interface{}{
 		"value": value,
 		"path":  req.Path.String(),
 	})
-	
-	// Check if the slug exceeds the maximum length
 	if err := ValidateSlugLength(value); err != nil {
 		tflog.Debug(ctx, "Slug length validation failed", map[string]interface{}{
-			"value":       value,
-			"path":        req.Path.String(),
-			"max_length":  MaxSlugLength,
+			"value":         value,
+			"path":          req.Path.String(),
+			"max_length":    MaxSlugLength,
 			"actual_length": len(value),
 		})
 		resp.Diagnostics.AddAttributeError(
@@ -122,11 +130,8 @@ func (v SlugValidator) ValidateString(ctx context.Context, req validator.StringR
 		)
 		return
 	}
-
-	// Check if the slug matches the required pattern
 	pattern := `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`
 	regex := regexp.MustCompile(pattern)
-
 	if !regex.MatchString(value) {
 		tflog.Debug(ctx, "Slug format validation failed", map[string]interface{}{
 			"value":   value,

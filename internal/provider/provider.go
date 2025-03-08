@@ -29,13 +29,11 @@ var _ provider.ProviderWithFunctions = &CtrlplaneProvider{}
 
 // CtrlplaneProvider defines the provider implementation.
 type CtrlplaneProvider struct {
-	// version is set to the provider version on release, "dev" when the
-	// provider is built and ran locally, and "test" when running acceptance
-	// testing.
+	// version is set to the provider version on release, "dev" when built locally, and "test" during acceptance testing.
 	version string
 }
 
-// CtrlplaneProviderModel describes the provider data model.
+// CtrlplaneProviderModel describes the provider configuration.
 type CtrlplaneProviderModel struct {
 	BaseURL   types.String `tfsdk:"base_url"`
 	Token     types.String `tfsdk:"token"`
@@ -150,15 +148,15 @@ func (p *CtrlplaneProvider) Configure(ctx context.Context, req provider.Configur
 	var data CtrlplaneProviderModel
 
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
-
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// Initialize the resource filter registry
+	// Initialize the resource filter registry.
 	InitFilterRegistry()
 	tflog.Debug(ctx, "Resource filter registry initialized by provider")
 
+	// Set default BaseURL from environment or default value.
 	if data.BaseURL.IsNull() {
 		envBaseURL := os.Getenv("CTRLPLANE_BASE_URL")
 		if envBaseURL != "" {
@@ -168,6 +166,7 @@ func (p *CtrlplaneProvider) Configure(ctx context.Context, req provider.Configur
 		}
 	}
 
+	// Set Token from environment if not provided.
 	if data.Token.ValueString() == "" {
 		envToken := os.Getenv("CTRLPLANE_TOKEN")
 		if envToken == "" {
@@ -177,6 +176,7 @@ func (p *CtrlplaneProvider) Configure(ctx context.Context, req provider.Configur
 		data.Token = types.StringValue(envToken)
 	}
 
+	// Set Workspace from environment if not provided.
 	if data.Workspace.IsNull() {
 		envWorkspace := os.Getenv("CTRLPLANE_WORKSPACE")
 		if envWorkspace == "" {
@@ -186,6 +186,7 @@ func (p *CtrlplaneProvider) Configure(ctx context.Context, req provider.Configur
 		data.Workspace = types.StringValue(envWorkspace)
 	}
 
+	// Normalize the base URL.
 	server := data.BaseURL.ValueString()
 	server = strings.TrimSuffix(server, "/")
 	server = strings.TrimSuffix(server, "/api")
@@ -197,6 +198,7 @@ func (p *CtrlplaneProvider) Configure(ctx context.Context, req provider.Configur
 		"token_set": data.Token.ValueString() != "",
 	})
 
+	// Create the client.
 	client, err := client.NewClientWithResponses(
 		server,
 		client.WithRequestEditorFn(addAPIKey(data.Token.ValueString())),
@@ -206,8 +208,8 @@ func (p *CtrlplaneProvider) Configure(ctx context.Context, req provider.Configur
 		return
 	}
 
-	configuredWorkspace := data.Workspace.ValueString()
-	workspaceID, err := getWorkspace(ctx, configuredWorkspace, client)
+	// Resolve workspace using either ID or slug.
+	workspaceID, err := getWorkspace(ctx, data.Workspace.ValueString(), client)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to get workspace", err.Error())
 		return
