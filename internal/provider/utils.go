@@ -86,7 +86,7 @@ const MaxSlugLength = 30
 // Returns an error if the slug is too long, or nil otherwise.
 func ValidateSlugLength(value string) error {
 	if len(value) > MaxSlugLength {
-		return fmt.Errorf("Slug must not exceed %d characters, got: %d characters", MaxSlugLength, len(value))
+		return fmt.Errorf("slug must not exceed %d characters, got: %d characters", MaxSlugLength, len(value))
 	}
 	return nil
 }

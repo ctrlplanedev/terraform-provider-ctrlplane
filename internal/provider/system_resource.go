@@ -16,6 +16,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -83,6 +85,9 @@ func (r *systemResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				MarkdownDescription: "The slug of the system (must be unique to the workspace). If not provided, it will be generated from the name.",
 				Validators: []validator.String{
 					SlugValidator{},
+				},
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
 				},
 			},
 			"description": schema.StringAttribute{
@@ -318,7 +323,30 @@ func (r *systemResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 
-	if !data.Slug.IsNull() && data.Slug.ValueString() != "" {
+	// Check if we need to auto-generate a slug
+	// This happens when slug field is removed from the configuration
+	if data.Slug.IsNull() || data.Slug.ValueString() == "" {
+		// Generate a slug from the name
+		slug := Slugify(data.Name.ValueString())
+		data.Slug = types.StringValue(slug)
+		
+		tflog.Info(ctx, "Auto-generated slug during update", map[string]interface{}{
+			"name": data.Name.ValueString(),
+			"slug": slug,
+		})
+		
+		// Skip validation for auto-generated slugs - they're guaranteed to be valid
+		// Just check length to be safe
+		if err := ValidateSlugLength(slug); err != nil {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("slug"),
+				"Invalid Slug Length",
+				err.Error(),
+			)
+			return
+		}
+	} else if !data.Slug.IsNull() && data.Slug.ValueString() != "" {
+		// Validate the explicit slug
 		if err := ValidateSlugLength(data.Slug.ValueString()); err != nil {
 			resp.Diagnostics.AddAttributeError(
 				path.Root("slug"),
@@ -351,6 +379,15 @@ func (r *systemResource) Update(ctx context.Context, req resource.UpdateRequest,
 		)
 		return
 	}
+	
+	// Log detailed information about the update operation
+	tflog.Info(ctx, "System update API call details", map[string]interface{}{
+		"status_code":     system.StatusCode(),
+		"status":          system.Status(),
+		"plan_slug":       data.Slug.ValueString(),
+		"state_slug":      state.Slug.ValueString(),
+		"attempted_update": data.Slug.ValueString() != state.Slug.ValueString(),
+	})
 
 	if system.StatusCode() == http.StatusBadRequest {
 		resp.Diagnostics.AddError(

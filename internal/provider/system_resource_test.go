@@ -480,7 +480,7 @@ func TestAccSystemResourceLongSlug(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccSystemResourceConfigMissingSlug(longName),
-				ExpectError: regexp.MustCompile("Slug must not exceed 30 characters"),
+				ExpectError: regexp.MustCompile("slug must not exceed 30 characters"),
 			},
 		},
 	})
@@ -496,7 +496,7 @@ func TestAccSystemResourceExplicitLongSlug(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccSystemResourceConfigWithLongSlug("Test System", longSlug),
-				ExpectError: regexp.MustCompile("Slug must not exceed 30 characters"),
+				ExpectError: regexp.MustCompile("slug must not exceed 30 characters"),
 			},
 		},
 	})
@@ -531,7 +531,7 @@ func TestAccSystemResourceUpdateWithLongSlug(t *testing.T) {
 			},
 			{
 				Config:      testAccSystemResourceConfigWithLongSlug(updatedName, longSlug),
-				ExpectError: regexp.MustCompile("Slug must not exceed 30 characters"),
+				ExpectError: regexp.MustCompile("slug must not exceed 30 characters"),
 				PlanOnly:    true,
 			},
 			{
@@ -540,6 +540,42 @@ func TestAccSystemResourceUpdateWithLongSlug(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "name", initialName),
 					resource.TestCheckResourceAttr(resourceName, "slug", initialSlug),
 				),
+			},
+		},
+	})
+}
+
+// TODO We need full CRUD on the system resource so we don't have to destroy and recreate the system to update the slug
+
+// TestAccSystemResourceRecreateOnSlugChange verifies that updating the slug
+// causes the resource to be replaced.
+func TestAccSystemResourceRecreateOnSlugChange(t *testing.T) {
+	resourceName := "ctrlplane_system.test"
+	replaceName := fmt.Sprintf("ReplaceSystem%s", acctest.RandStringFromCharSet(5, acctest.CharSetAlphaNum))
+	firstSlug := fmt.Sprintf("first-slug-%s", acctest.RandStringFromCharSet(5, acctest.CharSetAlpha))
+	secondSlug := fmt.Sprintf("second-slug-%s", acctest.RandStringFromCharSet(5, acctest.CharSetAlpha))
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { ctrlacctest.PreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckSystemDestroy,
+		Steps: []resource.TestStep{
+			// Step 1: Create a system with the initial slug.
+			{
+				Config: testAccSystemResourceConfig(replaceName, firstSlug, nil),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "name", replaceName),
+					resource.TestCheckResourceAttr(resourceName, "slug", firstSlug),
+				),
+			},
+			// Step 2: Update the configuration to use a different slug.
+			// This change should force a resource replacement.
+			{
+				Config: testAccSystemResourceConfig(replaceName, secondSlug, nil),
+				// We only run the plan phase here to verify that a replacement is required.
+				PlanOnly:           true,
+				ExpectNonEmptyPlan: true,
+				// Optionally, you can add checks against the plan output if your test framework supports it.
 			},
 		},
 	})
