@@ -161,15 +161,16 @@ func TestAccEnvironmentResourceErrorHandling(t *testing.T) {
 }
 
 func testAccEnvironmentResourceConfig(envName string) string {
+	systemName := fmt.Sprintf("test-system-%s", acctest.RandString(8))
 	return fmt.Sprintf(`
 resource "ctrlplane_system" "test" {
-  name        = "test-system"
+  name        = %[1]q
   description = "Test system"
-  slug        = "test-system"
+  slug        = %[1]q
 }
 
 resource "ctrlplane_environment" "test" {
-  name        = %[1]q
+  name        = %[2]q
   description = "Test environment"
   system_id   = ctrlplane_system.test.id
   metadata = {
@@ -177,21 +178,23 @@ resource "ctrlplane_environment" "test" {
     "key2" = "value2"
   }
 }
-`, envName)
+`, systemName, envName)
 }
 
-// DISABLED UPDATE TESTS - These functions are temporarily commented out until API support is added
+// TODO: Add updated test once the API supports the needed CRUD operations
+
 /*
 func testAccEnvironmentResourceConfigUpdated(envName string) string {
+	systemName := fmt.Sprintf("test-system-%s", acctest.RandString(8))
 	return fmt.Sprintf(`
 resource "ctrlplane_system" "test" {
-  name        = "test-system"
+  name        = %[1]q
   description = "Test system"
-  slug        = "test-system"
+  slug        = %[1]q
 }
 
 resource "ctrlplane_environment" "test" {
-  name        = %[1]q
+  name        = %[2]q
   description = "Updated test environment"
   system_id   = ctrlplane_system.test.id
   metadata = {
@@ -199,25 +202,25 @@ resource "ctrlplane_environment" "test" {
     "key3" = "new_value"
   }
 }
-`, envName)
+`, systemName, envName)
 }
 */
 
 func testAccEnvironmentResourceConfigWithSimpleFilter(envName string) string {
+	systemName := fmt.Sprintf("test-system-%s", acctest.RandString(8))
 	return fmt.Sprintf(`
 resource "ctrlplane_system" "test" {
-  name        = "test-system"
+  name        = %[1]q
   description = "Test system"
-  slug        = "test-system"
+  slug        = %[1]q
 }
 
 resource "ctrlplane_environment" "test" {
-  name        = %[1]q
+  name        = %[2]q
   description = "Test environment with simple filter"
   system_id   = ctrlplane_system.test.id
   metadata = {
     "test" = "true"
-    "env"  = "integration"
   }
   resource_filter = {
     type     = "metadata"
@@ -226,19 +229,20 @@ resource "ctrlplane_environment" "test" {
     value    = "staging"
   }
 }
-`, envName)
+`, systemName, envName)
 }
 
 func testAccEnvironmentResourceConfigWithComplexFilter(envName string) string {
+	systemName := fmt.Sprintf("test-system-%s", acctest.RandString(8))
 	return fmt.Sprintf(`
 resource "ctrlplane_system" "test" {
-  name        = "test-system"
+  name        = %[1]q
   description = "Test system"
-  slug        = "test-system"
+  slug        = %[1]q
 }
 
 resource "ctrlplane_environment" "test" {
-  name        = %[1]q
+  name        = %[2]q
   description = "Test environment with complex filter"
   system_id   = ctrlplane_system.test.id
   metadata = {
@@ -263,24 +267,24 @@ resource "ctrlplane_environment" "test" {
     ]
   }
 }
-`, envName)
+`, systemName, envName)
 }
 
 func testAccEnvironmentResourceConfigUpdateFilter(envName string) string {
+	systemName := fmt.Sprintf("test-system-%s", acctest.RandString(8))
 	return fmt.Sprintf(`
 resource "ctrlplane_system" "test" {
-  name        = "test-system"
+  name        = %[1]q
   description = "Test system"
-  slug        = "test-system"
+  slug        = %[1]q
 }
 
 resource "ctrlplane_environment" "test" {
-  name        = %[1]q
+  name        = %[2]q
   description = "Test environment with updated filter"
   system_id   = ctrlplane_system.test.id
   metadata = {
     "test" = "true"
-    "env"  = "integration"
   }
   resource_filter = {
     type     = "comparison"
@@ -300,18 +304,20 @@ resource "ctrlplane_environment" "test" {
     ]
   }
 }
-`, envName)
+`, systemName, envName)
 }
 
 func testAccEnvironmentResourceConfigWithNameFilter(envName string) string {
-	return fmt.Sprintf(`resource "ctrlplane_system" "test" {
-  name        = "test-system"
+	systemName := fmt.Sprintf("test-system-%s", acctest.RandString(8))
+	return fmt.Sprintf(`
+resource "ctrlplane_system" "test" {
+  name        = %[1]q
   description = "Test system"
-  slug        = "test-system"
+  slug        = %[1]q
 }
 
 resource "ctrlplane_environment" "test" {
-  name        = %[1]q
+  name        = %[2]q
   description = "Test environment with name filter"
   system_id   = ctrlplane_system.test.id
   metadata = {
@@ -323,19 +329,20 @@ resource "ctrlplane_environment" "test" {
     value    = "api-service"
   }
 }
-`, envName)
+`, systemName, envName)
 }
 
 func testAccEnvironmentResourceConfigWithKindFilter(envName string) string {
+	systemName := fmt.Sprintf("test-system-%s", acctest.RandString(8))
 	return fmt.Sprintf(`
 resource "ctrlplane_system" "test" {
-  name        = "test-system"
+  name        = %[1]q
   description = "Test system"
-  slug        = "test-system"
+  slug        = %[1]q
 }
 
 resource "ctrlplane_environment" "test" {
-  name        = %[1]q
+  name        = %[2]q
   description = "Test environment with kind filter"
   system_id   = ctrlplane_system.test.id
   metadata = {
@@ -347,21 +354,22 @@ resource "ctrlplane_environment" "test" {
     value    = "Service"
   }
 }
-`, envName)
+`, systemName, envName)
 }
 
-// DISABLED NOT CONDITION TESTS - These functions are temporarily commented out until API support is added
+// TODO: Add not condition test once the API supports the needed CRUD operations
 /*
 func testAccEnvironmentResourceConfigWithNotCondition(envName string) string {
+	systemName := fmt.Sprintf("test-system-%s", acctest.RandString(8))
 	return fmt.Sprintf(`
 resource "ctrlplane_system" "test" {
-  name        = "test-system"
+  name        = %[1]q
   description = "Test system"
-  slug        = "test-system"
+  slug        = %[1]q
 }
 
 resource "ctrlplane_environment" "test" {
-  name        = %[1]q
+  name        = %[2]q
   description = "Test environment with NOT condition"
   system_id   = ctrlplane_system.test.id
   metadata = {
@@ -371,11 +379,11 @@ resource "ctrlplane_environment" "test" {
     type     = "metadata"
     key      = "environment"
     operator = "equals"
-    value    = "production"
+    value    = "staging"
     not      = true
   }
 }
-`, envName)
+`, systemName, envName)
 }
 */
 
@@ -383,21 +391,22 @@ func testAccEnvironmentResourceConfigMissingRequired() string {
 	return `
 resource "ctrlplane_environment" "test" {
   description = "Test environment missing required fields"
-  # Missing system_id
+  # Missing name and system_id
 }
 `
 }
 
 func testAccEnvironmentResourceConfigInvalidFilter(envName string) string {
+	systemName := fmt.Sprintf("test-system-%s", acctest.RandString(8))
 	return fmt.Sprintf(`
 resource "ctrlplane_system" "test" {
-  name        = "test-system"
+  name        = %[1]q
   description = "Test system"
-  slug        = "test-system"
+  slug        = %[1]q
 }
 
 resource "ctrlplane_environment" "test" {
-  name        = %[1]q
+  name        = %[2]q
   description = "Test environment with invalid filter"
   system_id   = ctrlplane_system.test.id
   resource_filter = {
@@ -407,7 +416,7 @@ resource "ctrlplane_environment" "test" {
     value    = "staging"
   }
 }
-`, envName)
+`, systemName, envName)
 }
 
 func TestEnvironmentSchema(t *testing.T) {

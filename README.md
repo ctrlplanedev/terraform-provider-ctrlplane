@@ -62,7 +62,7 @@ _Note:_ Acceptance tests create real resources, and often cost money to run.
 Create a `.env` file with the following environment variables:
 
 ```shell
-CTRLPLANE
+CTRLPLANE_PROVIDER_TESTING_BASE_URL=http://localhost:3000
 CTRLPLANE_PROVIDER_TESTING_API_KEY=your_token_here
 CTRLPLANE_PROVIDER_TESTING_WORKSPACE=your_workspace_here
 ```

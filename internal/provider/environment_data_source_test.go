@@ -61,6 +61,7 @@ func TestAccEnvironmentDataSource(t *testing.T) {
 
 func TestAccEnvironmentDataSourceErrorHandling(t *testing.T) {
 	rName := acctest.RandString(8)
+	systemName := fmt.Sprintf("test-system-%s", rName)
 	nonExistentEnvName := fmt.Sprintf("non-existent-env-%s", rName)
 
 	resource.Test(t, resource.TestCase{
@@ -69,12 +70,12 @@ func TestAccEnvironmentDataSourceErrorHandling(t *testing.T) {
 		Steps: []resource.TestStep{
 			// Test with missing name (should fail)
 			{
-				Config:      testAccEnvironmentDataSourceConfigMissingName(),
+				Config:      testAccEnvironmentDataSourceConfigMissingName(systemName),
 				ExpectError: regexp.MustCompile(`The argument "name" is required`),
 			},
 			// Test with a non-existent environment name (should fail)
 			{
-				Config:      testAccEnvironmentDataSourceConfigNonExistentEnv(nonExistentEnvName),
+				Config:      testAccEnvironmentDataSourceConfigNonExistentEnv(systemName, nonExistentEnvName),
 				ExpectError: regexp.MustCompile(`Environment Not Found`),
 			},
 		},
@@ -155,11 +156,11 @@ data "ctrlplane_environment" "test_complex" {
 `, testAccEnvironmentDataSourceConfigSetup(systemName, envName, complexName), complexName)
 }
 
-func testAccEnvironmentDataSourceConfigMissingName() string {
-	return `
+func testAccEnvironmentDataSourceConfigMissingName(systemName string) string {
+	return fmt.Sprintf(`
 resource "ctrlplane_system" "test" {
-  name        = "test-system-missing-name"
-  slug        = "test-system-missing-name"
+  name        = "%[1]s"
+  slug        = "%[1]s"
   description = "Test system"
 }
 
@@ -167,22 +168,22 @@ data "ctrlplane_environment" "test" {
   # Missing name field
   system_id = ctrlplane_system.test.id
 }
-`
+`, systemName)
 }
 
-func testAccEnvironmentDataSourceConfigNonExistentEnv(envName string) string {
+func testAccEnvironmentDataSourceConfigNonExistentEnv(systemName, envName string) string {
 	return fmt.Sprintf(`
 resource "ctrlplane_system" "test" {
-  name        = "test-system-nonexistent"
-  slug        = "test-system-nonexistent" 
+  name        = "%[1]s"
+  slug        = "%[1]s" 
   description = "Test system"
 }
 
 data "ctrlplane_environment" "test" {
-  name      = "%[1]s"
+  name      = "%[2]s"
   system_id = ctrlplane_system.test.id
 }
-`, envName)
+`, systemName, envName)
 }
 
 func testAccEnvironmentDataSourceConfigComplex(complexName string) string {
