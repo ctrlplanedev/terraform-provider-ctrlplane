@@ -34,6 +34,10 @@ func testAccPreCheck(t *testing.T) {
 		"CTRLPLANE_BASE_URL",
 	}
 
+	if os.Getenv("CTRLPLANE_BASE_URL") == "" {
+		t.Setenv("CTRLPLANE_BASE_URL", "https://api.ctrlplane.com")
+	}
+
 	for _, envVar := range requiredEnvVars {
 		if value := acctest.GetTestEnv(t, envVar); value == "" {
 			t.Fatalf("%s must be set for acceptance tests", envVar)
