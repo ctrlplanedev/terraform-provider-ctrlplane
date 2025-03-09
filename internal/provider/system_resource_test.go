@@ -134,11 +134,13 @@ func testAccCheckSystemDestroy(s *terraform.State) error {
 }
 
 func TestAccSystemResource(t *testing.T) {
-	firstName := acctest.RandString(10)
-	secondName := acctest.RandString(10)
-	thirdName := acctest.RandString(10)
-	description := "This is a test description"
-	updatedDescription := "This is an updated description"
+	// Generate a unique prefix for all resources in this test
+	rPrefix := acctest.RandString(8)
+	firstName := fmt.Sprintf("first-%s-%s", rPrefix, acctest.RandString(5))
+	secondName := fmt.Sprintf("second-%s-%s", rPrefix, acctest.RandString(5))
+	thirdName := fmt.Sprintf("third-%s-%s", rPrefix, acctest.RandString(5))
+	description := fmt.Sprintf("Test description %s", rPrefix)
+	updatedDescription := fmt.Sprintf("Updated description %s", rPrefix)
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { ctrlacctest.PreCheck(t) },
@@ -209,7 +211,7 @@ func TestAccSystemResource(t *testing.T) {
 					resource.TestCheckNoResourceAttr("ctrlplane_system.test", "description"),
 				),
 			},
-			// Update and Read testing - add description back
+			// Update and Read testing - add description
 			{
 				Config: testAccSystemResourceConfig(thirdName, thirdName, &updatedDescription),
 				Check: resource.ComposeAggregateTestCheckFunc(
@@ -404,9 +406,11 @@ resource "ctrlplane_system" "second" {
 }
 
 func TestAccSystemResourceSameNameDifferentSlug(t *testing.T) {
-	sharedName := acctest.RandString(10)
-	firstSlug := fmt.Sprintf("%s-first", sharedName)
-	secondSlug := fmt.Sprintf("%s-second", sharedName)
+	// Generate a truly unique name and slugs
+	rPrefix := acctest.RandString(8)
+	sharedName := fmt.Sprintf("shared-%s-%s", rPrefix, acctest.RandString(5))
+	firstSlug := fmt.Sprintf("first-%s-%s", rPrefix, acctest.RandString(5))
+	secondSlug := fmt.Sprintf("second-%s-%s", rPrefix, acctest.RandString(5))
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { ctrlacctest.PreCheck(t) },
