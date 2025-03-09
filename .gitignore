@@ -37,3 +37,9 @@ website/vendor
 .env
 *.out
 .cursor
+
+# terraform
+*.tfplan
+*.tfstate
+*.tfstate.backup
+*.terraform.lock.hcl*
