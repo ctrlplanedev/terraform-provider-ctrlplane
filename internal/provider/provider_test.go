@@ -24,7 +24,7 @@ var testAccProtoV6ProviderFactories = map[string]func() (tfprotov6.ProviderServe
 func testAccPreCheck(t *testing.T) {
 	// Enable Terraform debug logging
 	if os.Getenv("TF_LOG") == "" {
-		os.Setenv("TF_LOG", "DEBUG")
+		t.Setenv("TF_LOG", "DEBUG")
 	}
 
 	// Check for required environment variables
@@ -38,7 +38,7 @@ func testAccPreCheck(t *testing.T) {
 		if value := acctest.GetTestEnv(t, envVar); value == "" {
 			t.Fatalf("%s must be set for acceptance tests", envVar)
 		} else {
-			t.Logf("%s is set to: %s", envVar, value)
+			t.Logf("%s is set.", envVar)
 		}
 	}
 

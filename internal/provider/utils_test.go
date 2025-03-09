@@ -1,7 +1,9 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package provider
 
 import (
-	"context"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -120,7 +122,7 @@ func TestValidateSlugLength(t *testing.T) {
 }
 
 func TestSlugValidatorWithNullValue(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	v := SlugValidator{}
 	req := validator.StringRequest{
 		ConfigValue: types.StringNull(),

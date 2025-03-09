@@ -43,7 +43,7 @@ var _ = Describe("Environment API", func() {
 
 		BeforeEach(func() {
 			var err error
-			systemID, _, err = createTestSystem(ctx, apiClient, "env-no-filter")
+			systemID, err = createTestSystem(ctx, apiClient, "env-no-filter")
 			Expect(err).NotTo(HaveOccurred(), "Failed to create test system")
 
 			shortUUID := uuid.New().String()[:6]
@@ -51,8 +51,7 @@ var _ = Describe("Environment API", func() {
 		})
 
 		AfterEach(func() {
-			err := deleteTestSystem(ctx, apiClient, systemID)
-			Expect(err).NotTo(HaveOccurred(), "Failed to delete test system")
+			safeDeleteTestSystem(ctx, apiClient, systemID)
 		})
 
 		It("should create an environment without a resource filter", func() {
@@ -171,9 +170,10 @@ var _ = Describe("Environment API", func() {
 		})
 
 		It("should create an environment with comparison resource filter", func() {
-			systemID, _, err := createTestSystem(ctx, apiClient, "env-comparison")
+			systemID, err := createTestSystem(ctx, apiClient, "env-comparison")
 			Expect(err).NotTo(HaveOccurred())
-			defer deleteTestSystem(ctx, apiClient, systemID)
+
+			defer func() { safeDeleteTestSystem(ctx, apiClient, systemID) }()
 
 			releaseChannels := []string{}
 			envName := fmt.Sprintf("env-comparison-%s", uuid.New().String()[:6])
@@ -245,9 +245,9 @@ var _ = Describe("Environment API", func() {
 		})
 
 		It("should create an environment with metadata resource filter", func() {
-			systemID, _, err := createTestSystem(ctx, apiClient, "env-metadata")
+			systemID, err := createTestSystem(ctx, apiClient, "env-metadata")
 			Expect(err).NotTo(HaveOccurred())
-			defer deleteTestSystem(ctx, apiClient, systemID)
+			defer safeDeleteTestSystem(ctx, apiClient, systemID)
 
 			releaseChannels := []string{}
 			envName := fmt.Sprintf("env-metadata-%s", uuid.New().String()[:6])
@@ -321,9 +321,10 @@ var _ = Describe("Environment API", func() {
 		})
 
 		It("should create an environment with a simple filter", func() {
-			systemID, _, err := createTestSystem(ctx, apiClient, "env-simple-filter")
+			systemID, err := createTestSystem(ctx, apiClient, "env-simple-filter")
 			Expect(err).NotTo(HaveOccurred())
-			defer deleteTestSystem(ctx, apiClient, systemID)
+
+			defer func() { safeDeleteTestSystem(ctx, apiClient, systemID) }()
 
 			releaseChannels := []string{}
 			envName := fmt.Sprintf("env-simple-filter-%s", uuid.New().String()[:6])
@@ -394,9 +395,9 @@ var _ = Describe("Environment API", func() {
 		})
 
 		It("should create an environment with a complex filter", func() {
-			systemID, _, err := createTestSystem(ctx, apiClient, "env-complex-filter")
+			systemID, err := createTestSystem(ctx, apiClient, "env-complex-filter")
 			Expect(err).NotTo(HaveOccurred())
-			defer deleteTestSystem(ctx, apiClient, systemID)
+			defer safeDeleteTestSystem(ctx, apiClient, systemID)
 
 			releaseChannels := []string{}
 			envName := fmt.Sprintf("env-complex-filter-%s", uuid.New().String()[:6])
@@ -462,19 +463,21 @@ var _ = Describe("Environment API", func() {
 			Expect(ok).To(BeTrue(), "conditions should be an array")
 			Expect(conditions).To(HaveLen(2), "should have 2 conditions")
 
-			condition1 := conditions[0].(map[string]interface{})
-			Expect(condition1["type"]).To(Equal("metadata"))
-			Expect(condition1["key"]).To(Equal("environment"))
-			Expect(condition1["operator"]).To(Equal("equals"))
-			Expect(condition1["value"]).To(Equal("staging"))
+			condition1Map, ok := conditions[0].(map[string]interface{})
+			Expect(ok).To(BeTrue(), "condition1 should be a map")
+			Expect(condition1Map["type"]).To(Equal("metadata"))
+			Expect(condition1Map["key"]).To(Equal("environment"))
+			Expect(condition1Map["operator"]).To(Equal("equals"))
+			Expect(condition1Map["value"]).To(Equal("staging"))
 
-			condition2 := conditions[1].(map[string]interface{})
-			Expect(condition2["type"]).To(Equal("kind"))
-			Expect(condition2["operator"]).To(Equal("equals"))
-			Expect(condition2["value"]).To(Equal("Deployment"))
+			condition2Map, ok := conditions[1].(map[string]interface{})
+			Expect(ok).To(BeTrue(), "condition2 should be a map")
+			Expect(condition2Map["type"]).To(Equal("kind"))
+			Expect(condition2Map["operator"]).To(Equal("equals"))
+			Expect(condition2Map["value"]).To(Equal("Deployment"))
 
 			systemResp, err := apiClient.GetSystemWithResponse(ctx, systemID)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred(), "Failed to get system")
 			Expect(systemResp.JSON200).NotTo(BeNil())
 			Expect(systemResp.JSON200.Environments).NotTo(BeNil())
 
@@ -493,9 +496,9 @@ var _ = Describe("Environment API", func() {
 		})
 
 		It("should create an environment with date condition resource filter", func() {
-			systemID, _, err := createTestSystem(ctx, apiClient, "env-date-filter")
+			systemID, err := createTestSystem(ctx, apiClient, "env-date-filter")
 			Expect(err).NotTo(HaveOccurred())
-			defer deleteTestSystem(ctx, apiClient, systemID)
+			defer safeDeleteTestSystem(ctx, apiClient, systemID)
 
 			releaseChannels := []string{}
 			envName := fmt.Sprintf("env-date-filter-%s", uuid.New().String()[:6])
@@ -610,9 +613,9 @@ var _ = Describe("Environment API", func() {
 		})
 
 		It("should support multiple environments in the same system", func() {
-			systemID, _, err := createTestSystem(ctx, apiClient, "multi-env")
+			systemID, err := createTestSystem(ctx, apiClient, "multi-env")
 			Expect(err).NotTo(HaveOccurred())
-			defer deleteTestSystem(ctx, apiClient, systemID)
+			defer safeDeleteTestSystem(ctx, apiClient, systemID)
 
 			environments := []struct {
 				name   string
@@ -690,9 +693,9 @@ var _ = Describe("Environment API", func() {
 		})
 
 		It("should create an environment with nested comparison conditions", func() {
-			systemID, _, err := createTestSystem(ctx, apiClient, "env-nested-comparison")
+			systemID, err := createTestSystem(ctx, apiClient, "env-nested-comparison")
 			Expect(err).NotTo(HaveOccurred())
-			defer deleteTestSystem(ctx, apiClient, systemID)
+			defer safeDeleteTestSystem(ctx, apiClient, systemID)
 
 			releaseChannels := []string{}
 			envName := fmt.Sprintf("env-nested-comp-%s", uuid.New().String()[:6])
@@ -793,9 +796,9 @@ var _ = Describe("Environment API", func() {
 		})
 
 		It("should create an environment with mixed condition types", func() {
-			systemID, _, err := createTestSystem(ctx, apiClient, "env-mixed-conditions")
+			systemID, err := createTestSystem(ctx, apiClient, "env-mixed-conditions")
 			Expect(err).NotTo(HaveOccurred())
-			defer deleteTestSystem(ctx, apiClient, systemID)
+			defer safeDeleteTestSystem(ctx, apiClient, systemID)
 
 			releaseChannels := []string{}
 			envName := fmt.Sprintf("env-mixed-conditions-%s", uuid.New().String()[:6])
@@ -899,9 +902,9 @@ var _ = Describe("Environment API", func() {
 		})
 
 		It("should create an environment with deeply nested conditions", func() {
-			systemID, _, err := createTestSystem(ctx, apiClient, "env-deep-nesting")
+			systemID, err := createTestSystem(ctx, apiClient, "env-deep-nesting")
 			Expect(err).NotTo(HaveOccurred())
-			defer deleteTestSystem(ctx, apiClient, systemID)
+			defer safeDeleteTestSystem(ctx, apiClient, systemID)
 
 			releaseChannels := []string{}
 			envName := fmt.Sprintf("env-deep-nesting-%s", uuid.New().String()[:6])
@@ -1042,3 +1045,11 @@ var _ = Describe("Environment API", func() {
 		})
 	})
 })
+
+// Helper function to safely delete a test system with error handling.
+func safeDeleteTestSystem(ctx context.Context, apiClient *client.ClientWithResponses, systemID uuid.UUID) {
+	err := deleteTestSystem(ctx, apiClient, systemID)
+	if err != nil {
+		Logger.Error("Failed to delete test system", zap.Error(err), zap.String("system_id", systemID.String()))
+	}
+}

@@ -24,7 +24,7 @@ func stringToPtr(s string) *string {
 func Slugify(s string) string {
 	// Convert to lowercase
 	s = strings.ToLower(s)
-	
+
 	// Replace common symbols with word equivalents without adding spaces
 	replacements := []struct {
 		symbol string
@@ -42,13 +42,13 @@ func Slugify(s string) string {
 		{"!", "!"},
 		{"?", ""},
 	}
-	
+
 	// Process the string character by character to ensure each symbol is replaced properly
 	var result strings.Builder
 	for _, ch := range s {
 		charStr := string(ch)
 		replaced := false
-		
+
 		for _, replacement := range replacements {
 			if charStr == replacement.symbol {
 				result.WriteString(replacement.word)
@@ -56,25 +56,25 @@ func Slugify(s string) string {
 				break
 			}
 		}
-		
+
 		if !replaced {
 			result.WriteString(charStr)
 		}
 	}
-	
+
 	s = result.String()
-	
+
 	// Replace spaces with hyphens
 	spaceReg := regexp.MustCompile(`\s+`)
 	s = spaceReg.ReplaceAllString(s, "-")
-	
+
 	// Replace consecutive hyphens with a single hyphen
 	reg := regexp.MustCompile(`-+`)
 	s = reg.ReplaceAllString(s, "-")
-	
+
 	// Remove leading and trailing hyphens
 	s = strings.Trim(s, "-")
-	
+
 	// Return the result, even if empty
 	return s
 }

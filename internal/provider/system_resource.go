@@ -151,13 +151,13 @@ func extractSystemAttributes(system interface{}) (uuid.UUID, string, string, *st
 	case *client.System:
 		return s.Id, s.Name, s.Slug, s.Description, nil
 	case *struct {
-		Deployments  *[]client.Deployment `json:"deployments,omitempty"`
-		Description  *string              `json:"description,omitempty"`
+		Deployments  *[]client.Deployment  `json:"deployments,omitempty"`
+		Description  *string               `json:"description,omitempty"`
 		Environments *[]client.Environment `json:"environments,omitempty"`
-		Id           uuid.UUID            `json:"id"`
-		Name         string               `json:"name"`
-		Slug         string               `json:"slug"`
-		WorkspaceId  uuid.UUID            `json:"workspaceId"`
+		Id           uuid.UUID             `json:"id"`
+		Name         string                `json:"name"`
+		Slug         string                `json:"slug"`
+		WorkspaceId  uuid.UUID             `json:"workspaceId"`
 	}:
 		return s.Id, s.Name, s.Slug, s.Description, nil
 	default:
@@ -329,12 +329,12 @@ func (r *systemResource) Update(ctx context.Context, req resource.UpdateRequest,
 		// Generate a slug from the name
 		slug := Slugify(data.Name.ValueString())
 		data.Slug = types.StringValue(slug)
-		
+
 		tflog.Info(ctx, "Auto-generated slug during update", map[string]interface{}{
 			"name": data.Name.ValueString(),
 			"slug": slug,
 		})
-		
+
 		// Skip validation for auto-generated slugs - they're guaranteed to be valid
 		// Just check length to be safe
 		if err := ValidateSlugLength(slug); err != nil {
@@ -379,13 +379,13 @@ func (r *systemResource) Update(ctx context.Context, req resource.UpdateRequest,
 		)
 		return
 	}
-	
+
 	// Log detailed information about the update operation
 	tflog.Info(ctx, "System update API call details", map[string]interface{}{
-		"status_code":     system.StatusCode(),
-		"status":          system.Status(),
-		"plan_slug":       data.Slug.ValueString(),
-		"state_slug":      state.Slug.ValueString(),
+		"status_code":      system.StatusCode(),
+		"status":           system.Status(),
+		"plan_slug":        data.Slug.ValueString(),
+		"state_slug":       state.Slug.ValueString(),
 		"attempted_update": data.Slug.ValueString() != state.Slug.ValueString(),
 	})
 

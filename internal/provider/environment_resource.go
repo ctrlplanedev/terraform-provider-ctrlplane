@@ -490,13 +490,6 @@ func getConditionsCountForLog(filter *ResourceFilterModel) int {
 	return 0
 }
 
-func getStringValOrEmpty(s types.String) string {
-	if s.IsNull() || s.IsUnknown() {
-		return ""
-	}
-	return s.ValueString()
-}
-
 func CreateResourceFilterModel(ctx context.Context, rf map[string]interface{}) (*ResourceFilterModel, error) {
 	filter := &ResourceFilterModel{}
 	err := filter.FromAPIFilter(ctx, rf)

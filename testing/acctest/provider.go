@@ -9,21 +9,21 @@ import (
 	"testing"
 )
 
-// Environment variables for test configuration
+// Environment variables for test configuration.
 const (
 	APIKeyEnvVar    = "CTRLPLANE_TOKEN"
 	WorkspaceEnvVar = "CTRLPLANE_WORKSPACE"
 	BaseURLEnvVar   = "CTRLPLANE_BASE_URL"
 )
 
-// GetTestEnv gets a test environment variable and logs its value
+// GetTestEnv gets a test environment variable and logs its value.
 func GetTestEnv(t *testing.T, key string) string {
 	value := os.Getenv(key)
 	t.Logf("Environment variable %s = %s", key, value)
 	return value
 }
 
-// ProviderConfig returns provider configuration for acceptance tests
+// ProviderConfig returns provider configuration for acceptance tests.
 func ProviderConfig() string {
 	baseURL := os.Getenv(BaseURLEnvVar)
 	if baseURL == "" {
@@ -48,7 +48,7 @@ provider "ctrlplane" {
 `, os.Getenv(APIKeyEnvVar), os.Getenv(WorkspaceEnvVar), baseURL)
 }
 
-// PreCheck validates the necessary test env vars exist in running acceptance tests
+// PreCheck validates the necessary test env vars exist in running acceptance tests.
 func PreCheck(t *testing.T) {
 	if v := os.Getenv(APIKeyEnvVar); v == "" {
 		t.Fatalf("%s must be set for acceptance tests", APIKeyEnvVar)

@@ -19,7 +19,7 @@ type TestMode string
 
 const (
 	TestModePersist TestMode = "persistent"
-	// TestModeCleanup TestMode = "cleanup"
+	// TestModeCleanup TestMode = "cleanup".
 	TestModeAutoCleanup TestMode = "autocleanup"
 )
 

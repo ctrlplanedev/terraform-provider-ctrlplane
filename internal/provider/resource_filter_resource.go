@@ -324,7 +324,7 @@ func (r *ResourceFilterResource) Delete(ctx context.Context, req resource.Delete
 func (r *ResourceFilterResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	// Import the ID
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), req.ID)...)
-	
+
 	// Get the filter from the registry
 	filterModel, err := GetResourceFilterByID(ctx, req.ID)
 	if err != nil {
@@ -334,18 +334,18 @@ func (r *ResourceFilterResource) ImportState(ctx context.Context, req resource.I
 		)
 		return
 	}
-	
+
 	// Set all the necessary attributes
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("type"), filterModel.Type)...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("key"), filterModel.Key)...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("operator"), filterModel.Operator)...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("value"), filterModel.Value)...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("not"), filterModel.Not)...)
-	
+
 	if len(filterModel.Conditions) > 0 {
 		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("conditions"), filterModel.Conditions)...)
 	}
-	
+
 	tflog.Info(ctx, "Imported resource filter", map[string]interface{}{
 		"id": req.ID,
 	})

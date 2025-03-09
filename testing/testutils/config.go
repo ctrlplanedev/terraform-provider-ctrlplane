@@ -16,12 +16,12 @@ import (
 	"terraform-provider-ctrlplane/testing/acctest"
 )
 
-// testAccProtoV6ProviderFactories are used to instantiate a provider during acceptance testing
+// testAccProtoV6ProviderFactories are used to instantiate a provider during acceptance testing.
 var testAccProtoV6ProviderFactories = map[string]func() (tfprotov6.ProviderServer, error){
 	"ctrlplane": providerserver.NewProtocol6WithError(provider.New("test")()),
 }
 
-// TestCase wraps the resource.TestCase with provider configuration
+// TestCase wraps the resource.TestCase with provider configuration.
 func TestCase(t *testing.T, steps []resource.TestStep) resource.TestCase {
 	return resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
@@ -30,7 +30,7 @@ func TestCase(t *testing.T, steps []resource.TestStep) resource.TestCase {
 	}
 }
 
-// CheckDestroy verifies the resource has been destroyed
+// CheckDestroy verifies the resource has been destroyed.
 func CheckDestroy(s *terraform.State, resourceType string) error {
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != resourceType {
@@ -41,7 +41,7 @@ func CheckDestroy(s *terraform.State, resourceType string) error {
 	return nil
 }
 
-// CheckResourceExists checks if a resource exists
+// CheckResourceExists checks if a resource exists.
 func CheckResourceExists(resourceName string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[resourceName]
@@ -57,7 +57,7 @@ func CheckResourceExists(resourceName string) resource.TestCheckFunc {
 	}
 }
 
-// ConfigCompose combines multiple configurations into one
+// ConfigCompose combines multiple configurations into one.
 func ConfigCompose(configs ...string) string {
 	var config string
 	for _, c := range configs {

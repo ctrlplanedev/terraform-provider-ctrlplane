@@ -50,12 +50,11 @@ func getWorkspaceID(ctx context.Context, workspaceStr string, apiClient *client.
 	return workspaceResp.JSON200.Id, nil
 }
 
-func createTestSystem(ctx context.Context, apiClient *client.ClientWithResponses, namePrefix string) (uuid.UUID, string, error) {
-
+func createTestSystem(ctx context.Context, apiClient *client.ClientWithResponses, namePrefix string) (uuid.UUID, error) {
 	workspaceStr := os.Getenv("CTRLPLANE_WORKSPACE")
 	workspaceID, err := getWorkspaceID(ctx, workspaceStr, apiClient)
 	if err != nil {
-		return uuid.Nil, "", fmt.Errorf("failed to get workspace ID: %w", err)
+		return uuid.Nil, fmt.Errorf("failed to get workspace ID: %w", err)
 	}
 
 	shortUUID := uuid.New().String()[:6]
@@ -78,7 +77,7 @@ func createTestSystem(ctx context.Context, apiClient *client.ClientWithResponses
 	})
 
 	if err != nil {
-		return uuid.Nil, "", fmt.Errorf("failed to create system: %w", err)
+		return uuid.Nil, fmt.Errorf("failed to create system: %w", err)
 	}
 
 	if systemResp.JSON201 == nil {
@@ -86,10 +85,10 @@ func createTestSystem(ctx context.Context, apiClient *client.ClientWithResponses
 		Logger.Error("system creation failed",
 			zap.Int("status_code", systemResp.StatusCode()),
 			zap.String("response_body", string(systemResp.Body)))
-		return uuid.Nil, "", fmt.Errorf("system creation failed with status: %d", systemResp.StatusCode())
+		return uuid.Nil, fmt.Errorf("system creation failed with status: %d", systemResp.StatusCode())
 	}
 
-	return systemResp.JSON201.Id, systemName, nil
+	return systemResp.JSON201.Id, nil
 }
 
 func deleteTestSystem(ctx context.Context, apiClient *client.ClientWithResponses, systemID uuid.UUID) error {

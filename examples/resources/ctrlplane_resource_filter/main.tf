@@ -6,11 +6,7 @@ terraform {
   }
 }
 
-provider "ctrlplane" {
-  base_url  = "http://localhost:3000"
-  token     = "ec2dcd404a4a53c4.41c876a1055cb2e636721fdd394be83dbdc901ab57aeccb14b0ca57eb687e26a"
-  workspace = "zacharyblasczyk"
-}
+provider "ctrlplane" {}
 
 resource "ctrlplane_system" "example" {
   name        = "resource-filter-example-system"
