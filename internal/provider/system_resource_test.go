@@ -97,7 +97,7 @@ func testAccCheckSystemDestroy(s *terraform.State) error {
 	baseURL := os.Getenv(ctrlacctest.BaseURLEnvVar)
 
 	if baseURL == "" {
-		baseURL = "https://app.ctrlplane.com" // Default value
+		baseURL = "https://app.ctrlplane.dev" // Default value
 	}
 
 	// Create a client for API calls
@@ -284,12 +284,14 @@ func TestAccSystemResourceInvalidSlug(t *testing.T) {
 }
 
 func TestAccSystemResourceImportErrors(t *testing.T) {
+	importName := fmt.Sprintf("import-test-%s", acctest.RandString(8))
+
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { ctrlacctest.PreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSystemResourceConfig("import-test", "import-test", nil),
+				Config: testAccSystemResourceConfig(importName, importName, nil),
 			},
 			{
 				ResourceName:      "ctrlplane_system.test",
