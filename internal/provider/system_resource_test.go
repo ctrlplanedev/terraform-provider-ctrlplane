@@ -226,8 +226,8 @@ func TestAccSystemResource(t *testing.T) {
 
 func TestAccSystemResourceErrorHandling(t *testing.T) {
 	// Create simple values that are guaranteed to be slug-safe
-	randomName := "testsys" + strings.ToLower(acctest.RandString(5))
-	randomSlug := "testslug" + strings.ToLower(acctest.RandString(5))
+	randomName := "testsys" + strings.ToLower(acctest.RandString(8))
+	randomSlug := "testslug" + strings.ToLower(acctest.RandString(8))
 
 	t.Logf("Generated randomName: %s, randomSlug: %s", randomName, randomSlug)
 
