@@ -9,20 +9,29 @@ import (
 	"testing"
 
 	resourceschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestAccEnvironmentResource(t *testing.T) {
+	rName := acctest.RandString(8)
+	basicEnvName := fmt.Sprintf("test-env-basic-%s", rName)
+	simpleFilterEnvName := fmt.Sprintf("test-env-simple-filter-%s", rName)
+	complexFilterEnvName := fmt.Sprintf("test-env-complex-filter-%s", rName)
+	updateFilterEnvName := fmt.Sprintf("test-env-update-filter-%s", rName)
+	nameFilterEnvName := fmt.Sprintf("test-env-name-filter-%s", rName)
+	kindFilterEnvName := fmt.Sprintf("test-env-kind-filter-%s", rName)
+
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			// Test basic create
 			{
-				Config: testAccEnvironmentResourceConfig("test-env-basic"),
+				Config: testAccEnvironmentResourceConfig(basicEnvName),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("ctrlplane_environment.test", "name", "test-env-basic"),
+					resource.TestCheckResourceAttr("ctrlplane_environment.test", "name", basicEnvName),
 					resource.TestCheckResourceAttr("ctrlplane_environment.test", "description", "Test environment"),
 					resource.TestCheckResourceAttr("ctrlplane_environment.test", "metadata.key1", "value1"),
 					resource.TestCheckResourceAttr("ctrlplane_environment.test", "metadata.key2", "value2"),
@@ -44,9 +53,9 @@ func TestAccEnvironmentResource(t *testing.T) {
 			*/
 			// Test with simple filter
 			{
-				Config: testAccEnvironmentResourceConfigWithSimpleFilter("test-env-simple-filter"),
+				Config: testAccEnvironmentResourceConfigWithSimpleFilter(simpleFilterEnvName),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("ctrlplane_environment.test", "name", "test-env-simple-filter"),
+					resource.TestCheckResourceAttr("ctrlplane_environment.test", "name", simpleFilterEnvName),
 					resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.type", "metadata"),
 					resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.key", "environment"),
 					resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.operator", "equals"),
@@ -55,9 +64,9 @@ func TestAccEnvironmentResource(t *testing.T) {
 			},
 			// Test with complex filter
 			{
-				Config: testAccEnvironmentResourceConfigWithComplexFilter("test-env-complex-filter"),
+				Config: testAccEnvironmentResourceConfigWithComplexFilter(complexFilterEnvName),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("ctrlplane_environment.test", "name", "test-env-complex-filter"),
+					resource.TestCheckResourceAttr("ctrlplane_environment.test", "name", complexFilterEnvName),
 					resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.type", "comparison"),
 					resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.operator", "and"),
 					resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.conditions.#", "2"),
@@ -65,16 +74,17 @@ func TestAccEnvironmentResource(t *testing.T) {
 					resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.conditions.0.key", "environment"),
 					resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.conditions.0.operator", "equals"),
 					resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.conditions.0.value", "production"),
-					resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.conditions.1.type", "kind"),
-					resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.conditions.1.operator", "equals"),
-					resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.conditions.1.value", "Service"),
+					resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.conditions.1.type", "name"),
+					resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.conditions.1.operator", "contains"),
+					resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.conditions.1.value", "api"),
+					resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.conditions.0.operator", "equals"),
 				),
 			},
-			// Test update filter
+			// Test updating the filter
 			{
-				Config: testAccEnvironmentResourceConfigUpdateFilter("test-env-update-filter"),
+				Config: testAccEnvironmentResourceConfigUpdateFilter(updateFilterEnvName),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("ctrlplane_environment.test", "name", "test-env-update-filter"),
+					resource.TestCheckResourceAttr("ctrlplane_environment.test", "name", updateFilterEnvName),
 					resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.type", "comparison"),
 					resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.operator", "or"),
 					resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.conditions.#", "2"),
@@ -84,41 +94,42 @@ func TestAccEnvironmentResource(t *testing.T) {
 					resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.conditions.0.value", "staging"),
 					resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.conditions.1.type", "kind"),
 					resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.conditions.1.operator", "equals"),
-					resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.conditions.1.value", "Deployment"),
+					resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.conditions.1.value", "prod"),
 				),
 			},
 			// Test with name filter
 			{
-				Config: testAccEnvironmentResourceConfigWithNameFilter("test-env-name-filter"),
+				Config: testAccEnvironmentResourceConfigWithNameFilter(nameFilterEnvName),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("ctrlplane_environment.test", "name", "test-env-name-filter"),
+					resource.TestCheckResourceAttr("ctrlplane_environment.test", "name", nameFilterEnvName),
 					resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.type", "name"),
 					resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.operator", "contains"),
-					resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.value", "service"),
+					resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.value", "api-service"),
 				),
 			},
 			// Test with kind filter
 			{
-				Config: testAccEnvironmentResourceConfigWithKindFilter("test-env-kind-filter"),
+				Config: testAccEnvironmentResourceConfigWithKindFilter(kindFilterEnvName),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("ctrlplane_environment.test", "name", "test-env-kind-filter"),
+					resource.TestCheckResourceAttr("ctrlplane_environment.test", "name", kindFilterEnvName),
 					resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.type", "kind"),
 					resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.operator", "equals"),
-					resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.value", "Deployment"),
+					resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.value", "Service"),
 				),
 			},
-			// DISABLED NOT CONDITION TEST: API/provider inconsistency with the 'not' field
-			// When setting not=true in a filter, the value gets lost when refreshing from the API
-			// Error: "Provider produced inconsistent result after apply... value: .resource_filter.not: was cty.True, but now cty.False"
+			// DISABLED NOT CONDITION TEST - This is temporarily disabled due to inconsistency in API response
+			// The API currently has an issue where setting not=true, the value gets lost when refreshing
+			// Error: "Provider produced inconsistent result after apply... was cty.True, but now cty.False"
 			/*
+				// Test with not condition
 				{
-					Config: testAccEnvironmentResourceConfigWithNotCondition("test-env-not-condition"),
+					Config: testAccEnvironmentResourceConfigWithNotCondition(notConditionEnvName),
 					Check: resource.ComposeAggregateTestCheckFunc(
-						resource.TestCheckResourceAttr("ctrlplane_environment.test", "name", "test-env-not-condition"),
+						resource.TestCheckResourceAttr("ctrlplane_environment.test", "name", notConditionEnvName),
 						resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.type", "metadata"),
 						resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.key", "environment"),
 						resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.operator", "equals"),
-						resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.value", "production"),
+						resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.value", "staging"),
 						resource.TestCheckResourceAttr("ctrlplane_environment.test", "resource_filter.not", "true"),
 					),
 				},
@@ -128,18 +139,21 @@ func TestAccEnvironmentResource(t *testing.T) {
 }
 
 func TestAccEnvironmentResourceErrorHandling(t *testing.T) {
+	rName := acctest.RandString(8)
+	invalidFilterEnvName := fmt.Sprintf("test-env-invalid-filter-%s", rName)
+
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
-			// Test with missing required fields (should fail)
+			// Test missing required attributes
 			{
 				Config:      testAccEnvironmentResourceConfigMissingRequired(),
-				ExpectError: regexp.MustCompile(`The argument "system_id" is required`),
+				ExpectError: regexp.MustCompile(`The argument "name" is required`),
 			},
-			// Test with invalid filter configuration (should fail)
+			// Test invalid filter configuration
 			{
-				Config:      testAccEnvironmentResourceConfigInvalidFilter("test-env-invalid-filter"),
+				Config:      testAccEnvironmentResourceConfigInvalidFilter(invalidFilterEnvName),
 				ExpectError: regexp.MustCompile(`API Error`),
 			},
 		},
@@ -242,9 +256,9 @@ resource "ctrlplane_environment" "test" {
         value    = "production"
       },
       {
-        type     = "kind"
-        operator = "equals"
-        value    = "Service"
+        type     = "name"
+        operator = "contains"
+        value    = "api"
       }
     ]
   }
@@ -281,7 +295,7 @@ resource "ctrlplane_environment" "test" {
       {
         type     = "kind"
         operator = "equals"
-        value    = "Deployment"
+        value    = "prod"
       }
     ]
   }
@@ -290,8 +304,7 @@ resource "ctrlplane_environment" "test" {
 }
 
 func testAccEnvironmentResourceConfigWithNameFilter(envName string) string {
-	return fmt.Sprintf(`
-resource "ctrlplane_system" "test" {
+	return fmt.Sprintf(`resource "ctrlplane_system" "test" {
   name        = "test-system"
   description = "Test system"
   slug        = "test-system"
@@ -307,7 +320,7 @@ resource "ctrlplane_environment" "test" {
   resource_filter = {
     type     = "name"
     operator = "contains"
-    value    = "service"
+    value    = "api-service"
   }
 }
 `, envName)
@@ -331,7 +344,7 @@ resource "ctrlplane_environment" "test" {
   resource_filter = {
     type     = "kind"
     operator = "equals"
-    value    = "Deployment"
+    value    = "Service"
   }
 }
 `, envName)
@@ -369,7 +382,6 @@ resource "ctrlplane_environment" "test" {
 func testAccEnvironmentResourceConfigMissingRequired() string {
 	return `
 resource "ctrlplane_environment" "test" {
-  name        = "test-env-missing-required"
   description = "Test environment missing required fields"
   # Missing system_id
 }
