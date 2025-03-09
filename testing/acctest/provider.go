@@ -27,7 +27,7 @@ func GetTestEnv(t *testing.T, key string) string {
 func ProviderConfig() string {
 	baseURL := os.Getenv(BaseURLEnvVar)
 	if baseURL == "" {
-		baseURL = "https://app.ctrlplane.com" // Default value from provider schema
+		baseURL = "https://app.ctrlplane.dev" // Default value from provider schema
 	}
 
 	return fmt.Sprintf(`

@@ -35,7 +35,7 @@ func testAccPreCheck(t *testing.T) {
 	}
 
 	if os.Getenv("CTRLPLANE_BASE_URL") == "" {
-		t.Setenv("CTRLPLANE_BASE_URL", "https://api.ctrlplane.com")
+		t.Setenv("CTRLPLANE_BASE_URL", "https://app.ctrlplane.dev")
 	}
 
 	for _, envVar := range requiredEnvVars {

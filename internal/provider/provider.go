@@ -51,8 +51,8 @@ func (p *CtrlplaneProvider) Schema(ctx context.Context, req provider.SchemaReque
 		MarkdownDescription: "The Ctrlplane provider is used to manage the lifecycle of your Ctrlplane constructs, including systems, policies, resources, and more. A provider is scoped to a workspace, and can be configured with a base URL and token.",
 		Attributes: map[string]schema.Attribute{
 			"base_url": schema.StringAttribute{
-				Description:         "The URL of the Ctrlplane API endpoint. Can be set in the CTRLPLANE_BASE_URL environment variable. Defaults to `https://app.ctrlplane.com` if not set.",
-				MarkdownDescription: "The URL of the Ctrlplane API endpoint. Can be set in the CTRLPLANE_BASE_URL environment variable. Defaults to `https://app.ctrlplane.com` if not set.",
+				Description:         "The URL of the Ctrlplane API endpoint. Can be set in the CTRLPLANE_BASE_URL environment variable. Defaults to `https://app.ctrlplane.dev` if not set.",
+				MarkdownDescription: "The URL of the Ctrlplane API endpoint. Can be set in the CTRLPLANE_BASE_URL environment variable. Defaults to `https://app.ctrlplane.dev` if not set.",
 				Optional:            true,
 			},
 			"token": schema.StringAttribute{
@@ -162,7 +162,7 @@ func (p *CtrlplaneProvider) Configure(ctx context.Context, req provider.Configur
 		if envBaseURL != "" {
 			data.BaseURL = types.StringValue(envBaseURL)
 		} else {
-			data.BaseURL = types.StringValue("https://app.ctrlplane.com")
+			data.BaseURL = types.StringValue("https://app.ctrlplane.dev")
 		}
 	}
 
