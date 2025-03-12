@@ -24,16 +24,23 @@ const (
 
 // Defines values for JobStatus.
 const (
-	ActionRequired      JobStatus = "action_required"
-	Cancelled           JobStatus = "cancelled"
-	ExternalRunNotFound JobStatus = "external_run_not_found"
-	Failure             JobStatus = "failure"
-	InProgress          JobStatus = "in_progress"
-	InvalidIntegration  JobStatus = "invalid_integration"
-	InvalidJobAgent     JobStatus = "invalid_job_agent"
-	Pending             JobStatus = "pending"
-	Skipped             JobStatus = "skipped"
-	Successful          JobStatus = "successful"
+	JobStatusActionRequired      JobStatus = "action_required"
+	JobStatusCancelled           JobStatus = "cancelled"
+	JobStatusExternalRunNotFound JobStatus = "external_run_not_found"
+	JobStatusFailure             JobStatus = "failure"
+	JobStatusInProgress          JobStatus = "in_progress"
+	JobStatusInvalidIntegration  JobStatus = "invalid_integration"
+	JobStatusInvalidJobAgent     JobStatus = "invalid_job_agent"
+	JobStatusPending             JobStatus = "pending"
+	JobStatusSkipped             JobStatus = "skipped"
+	JobStatusSuccessful          JobStatus = "successful"
+)
+
+// Defines values for JobWithTriggerApprovalStatus.
+const (
+	JobWithTriggerApprovalStatusApproved JobWithTriggerApprovalStatus = "approved"
+	JobWithTriggerApprovalStatusPending  JobWithTriggerApprovalStatus = "pending"
+	JobWithTriggerApprovalStatusRejected JobWithTriggerApprovalStatus = "rejected"
 )
 
 // Defines values for PolicyApprovalRequirement.
@@ -82,19 +89,13 @@ type Deployment struct {
 
 // Environment defines model for Environment.
 type Environment struct {
-	CreatedAt       time.Time           `json:"createdAt"`
-	Description     *string             `json:"description,omitempty"`
-	Id              openapi_types.UUID  `json:"id"`
-	Metadata        *map[string]string  `json:"metadata,omitempty"`
-	Name            string              `json:"name"`
-	Policy          *Policy             `json:"policy,omitempty"`
-	PolicyId        *openapi_types.UUID `json:"policyId"`
-	ReleaseChannels *[]struct {
-		ChannelId     *string `json:"channelId,omitempty"`
-		DeploymentId  *string `json:"deploymentId,omitempty"`
-		EnvironmentId *string `json:"environmentId,omitempty"`
-		Id            *string `json:"id,omitempty"`
-	} `json:"releaseChannels,omitempty"`
+	CreatedAt      time.Time               `json:"createdAt"`
+	Description    *string                 `json:"description,omitempty"`
+	Id             openapi_types.UUID      `json:"id"`
+	Metadata       *map[string]string      `json:"metadata,omitempty"`
+	Name           string                  `json:"name"`
+	Policy         *Policy                 `json:"policy,omitempty"`
+	PolicyId       *openapi_types.UUID     `json:"policyId"`
 	ResourceFilter *map[string]interface{} `json:"resourceFilter"`
 	SystemId       openapi_types.UUID      `json:"systemId"`
 }
@@ -120,6 +121,43 @@ type Job struct {
 
 // JobStatus defines model for JobStatus.
 type JobStatus string
+
+// JobWithTrigger defines model for JobWithTrigger.
+type JobWithTrigger struct {
+	Approval *struct {
+		// Approver Null when status is pending, contains approver details when approved or rejected
+		Approver *struct {
+			Id   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"approver"`
+		Id     string                       `json:"id"`
+		Status JobWithTriggerApprovalStatus `json:"status"`
+	} `json:"approval"`
+	CompletedAt *time.Time   `json:"completedAt"`
+	CreatedAt   time.Time    `json:"createdAt"`
+	Deployment  *Deployment  `json:"deployment,omitempty"`
+	Environment *Environment `json:"environment,omitempty"`
+
+	// ExternalId External job identifier (e.g. GitHub workflow run ID)
+	ExternalId *string            `json:"externalId"`
+	Id         openapi_types.UUID `json:"id"`
+
+	// JobAgentConfig Configuration for the Job Agent
+	JobAgentConfig map[string]interface{} `json:"jobAgentConfig"`
+	JobAgentId     *openapi_types.UUID    `json:"jobAgentId,omitempty"`
+	Message        *string                `json:"message,omitempty"`
+	Reason         *string                `json:"reason,omitempty"`
+	Release        *Release               `json:"release,omitempty"`
+	Resource       *Resource              `json:"resource,omitempty"`
+	Runbook        *Runbook               `json:"runbook,omitempty"`
+	StartedAt      *time.Time             `json:"startedAt"`
+	Status         JobStatus              `json:"status"`
+	UpdatedAt      time.Time              `json:"updatedAt"`
+	Variables      map[string]interface{} `json:"variables"`
+}
+
+// JobWithTriggerApprovalStatus defines model for JobWithTrigger.Approval.Status.
+type JobWithTriggerApprovalStatus string
 
 // Policy defines model for Policy.
 type Policy struct {
@@ -255,6 +293,36 @@ type Workspace struct {
 
 	// Slug The slug of the workspace
 	Slug string `json:"slug"`
+}
+
+// CreateDeploymentJSONBody defines parameters for CreateDeployment.
+type CreateDeploymentJSONBody struct {
+	// Description The description of the deployment
+	Description *string `json:"description,omitempty"`
+
+	// JobAgentConfig The configuration for the job agent
+	JobAgentConfig *map[string]interface{} `json:"jobAgentConfig,omitempty"`
+
+	// JobAgentId The ID of the job agent to use for the deployment
+	JobAgentId *openapi_types.UUID `json:"jobAgentId,omitempty"`
+
+	// Name The name of the deployment
+	Name string `json:"name"`
+
+	// ResourceFilter The resource filter for the deployment
+	ResourceFilter *map[string]interface{} `json:"resourceFilter,omitempty"`
+
+	// RetryCount The number of times to retry the deployment
+	RetryCount *float32 `json:"retryCount,omitempty"`
+
+	// Slug The slug of the deployment
+	Slug string `json:"slug"`
+
+	// SystemId The ID of the system to create the deployment for
+	SystemId openapi_types.UUID `json:"systemId"`
+
+	// Timeout The timeout for the deployment
+	Timeout *float32 `json:"timeout,omitempty"`
 }
 
 // CreateEnvironmentJSONBody defines parameters for CreateEnvironment.
@@ -412,6 +480,9 @@ type UpdateSystemJSONBody struct {
 	// WorkspaceId UUID of the workspace
 	WorkspaceId *openapi_types.UUID `json:"workspaceId,omitempty"`
 }
+
+// CreateDeploymentJSONRequestBody defines body for CreateDeployment for application/json ContentType.
+type CreateDeploymentJSONRequestBody CreateDeploymentJSONBody
 
 // CreateEnvironmentJSONRequestBody defines body for CreateEnvironment for application/json ContentType.
 type CreateEnvironmentJSONRequestBody CreateEnvironmentJSONBody
@@ -613,6 +684,17 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+	// CreateDeploymentWithBody request with any body
+	CreateDeploymentWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateDeployment(ctx context.Context, body CreateDeploymentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteDeployment request
+	DeleteDeployment(ctx context.Context, deploymentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetDeployment request
+	GetDeployment(ctx context.Context, deploymentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// DeleteReleaseChannel request
 	DeleteReleaseChannel(ctx context.Context, deploymentId string, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -731,6 +813,54 @@ type ClientInterface interface {
 
 	// GetResourceByIdentifier request
 	GetResourceByIdentifier(ctx context.Context, workspaceId string, identifier string, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) CreateDeploymentWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateDeploymentRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateDeployment(ctx context.Context, body CreateDeploymentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateDeploymentRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteDeployment(ctx context.Context, deploymentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteDeploymentRequest(c.Server, deploymentId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetDeployment(ctx context.Context, deploymentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetDeploymentRequest(c.Server, deploymentId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 func (c *Client) DeleteReleaseChannel(ctx context.Context, deploymentId string, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -1259,6 +1389,114 @@ func (c *Client) GetResourceByIdentifier(ctx context.Context, workspaceId string
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+// NewCreateDeploymentRequest calls the generic CreateDeployment builder with application/json body
+func NewCreateDeploymentRequest(server string, body CreateDeploymentJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateDeploymentRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateDeploymentRequestWithBody generates requests for CreateDeployment with any type of body
+func NewCreateDeploymentRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/deployments")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteDeploymentRequest generates requests for DeleteDeployment
+func NewDeleteDeploymentRequest(server string, deploymentId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "deploymentId", runtime.ParamLocationPath, deploymentId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/deployments/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetDeploymentRequest generates requests for GetDeployment
+func NewGetDeploymentRequest(server string, deploymentId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "deploymentId", runtime.ParamLocationPath, deploymentId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/deployments/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
 }
 
 // NewDeleteReleaseChannelRequest generates requests for DeleteReleaseChannel
@@ -2506,6 +2744,17 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+	// CreateDeploymentWithBodyWithResponse request with any body
+	CreateDeploymentWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateDeploymentResponse, error)
+
+	CreateDeploymentWithResponse(ctx context.Context, body CreateDeploymentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateDeploymentResponse, error)
+
+	// DeleteDeploymentWithResponse request
+	DeleteDeploymentWithResponse(ctx context.Context, deploymentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteDeploymentResponse, error)
+
+	// GetDeploymentWithResponse request
+	GetDeploymentWithResponse(ctx context.Context, deploymentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetDeploymentResponse, error)
+
 	// DeleteReleaseChannelWithResponse request
 	DeleteReleaseChannelWithResponse(ctx context.Context, deploymentId string, name string, reqEditors ...RequestEditorFn) (*DeleteReleaseChannelResponse, error)
 
@@ -2624,6 +2873,88 @@ type ClientWithResponsesInterface interface {
 
 	// GetResourceByIdentifierWithResponse request
 	GetResourceByIdentifierWithResponse(ctx context.Context, workspaceId string, identifier string, reqEditors ...RequestEditorFn) (*GetResourceByIdentifierResponse, error)
+}
+
+type CreateDeploymentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *Deployment
+	JSON409      *struct {
+		Error string             `json:"error"`
+		Id    openapi_types.UUID `json:"id"`
+	}
+	JSON500 *struct {
+		Error string `json:"error"`
+	}
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateDeploymentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateDeploymentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type DeleteDeploymentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Deployment
+	JSON404      *struct {
+		Error string `json:"error"`
+	}
+	JSON500 *struct {
+		Error string `json:"error"`
+	}
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteDeploymentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteDeploymentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetDeploymentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Deployment
+	JSON404      *struct {
+		Error string `json:"error"`
+	}
+}
+
+// Status returns HTTPResponse.Status
+func (r GetDeploymentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetDeploymentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
 }
 
 type DeleteReleaseChannelResponse struct {
@@ -2839,43 +3170,11 @@ func (r GetNextJobsResponse) StatusCode() int {
 type GetJobResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *struct {
-		Approval *struct {
-			// Approver Null when status is pending, contains approver details when approved or rejected
-			Approver *struct {
-				Id   string `json:"id"`
-				Name string `json:"name"`
-			} `json:"approver"`
-			Id     string                  `json:"id"`
-			Status GetJob200ApprovalStatus `json:"status"`
-		} `json:"approval"`
-		CompletedAt *time.Time   `json:"completedAt"`
-		CreatedAt   time.Time    `json:"createdAt"`
-		Deployment  *Deployment  `json:"deployment,omitempty"`
-		Environment *Environment `json:"environment,omitempty"`
-
-		// ExternalId External job identifier (e.g. GitHub workflow run ID)
-		ExternalId *string            `json:"externalId"`
-		Id         openapi_types.UUID `json:"id"`
-
-		// JobAgentConfig Configuration for the Job Agent
-		JobAgentConfig map[string]interface{} `json:"jobAgentConfig"`
-		JobAgentId     *openapi_types.UUID    `json:"jobAgentId,omitempty"`
-		Message        *string                `json:"message,omitempty"`
-		Reason         *string                `json:"reason,omitempty"`
-		Release        *Release               `json:"release,omitempty"`
-		Resource       *Resource              `json:"resource,omitempty"`
-		Runbook        *Runbook               `json:"runbook,omitempty"`
-		StartedAt      *time.Time             `json:"startedAt"`
-		Status         JobStatus              `json:"status"`
-		UpdatedAt      time.Time              `json:"updatedAt"`
-		Variables      map[string]interface{} `json:"variables"`
-	}
-	JSON404 *struct {
+	JSON200      *JobWithTrigger
+	JSON404      *struct {
 		Error *string `json:"error,omitempty"`
 	}
 }
-type GetJob200ApprovalStatus string
 
 // Status returns HTTPResponse.Status
 func (r GetJobResponse) Status() string {
@@ -3560,6 +3859,41 @@ func (r GetResourceByIdentifierResponse) StatusCode() int {
 	return 0
 }
 
+// CreateDeploymentWithBodyWithResponse request with arbitrary body returning *CreateDeploymentResponse
+func (c *ClientWithResponses) CreateDeploymentWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateDeploymentResponse, error) {
+	rsp, err := c.CreateDeploymentWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateDeploymentResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateDeploymentWithResponse(ctx context.Context, body CreateDeploymentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateDeploymentResponse, error) {
+	rsp, err := c.CreateDeployment(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateDeploymentResponse(rsp)
+}
+
+// DeleteDeploymentWithResponse request returning *DeleteDeploymentResponse
+func (c *ClientWithResponses) DeleteDeploymentWithResponse(ctx context.Context, deploymentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteDeploymentResponse, error) {
+	rsp, err := c.DeleteDeployment(ctx, deploymentId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteDeploymentResponse(rsp)
+}
+
+// GetDeploymentWithResponse request returning *GetDeploymentResponse
+func (c *ClientWithResponses) GetDeploymentWithResponse(ctx context.Context, deploymentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetDeploymentResponse, error) {
+	rsp, err := c.GetDeployment(ctx, deploymentId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetDeploymentResponse(rsp)
+}
+
 // DeleteReleaseChannelWithResponse request returning *DeleteReleaseChannelResponse
 func (c *ClientWithResponses) DeleteReleaseChannelWithResponse(ctx context.Context, deploymentId string, name string, reqEditors ...RequestEditorFn) (*DeleteReleaseChannelResponse, error) {
 	rsp, err := c.DeleteReleaseChannel(ctx, deploymentId, name, reqEditors...)
@@ -3943,6 +4277,130 @@ func (c *ClientWithResponses) GetResourceByIdentifierWithResponse(ctx context.Co
 	return ParseGetResourceByIdentifierResponse(rsp)
 }
 
+// ParseCreateDeploymentResponse parses an HTTP response from a CreateDeploymentWithResponse call
+func ParseCreateDeploymentResponse(rsp *http.Response) (*CreateDeploymentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateDeploymentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Deployment
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest struct {
+			Error string             `json:"error"`
+			Id    openapi_types.UUID `json:"id"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error string `json:"error"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteDeploymentResponse parses an HTTP response from a DeleteDeploymentWithResponse call
+func ParseDeleteDeploymentResponse(rsp *http.Response) (*DeleteDeploymentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteDeploymentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Deployment
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error string `json:"error"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error string `json:"error"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetDeploymentResponse parses an HTTP response from a GetDeploymentWithResponse call
+func ParseGetDeploymentResponse(rsp *http.Response) (*GetDeploymentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetDeploymentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Deployment
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error string `json:"error"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseDeleteReleaseChannelResponse parses an HTTP response from a DeleteReleaseChannelWithResponse call
 func ParseDeleteReleaseChannelResponse(rsp *http.Response) (*DeleteReleaseChannelResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -4239,38 +4697,7 @@ func ParseGetJobResponse(rsp *http.Response) (*GetJobResponse, error) {
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest struct {
-			Approval *struct {
-				// Approver Null when status is pending, contains approver details when approved or rejected
-				Approver *struct {
-					Id   string `json:"id"`
-					Name string `json:"name"`
-				} `json:"approver"`
-				Id     string                  `json:"id"`
-				Status GetJob200ApprovalStatus `json:"status"`
-			} `json:"approval"`
-			CompletedAt *time.Time   `json:"completedAt"`
-			CreatedAt   time.Time    `json:"createdAt"`
-			Deployment  *Deployment  `json:"deployment,omitempty"`
-			Environment *Environment `json:"environment,omitempty"`
-
-			// ExternalId External job identifier (e.g. GitHub workflow run ID)
-			ExternalId *string            `json:"externalId"`
-			Id         openapi_types.UUID `json:"id"`
-
-			// JobAgentConfig Configuration for the Job Agent
-			JobAgentConfig map[string]interface{} `json:"jobAgentConfig"`
-			JobAgentId     *openapi_types.UUID    `json:"jobAgentId,omitempty"`
-			Message        *string                `json:"message,omitempty"`
-			Reason         *string                `json:"reason,omitempty"`
-			Release        *Release               `json:"release,omitempty"`
-			Resource       *Resource              `json:"resource,omitempty"`
-			Runbook        *Runbook               `json:"runbook,omitempty"`
-			StartedAt      *time.Time             `json:"startedAt"`
-			Status         JobStatus              `json:"status"`
-			UpdatedAt      time.Time              `json:"updatedAt"`
-			Variables      map[string]interface{} `json:"variables"`
-		}
+		var dest JobWithTrigger
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

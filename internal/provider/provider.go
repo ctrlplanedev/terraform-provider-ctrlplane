@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 // Ensure CtrlplaneProvider satisfies various provider interfaces.
@@ -28,13 +29,11 @@ var _ provider.ProviderWithFunctions = &CtrlplaneProvider{}
 
 // CtrlplaneProvider defines the provider implementation.
 type CtrlplaneProvider struct {
-	// version is set to the provider version on release, "dev" when the
-	// provider is built and ran locally, and "test" when running acceptance
-	// testing.
+	// version is set to the provider version on release, "dev" when built locally, and "test" during acceptance testing.
 	version string
 }
 
-// CtrlplaneProviderModel describes the provider data model.
+// CtrlplaneProviderModel describes the provider configuration.
 type CtrlplaneProviderModel struct {
 	BaseURL   types.String `tfsdk:"base_url"`
 	Token     types.String `tfsdk:"token"`
@@ -52,8 +51,8 @@ func (p *CtrlplaneProvider) Schema(ctx context.Context, req provider.SchemaReque
 		MarkdownDescription: "The Ctrlplane provider is used to manage the lifecycle of your Ctrlplane constructs, including systems, policies, resources, and more. A provider is scoped to a workspace, and can be configured with a base URL and token.",
 		Attributes: map[string]schema.Attribute{
 			"base_url": schema.StringAttribute{
-				Description:         "The URL of the Ctrlplane API endpoint. Can be set in the CTRLPLANE_BASE_URL environment variable. Defaults to `https://app.ctrlplane.com` if not set.",
-				MarkdownDescription: "The URL of the Ctrlplane API endpoint. Can be set in the CTRLPLANE_BASE_URL environment variable. Defaults to `https://app.ctrlplane.com` if not set.",
+				Description:         "The URL of the Ctrlplane API endpoint. Can be set in the CTRLPLANE_BASE_URL environment variable. Defaults to `https://app.ctrlplane.dev` if not set.",
+				MarkdownDescription: "The URL of the Ctrlplane API endpoint. Can be set in the CTRLPLANE_BASE_URL environment variable. Defaults to `https://app.ctrlplane.dev` if not set.",
 				Optional:            true,
 			},
 			"token": schema.StringAttribute{
@@ -74,15 +73,28 @@ func (p *CtrlplaneProvider) Schema(ctx context.Context, req provider.SchemaReque
 func addAPIKey(apiKey string) client.RequestEditorFn {
 	return func(ctx context.Context, req *http.Request) error {
 		req.Header.Add("x-api-key", apiKey)
+		tflog.Debug(ctx, "Adding API key to request", map[string]interface{}{
+			"header_name": "x-api-key",
+			"key_length":  len(apiKey),
+		})
 		return nil
 	}
 }
 
 func getWorkspaceById(ctx context.Context, workspaceID uuid.UUID, client *client.ClientWithResponses) (uuid.UUID, error) {
+	tflog.Debug(ctx, "Getting workspace by ID", map[string]interface{}{
+		"workspace_id": workspaceID.String(),
+	})
+
 	validatedWorkspace, err := client.GetWorkspaceWithResponse(ctx, workspaceID)
 	if err != nil {
 		return uuid.Nil, err
 	}
+
+	tflog.Debug(ctx, "API response received", map[string]interface{}{
+		"status_code":    validatedWorkspace.StatusCode(),
+		"error_response": validatedWorkspace.HTTPResponse.Status,
+	})
 
 	if validatedWorkspace.JSON200 != nil {
 		return validatedWorkspace.JSON200.Id, nil
@@ -96,10 +108,19 @@ func getWorkspaceById(ctx context.Context, workspaceID uuid.UUID, client *client
 }
 
 func getWorkspaceBySlug(ctx context.Context, slug string, client *client.ClientWithResponses) (uuid.UUID, error) {
+	tflog.Debug(ctx, "Getting workspace by slug", map[string]interface{}{
+		"workspace_slug": slug,
+	})
+
 	validatedWorkspace, err := client.GetWorkspaceBySlugWithResponse(ctx, slug)
 	if err != nil {
 		return uuid.Nil, err
 	}
+
+	tflog.Debug(ctx, "API response received", map[string]interface{}{
+		"status_code":    validatedWorkspace.StatusCode(),
+		"error_response": validatedWorkspace.HTTPResponse.Status,
+	})
 
 	if validatedWorkspace.JSON200 != nil {
 		return validatedWorkspace.JSON200.Id, nil
@@ -127,11 +148,15 @@ func (p *CtrlplaneProvider) Configure(ctx context.Context, req provider.Configur
 	var data CtrlplaneProviderModel
 
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
-
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
+	// Initialize the resource filter registry.
+	InitFilterRegistry()
+	tflog.Debug(ctx, "Resource filter registry initialized by provider")
+
+	// Set default BaseURL from environment or default value.
 	if data.BaseURL.IsNull() {
 		envBaseURL := os.Getenv("CTRLPLANE_BASE_URL")
 		if envBaseURL != "" {
@@ -141,6 +166,7 @@ func (p *CtrlplaneProvider) Configure(ctx context.Context, req provider.Configur
 		}
 	}
 
+	// Set Token from environment if not provided.
 	if data.Token.ValueString() == "" {
 		envToken := os.Getenv("CTRLPLANE_TOKEN")
 		if envToken == "" {
@@ -150,6 +176,7 @@ func (p *CtrlplaneProvider) Configure(ctx context.Context, req provider.Configur
 		data.Token = types.StringValue(envToken)
 	}
 
+	// Set Workspace from environment if not provided.
 	if data.Workspace.IsNull() {
 		envWorkspace := os.Getenv("CTRLPLANE_WORKSPACE")
 		if envWorkspace == "" {
@@ -159,11 +186,19 @@ func (p *CtrlplaneProvider) Configure(ctx context.Context, req provider.Configur
 		data.Workspace = types.StringValue(envWorkspace)
 	}
 
+	// Normalize the base URL.
 	server := data.BaseURL.ValueString()
 	server = strings.TrimSuffix(server, "/")
 	server = strings.TrimSuffix(server, "/api")
 	server = server + "/api"
 
+	tflog.Debug(ctx, "Configuring provider", map[string]interface{}{
+		"base_url":  server,
+		"workspace": data.Workspace.ValueString(),
+		"token_set": data.Token.ValueString() != "",
+	})
+
+	// Create the client.
 	client, err := client.NewClientWithResponses(
 		server,
 		client.WithRequestEditorFn(addAPIKey(data.Token.ValueString())),
@@ -173,12 +208,16 @@ func (p *CtrlplaneProvider) Configure(ctx context.Context, req provider.Configur
 		return
 	}
 
-	configuredWorkspace := data.Workspace.ValueString()
-	workspaceID, err := getWorkspace(ctx, configuredWorkspace, client)
+	// Resolve workspace using either ID or slug.
+	workspaceID, err := getWorkspace(ctx, data.Workspace.ValueString(), client)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to get workspace", err.Error())
 		return
 	}
+
+	tflog.Debug(ctx, "Successfully configured provider", map[string]interface{}{
+		"workspace_id": workspaceID.String(),
+	})
 
 	dataSourceModel := &DataSourceModel{
 		Workspace: workspaceID,
@@ -192,11 +231,15 @@ func (p *CtrlplaneProvider) Configure(ctx context.Context, req provider.Configur
 func (p *CtrlplaneProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewSystemResource,
+		NewEnvironmentResource,
+		NewResourceFilterResource,
 	}
 }
 
 func (p *CtrlplaneProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
-	return []func() datasource.DataSource{}
+	return []func() datasource.DataSource{
+		NewEnvironmentDataSource,
+	}
 }
 
 func (p *CtrlplaneProvider) Functions(ctx context.Context) []func() function.Function {

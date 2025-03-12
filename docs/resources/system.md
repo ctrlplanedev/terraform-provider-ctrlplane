@@ -26,11 +26,11 @@ resource "ctrlplane_system" "example" {
 ### Required
 
 - `name` (String) The name of the system
-- `slug` (String) The slug of the system (must be unique to the workspace)
 
 ### Optional
 
 - `description` (String) The description of the system
+- `slug` (String) The slug of the system (must be unique to the workspace). If not provided, it will be generated from the name.
 
 ### Read-Only
 
