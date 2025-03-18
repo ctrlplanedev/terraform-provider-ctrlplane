@@ -80,5 +80,5 @@ jobs:
           TF_ACC: "1"
           CTRLPLANE_TOKEN: ${{ secrets.CTRLPLANE_TOKEN }}
           CTRLPLANE_WORKSPACE: ${{ vars.CTRLPLANE_WORKSPACE }}
-        run: go test -v -cover ./internal/provider/
+        run: go test -v -cover ./internal/provider/ ./internal/resources/
         timeout-minutes: 10
