@@ -55,20 +55,20 @@ var _ = Describe("Environment API", func() {
 		})
 
 		It("should create an environment without a resource filter", func() {
-			releaseChannels := []string{}
+			deploymentVersionChannels := []string{}
 			metadata := map[string]string{
 				"test": "true",
 				"env":  "integration",
 			}
 			description := "Test environment without resource filter"
 			envResp, err := apiClient.CreateEnvironmentWithResponse(ctx, client.CreateEnvironmentJSONRequestBody{
-				Name:            envName,
-				Description:     &description,
-				SystemId:        systemID.String(),
-				PolicyId:        nil,
-				Metadata:        &metadata,
-				ResourceFilter:  nil,
-				ReleaseChannels: &releaseChannels,
+				Name:                      envName,
+				Description:               &description,
+				SystemId:                  systemID.String(),
+				PolicyId:                  nil,
+				Metadata:                  &metadata,
+				ResourceFilter:            nil,
+				DeploymentVersionChannels: &deploymentVersionChannels,
 			})
 
 			Expect(err).NotTo(HaveOccurred(), "Failed to create environment")
@@ -117,20 +117,20 @@ var _ = Describe("Environment API", func() {
 			shortUUID := uuid.New().String()[:6]
 			envName = fmt.Sprintf("env-empty-filter-%s", shortUUID)
 
-			releaseChannels := []string{}
+			deploymentVersionChannels := []string{}
 			metadata := map[string]string{
 				"test": "true",
 				"env":  "integration",
 			}
 			description := "Test environment with resource filter"
 			envResp, err := apiClient.CreateEnvironmentWithResponse(ctx, client.CreateEnvironmentJSONRequestBody{
-				Name:            envName,
-				Description:     &description,
-				SystemId:        systemID.String(),
-				PolicyId:        nil,
-				Metadata:        &metadata,
-				ResourceFilter:  &filter,
-				ReleaseChannels: &releaseChannels,
+				Name:                      envName,
+				Description:               &description,
+				SystemId:                  systemID.String(),
+				PolicyId:                  nil,
+				Metadata:                  &metadata,
+				ResourceFilter:            &filter,
+				DeploymentVersionChannels: &deploymentVersionChannels,
 			})
 
 			Expect(err).NotTo(HaveOccurred(), "Failed to create environment")
@@ -175,7 +175,7 @@ var _ = Describe("Environment API", func() {
 
 			defer func() { safeDeleteTestSystem(ctx, apiClient, systemID) }()
 
-			releaseChannels := []string{}
+			deploymentVersionChannels := []string{}
 			envName := fmt.Sprintf("env-comparison-%s", uuid.New().String()[:6])
 			filter := map[string]interface{}{
 				"type":     "kind",
@@ -188,13 +188,13 @@ var _ = Describe("Environment API", func() {
 			}
 			description := "Test environment with comparison filter"
 			envReq := client.CreateEnvironmentJSONRequestBody{
-				Name:            envName,
-				Description:     &description,
-				SystemId:        systemID.String(),
-				PolicyId:        nil,
-				Metadata:        &metadata,
-				ResourceFilter:  &filter,
-				ReleaseChannels: &releaseChannels,
+				Name:                      envName,
+				Description:               &description,
+				SystemId:                  systemID.String(),
+				PolicyId:                  nil,
+				Metadata:                  &metadata,
+				ResourceFilter:            &filter,
+				DeploymentVersionChannels: &deploymentVersionChannels,
 			}
 
 			Logger.Debug("creating environment with comparison filter",
@@ -249,7 +249,7 @@ var _ = Describe("Environment API", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer safeDeleteTestSystem(ctx, apiClient, systemID)
 
-			releaseChannels := []string{}
+			deploymentVersionChannels := []string{}
 			envName := fmt.Sprintf("env-metadata-%s", uuid.New().String()[:6])
 			filter := map[string]interface{}{
 				"type":     "metadata",
@@ -263,13 +263,13 @@ var _ = Describe("Environment API", func() {
 			}
 			description := "Test environment with metadata filter"
 			envReq := client.CreateEnvironmentJSONRequestBody{
-				Name:            envName,
-				Description:     &description,
-				SystemId:        systemID.String(),
-				PolicyId:        nil,
-				Metadata:        &metadata,
-				ResourceFilter:  &filter,
-				ReleaseChannels: &releaseChannels,
+				Name:                      envName,
+				Description:               &description,
+				SystemId:                  systemID.String(),
+				PolicyId:                  nil,
+				Metadata:                  &metadata,
+				ResourceFilter:            &filter,
+				DeploymentVersionChannels: &deploymentVersionChannels,
 			}
 
 			Logger.Debug("creating environment with metadata filter",
@@ -326,7 +326,7 @@ var _ = Describe("Environment API", func() {
 
 			defer func() { safeDeleteTestSystem(ctx, apiClient, systemID) }()
 
-			releaseChannels := []string{}
+			deploymentVersionChannels := []string{}
 			envName := fmt.Sprintf("env-simple-filter-%s", uuid.New().String()[:6])
 			filter := map[string]interface{}{
 				"type":     "metadata",
@@ -340,13 +340,13 @@ var _ = Describe("Environment API", func() {
 			}
 			description := "Test environment with simple filter"
 			envReq := client.CreateEnvironmentJSONRequestBody{
-				Name:            envName,
-				Description:     &description,
-				SystemId:        systemID.String(),
-				PolicyId:        nil,
-				Metadata:        &metadata,
-				ResourceFilter:  &filter,
-				ReleaseChannels: &releaseChannels,
+				Name:                      envName,
+				Description:               &description,
+				SystemId:                  systemID.String(),
+				PolicyId:                  nil,
+				Metadata:                  &metadata,
+				ResourceFilter:            &filter,
+				DeploymentVersionChannels: &deploymentVersionChannels,
 			}
 
 			Logger.Debug("creating environment with simple filter",
@@ -399,7 +399,7 @@ var _ = Describe("Environment API", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer safeDeleteTestSystem(ctx, apiClient, systemID)
 
-			releaseChannels := []string{}
+			deploymentVersionChannels := []string{}
 			envName := fmt.Sprintf("env-complex-filter-%s", uuid.New().String()[:6])
 			filter := map[string]interface{}{
 				"not":      false,
@@ -425,13 +425,13 @@ var _ = Describe("Environment API", func() {
 			}
 			description := "Test environment with complex filter"
 			envReq := client.CreateEnvironmentJSONRequestBody{
-				Name:            envName,
-				Description:     &description,
-				SystemId:        systemID.String(),
-				PolicyId:        nil,
-				Metadata:        &metadata,
-				ResourceFilter:  &filter,
-				ReleaseChannels: &releaseChannels,
+				Name:                      envName,
+				Description:               &description,
+				SystemId:                  systemID.String(),
+				PolicyId:                  nil,
+				Metadata:                  &metadata,
+				ResourceFilter:            &filter,
+				DeploymentVersionChannels: &deploymentVersionChannels,
 			}
 
 			Logger.Debug("creating environment with complex filter",
@@ -500,7 +500,7 @@ var _ = Describe("Environment API", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer safeDeleteTestSystem(ctx, apiClient, systemID)
 
-			releaseChannels := []string{}
+			deploymentVersionChannels := []string{}
 			envName := fmt.Sprintf("env-date-filter-%s", uuid.New().String()[:6])
 
 			// Create a resource filter with a date condition
@@ -533,13 +533,13 @@ var _ = Describe("Environment API", func() {
 			}
 			description := "Test environment with date condition filter"
 			envReq := client.CreateEnvironmentJSONRequestBody{
-				Name:            envName,
-				Description:     &description,
-				SystemId:        systemID.String(),
-				PolicyId:        nil,
-				Metadata:        &metadata,
-				ResourceFilter:  &filter,
-				ReleaseChannels: &releaseChannels,
+				Name:                      envName,
+				Description:               &description,
+				SystemId:                  systemID.String(),
+				PolicyId:                  nil,
+				Metadata:                  &metadata,
+				ResourceFilter:            &filter,
+				DeploymentVersionChannels: &deploymentVersionChannels,
 			}
 
 			Logger.Debug("creating environment with date condition filter",
@@ -650,7 +650,7 @@ var _ = Describe("Environment API", func() {
 			}
 
 			createdEnvs := make([]uuid.UUID, 0, len(environments))
-			releaseChannels := []string{}
+			deploymentVersionChannels := []string{}
 
 			for _, env := range environments {
 				description := fmt.Sprintf("Test environment for %s", env.name)
@@ -660,13 +660,13 @@ var _ = Describe("Environment API", func() {
 				}
 
 				envReq := client.CreateEnvironmentJSONRequestBody{
-					Name:            env.name,
-					Description:     &description,
-					SystemId:        systemID.String(),
-					PolicyId:        nil,
-					Metadata:        &metadata,
-					ResourceFilter:  &env.filter,
-					ReleaseChannels: &releaseChannels,
+					Name:                      env.name,
+					Description:               &description,
+					SystemId:                  systemID.String(),
+					PolicyId:                  nil,
+					Metadata:                  &metadata,
+					ResourceFilter:            &env.filter,
+					DeploymentVersionChannels: &deploymentVersionChannels,
 				}
 
 				Logger.Debug("creating environment",
@@ -697,7 +697,7 @@ var _ = Describe("Environment API", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer safeDeleteTestSystem(ctx, apiClient, systemID)
 
-			releaseChannels := []string{}
+			deploymentVersionChannels := []string{}
 			envName := fmt.Sprintf("env-nested-comp-%s", uuid.New().String()[:6])
 
 			// Create a resource filter with nested comparison conditions
@@ -737,13 +737,13 @@ var _ = Describe("Environment API", func() {
 			}
 			description := "Test environment with nested comparison conditions"
 			envReq := client.CreateEnvironmentJSONRequestBody{
-				Name:            envName,
-				Description:     &description,
-				SystemId:        systemID.String(),
-				PolicyId:        nil,
-				Metadata:        &metadata,
-				ResourceFilter:  &filter,
-				ReleaseChannels: &releaseChannels,
+				Name:                      envName,
+				Description:               &description,
+				SystemId:                  systemID.String(),
+				PolicyId:                  nil,
+				Metadata:                  &metadata,
+				ResourceFilter:            &filter,
+				DeploymentVersionChannels: &deploymentVersionChannels,
 			}
 
 			Logger.Debug("creating environment with nested comparison conditions",
@@ -800,7 +800,7 @@ var _ = Describe("Environment API", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer safeDeleteTestSystem(ctx, apiClient, systemID)
 
-			releaseChannels := []string{}
+			deploymentVersionChannels := []string{}
 			envName := fmt.Sprintf("env-mixed-conditions-%s", uuid.New().String()[:6])
 
 			// Create a resource filter with mixed condition types
@@ -834,13 +834,13 @@ var _ = Describe("Environment API", func() {
 			}
 			description := "Test environment with mixed condition types"
 			envReq := client.CreateEnvironmentJSONRequestBody{
-				Name:            envName,
-				Description:     &description,
-				SystemId:        systemID.String(),
-				PolicyId:        nil,
-				Metadata:        &metadata,
-				ResourceFilter:  &filter,
-				ReleaseChannels: &releaseChannels,
+				Name:                      envName,
+				Description:               &description,
+				SystemId:                  systemID.String(),
+				PolicyId:                  nil,
+				Metadata:                  &metadata,
+				ResourceFilter:            &filter,
+				DeploymentVersionChannels: &deploymentVersionChannels,
 			}
 
 			Logger.Debug("creating environment with mixed condition types",
@@ -906,7 +906,7 @@ var _ = Describe("Environment API", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer safeDeleteTestSystem(ctx, apiClient, systemID)
 
-			releaseChannels := []string{}
+			deploymentVersionChannels := []string{}
 			envName := fmt.Sprintf("env-deep-nesting-%s", uuid.New().String()[:6])
 
 			// Create a resource filter with 3 levels of nesting
@@ -957,13 +957,13 @@ var _ = Describe("Environment API", func() {
 			}
 			description := "Test environment with deeply nested conditions"
 			envReq := client.CreateEnvironmentJSONRequestBody{
-				Name:            envName,
-				Description:     &description,
-				SystemId:        systemID.String(),
-				PolicyId:        nil,
-				Metadata:        &metadata,
-				ResourceFilter:  &filter,
-				ReleaseChannels: &releaseChannels,
+				Name:                      envName,
+				Description:               &description,
+				SystemId:                  systemID.String(),
+				PolicyId:                  nil,
+				Metadata:                  &metadata,
+				ResourceFilter:            &filter,
+				DeploymentVersionChannels: &deploymentVersionChannels,
 			}
 
 			Logger.Debug("creating environment with deeply nested conditions",

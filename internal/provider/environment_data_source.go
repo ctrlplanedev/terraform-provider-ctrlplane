@@ -172,5 +172,7 @@ func (d *EnvironmentDataSource) Read(ctx context.Context, req datasource.ReadReq
 		}
 	}
 
+	data.DeploymentVersionChannels = []types.String{}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

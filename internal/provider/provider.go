@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"terraform-provider-ctrlplane/client"
+	"terraform-provider-ctrlplane/internal/resources/deployment"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -31,6 +32,9 @@ var _ provider.ProviderWithFunctions = &CtrlplaneProvider{}
 type CtrlplaneProvider struct {
 	// version is set to the provider version on release, "dev" when built locally, and "test" during acceptance testing.
 	version string
+}
+type ClientProvider interface {
+	GetClient() *client.ClientWithResponses
 }
 
 // CtrlplaneProviderModel describes the provider configuration.
@@ -233,12 +237,14 @@ func (p *CtrlplaneProvider) Resources(ctx context.Context) []func() resource.Res
 		NewSystemResource,
 		NewEnvironmentResource,
 		NewResourceFilterResource,
+		deployment.NewResource,
 	}
 }
 
 func (p *CtrlplaneProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		NewEnvironmentDataSource,
+		deployment.NewDataSource,
 	}
 }
 

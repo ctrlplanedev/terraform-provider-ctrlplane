@@ -22,9 +22,9 @@ Manages a CtrlPlane environment.
 
 ### Optional
 
+- `deployment_version_channels` (List of String) Deployment version channels for the environment.
 - `description` (String) Description of the environment.
 - `metadata` (Map of String) Metadata for the environment.
-- `release_channels` (List of String) Release channels for the environment.
 - `resource_filter` (Attributes) Inline resource filter for the environment. Cannot be specified together with resource_filter_id. (see [below for nested schema](#nestedatt--resource_filter))
 - `resource_filter_id` (String) ID of a ctrlplane_resource_filter resource to use. Cannot be specified together with resource_filter.
 
