@@ -22,11 +22,11 @@ Data source for a CtrlPlane environment.
 
 ### Read-Only
 
+- `deployment_version_channels` (List of String) Deployment version channels for the environment.
 - `description` (String) Description of the environment.
 - `id` (String) Unique identifier for the environment.
 - `metadata` (Map of String) Metadata for the environment.
 - `policy_id` (String) ID of the policy associated with this environment.
-- `release_channels` (List of String) Release channels for the environment.
 - `resource_filter` (Attributes) Resource filter for the environment. (see [below for nested schema](#nestedatt--resource_filter))
 
 <a id="nestedatt--resource_filter"></a>

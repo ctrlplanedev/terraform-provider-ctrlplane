@@ -39,7 +39,7 @@ testacc:
 		-timeout=$${GO_TEST_TIMEOUT:-120m} \
 		-parallel=$${GO_TEST_PARALLEL:-4} \
 		-cover \
-		$${TEST:-./internal/provider/...} $${TESTARGS}
+		$${TEST:-./internal/provider/... ./internal/resources/...} $${TESTARGS}
 
 testacc-quiet:
 	@if [ ! -f .env ]; then \
@@ -58,7 +58,7 @@ testacc-quiet:
 		-parallel=$${GO_TEST_PARALLEL:-4} \
 		-cover \
 		-v=0 \
-		$${TEST:-./internal/provider/...} $${TESTARGS}
+		$${TEST:-./internal/provider/... ./internal/resources/...} $${TESTARGS}
 
 testint:
 	@if [ ! -f .env ]; then \
@@ -89,4 +89,4 @@ clean:
 	rm -f .terraform.lock.hcl
 	rm -f terraform.tfstate*
 
-.PHONY: fmt lint test testacc testint testexamples build install generate clean install-local
+.PHONY: fmt lint test testacc testacc-quiet testint testexamples build install generate clean install-local
