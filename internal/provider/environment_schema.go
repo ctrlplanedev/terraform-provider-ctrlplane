@@ -58,8 +58,8 @@ func GetEnvironmentResourceSchema() resourceschema.Schema {
 				},
 				Attributes: GetResourceFilterSchema(), // This function is defined in resource_filter_schema.go
 			},
-			"release_channels": resourceschema.ListAttribute{
-				Description: "Release channels for the environment.",
+			"deployment_version_channels": resourceschema.ListAttribute{
+				Description: "Deployment version channels for the environment.",
 				Optional:    true,
 				ElementType: types.StringType,
 			},
@@ -130,8 +130,8 @@ func GetEnvironmentDataSourceSchema() dschema.Schema {
 					},
 				},
 			},
-			"release_channels": dschema.ListAttribute{
-				Description: "Release channels for the environment.",
+			"deployment_version_channels": dschema.ListAttribute{
+				Description: "Deployment version channels for the environment.",
 				Computed:    true,
 				ElementType: types.StringType,
 			},

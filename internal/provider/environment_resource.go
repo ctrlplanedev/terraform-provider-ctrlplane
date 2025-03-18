@@ -170,29 +170,29 @@ func (r *EnvironmentResource) Create(ctx context.Context, req resource.CreateReq
 		})
 	}
 
-	releaseChannels := make([]string, 0)
-	for _, ch := range data.ReleaseChannels {
+	deploymentVersionChannels := make([]string, 0)
+	for _, ch := range data.DeploymentVersionChannels {
 		if !ch.IsNull() && !ch.IsUnknown() {
-			releaseChannels = append(releaseChannels, ch.ValueString())
+			deploymentVersionChannels = append(deploymentVersionChannels, ch.ValueString())
 		}
 	}
 
 	createReq := client.CreateEnvironmentJSONRequestBody{
-		Name:            data.Name.ValueString(),
-		Description:     stringToPtr(data.Description.ValueString()),
-		SystemId:        data.SystemID.ValueString(),
-		Metadata:        &metadata,
-		ResourceFilter:  resourceFilter,
-		ReleaseChannels: &releaseChannels,
+		Name:                      data.Name.ValueString(),
+		Description:               stringToPtr(data.Description.ValueString()),
+		SystemId:                  data.SystemID.ValueString(),
+		Metadata:                  &metadata,
+		ResourceFilter:            resourceFilter,
+		DeploymentVersionChannels: &deploymentVersionChannels,
 	}
 
 	tflog.Info(ctx, "API request details", map[string]interface{}{
-		"name":             data.Name.ValueString(),
-		"description":      data.Description.ValueString(),
-		"system_id":        data.SystemID.ValueString(),
-		"metadata":         metadata,
-		"resource_filter":  fmt.Sprintf("%+v", resourceFilter),
-		"release_channels": releaseChannels,
+		"name":                        data.Name.ValueString(),
+		"description":                 data.Description.ValueString(),
+		"system_id":                   data.SystemID.ValueString(),
+		"metadata":                    metadata,
+		"resource_filter":             fmt.Sprintf("%+v", resourceFilter),
+		"deployment_version_channels": deploymentVersionChannels,
 	})
 
 	createResp, err := r.client.CreateEnvironmentWithResponse(ctx, createReq)
