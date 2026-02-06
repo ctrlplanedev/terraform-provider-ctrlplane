@@ -121,13 +121,6 @@ const (
 	TerraformCloudRun TerraformCloudRunMetricProviderType = "terraformCloudRun"
 )
 
-// Defines values for VerificationMeasurementStatus.
-const (
-	Failed       VerificationMeasurementStatus = "failed"
-	Inconclusive VerificationMeasurementStatus = "inconclusive"
-	Passed       VerificationMeasurementStatus = "passed"
-)
-
 // Defines values for VerificationRuleTriggerOn.
 const (
 	JobCreated VerificationRuleTriggerOn = "jobCreated"
@@ -258,6 +251,7 @@ type CreateSystemRequest struct {
 	Description *string            `json:"description,omitempty"`
 	Metadata    *map[string]string `json:"metadata,omitempty"`
 	Name        string             `json:"name"`
+	Slug        *string            `json:"slug,omitempty"`
 }
 
 // CreateWorkspaceRequest defines model for CreateWorkspaceRequest.
@@ -324,6 +318,12 @@ type DeploymentDependencyRule struct {
 	DependsOnDeploymentSelector Selector `json:"dependsOnDeploymentSelector"`
 }
 
+// DeploymentRequestAccepted defines model for DeploymentRequestAccepted.
+type DeploymentRequestAccepted struct {
+	Id      string `json:"id"`
+	Message string `json:"message"`
+}
+
 // DeploymentVariable defines model for DeploymentVariable.
 type DeploymentVariable struct {
 	DefaultValue *LiteralValue `json:"defaultValue,omitempty"`
@@ -333,6 +333,12 @@ type DeploymentVariable struct {
 	Key          string        `json:"key"`
 }
 
+// DeploymentVariableRequestAccepted defines model for DeploymentVariableRequestAccepted.
+type DeploymentVariableRequestAccepted struct {
+	Id      string `json:"id"`
+	Message string `json:"message"`
+}
+
 // DeploymentVariableValue defines model for DeploymentVariableValue.
 type DeploymentVariableValue struct {
 	DeploymentVariableId string    `json:"deploymentVariableId"`
@@ -340,6 +346,12 @@ type DeploymentVariableValue struct {
 	Priority             int64     `json:"priority"`
 	ResourceSelector     *Selector `json:"resourceSelector,omitempty"`
 	Value                Value     `json:"value"`
+}
+
+// DeploymentVariableValueRequestAccepted defines model for DeploymentVariableValueRequestAccepted.
+type DeploymentVariableValueRequestAccepted struct {
+	Id      string `json:"id"`
+	Message string `json:"message"`
 }
 
 // DeploymentVariableWithValues defines model for DeploymentVariableWithValues.
@@ -408,6 +420,12 @@ type EnvironmentProgressionRule struct {
 	MinimumSockTimeMinutes   *int32       `json:"minimumSockTimeMinutes,omitempty"`
 	MinimumSuccessPercentage *float32     `json:"minimumSuccessPercentage,omitempty"`
 	SuccessStatuses          *[]JobStatus `json:"successStatuses,omitempty"`
+}
+
+// EnvironmentRequestAccepted defines model for EnvironmentRequestAccepted.
+type EnvironmentRequestAccepted struct {
+	Id      string `json:"id"`
+	Message string `json:"message"`
 }
 
 // Error defines model for Error.
@@ -493,21 +511,19 @@ type JobAgent struct {
 	Type     string                 `json:"type"`
 }
 
+// JobAgentRequestAccepted defines model for JobAgentRequestAccepted.
+type JobAgentRequestAccepted struct {
+	Id      string `json:"id"`
+	Message string `json:"message"`
+}
+
 // JobStatus defines model for JobStatus.
 type JobStatus string
 
-// JobVerification defines model for JobVerification.
-type JobVerification struct {
-	// CreatedAt When verification was created
-	CreatedAt time.Time `json:"createdAt"`
-	Id        string    `json:"id"`
-	JobId     string    `json:"jobId"`
-
-	// Message Summary message of verification result
-	Message *string `json:"message,omitempty"`
-
-	// Metrics Metrics associated with this verification
-	Metrics []VerificationMetricStatus `json:"metrics"`
+// JobStatusRequestAccepted defines model for JobStatusRequestAccepted.
+type JobStatusRequestAccepted struct {
+	Id      string `json:"id"`
+	Message string `json:"message"`
 }
 
 // JobWithRelease defines model for JobWithRelease.
@@ -559,6 +575,12 @@ type Policy struct {
 	Rules       []PolicyRule           `json:"rules"`
 	Selectors   []PolicyTargetSelector `json:"selectors"`
 	WorkspaceId string                 `json:"workspaceId"`
+}
+
+// PolicyRequestAccepted defines model for PolicyRequestAccepted.
+type PolicyRequestAccepted struct {
+	Id      string `json:"id"`
+	Message string `json:"message"`
 }
 
 // PolicyRule defines model for PolicyRule.
@@ -664,6 +686,12 @@ type ResourceProvider struct {
 	WorkspaceId openapi_types.UUID `json:"workspaceId"`
 }
 
+// ResourceProviderRequestAccepted defines model for ResourceProviderRequestAccepted.
+type ResourceProviderRequestAccepted struct {
+	Id      string `json:"id"`
+	Message string `json:"message"`
+}
+
 // ResourceProviderResource defines model for ResourceProviderResource.
 type ResourceProviderResource struct {
 	Config     map[string]interface{} `json:"config"`
@@ -676,6 +704,12 @@ type ResourceProviderResource struct {
 	Name       string                 `json:"name"`
 	UpdatedAt  *time.Time             `json:"updatedAt,omitempty"`
 	Version    string                 `json:"version"`
+}
+
+// ResourceRequestAccepted defines model for ResourceRequestAccepted.
+type ResourceRequestAccepted struct {
+	Id      string `json:"id"`
+	Message string `json:"message"`
 }
 
 // ResourceVariable defines model for ResourceVariable.
@@ -736,7 +770,14 @@ type System struct {
 	Id          string             `json:"id"`
 	Metadata    *map[string]string `json:"metadata,omitempty"`
 	Name        string             `json:"name"`
+	Slug        string             `json:"slug"`
 	WorkspaceId string             `json:"workspaceId"`
+}
+
+// SystemRequestAccepted defines model for SystemRequestAccepted.
+type SystemRequestAccepted struct {
+	Id      string `json:"id"`
+	Message string `json:"message"`
 }
 
 // TerraformCloudRunMetricProvider defines model for TerraformCloudRunMetricProvider.
@@ -866,6 +907,7 @@ type UpsertSystemRequest struct {
 	Description *string            `json:"description,omitempty"`
 	Metadata    *map[string]string `json:"metadata,omitempty"`
 	Name        string             `json:"name"`
+	Slug        *string            `json:"slug,omitempty"`
 }
 
 // UpsertUserApprovalRecordRequest defines model for UpsertUserApprovalRecordRequest.
@@ -875,28 +917,16 @@ type UpsertUserApprovalRecordRequest struct {
 	Status         ApprovalStatus `json:"status"`
 }
 
+// UserApprovalRecordRequestAccepted defines model for UserApprovalRecordRequestAccepted.
+type UserApprovalRecordRequestAccepted struct {
+	Id      string `json:"id"`
+	Message string `json:"message"`
+}
+
 // Value defines model for Value.
 type Value struct {
 	union json.RawMessage
 }
-
-// VerificationMeasurement defines model for VerificationMeasurement.
-type VerificationMeasurement struct {
-	// Data Raw measurement data
-	Data *map[string]interface{} `json:"data,omitempty"`
-
-	// MeasuredAt When measurement was taken
-	MeasuredAt time.Time `json:"measuredAt"`
-
-	// Message Measurement result message
-	Message *string `json:"message,omitempty"`
-
-	// Status Status of a verification measurement
-	Status VerificationMeasurementStatus `json:"status"`
-}
-
-// VerificationMeasurementStatus Status of a verification measurement
-type VerificationMeasurementStatus string
 
 // VerificationMetricSpec defines model for VerificationMetricSpec.
 type VerificationMetricSpec struct {
@@ -911,34 +941,6 @@ type VerificationMetricSpec struct {
 
 	// IntervalSeconds Interval between measurements in seconds
 	IntervalSeconds int32 `json:"intervalSeconds"`
-
-	// Name Name of the verification metric
-	Name     string         `json:"name"`
-	Provider MetricProvider `json:"provider"`
-
-	// SuccessCondition CEL expression to evaluate measurement success (e.g., "result.statusCode == 200")
-	SuccessCondition string `json:"successCondition"`
-
-	// SuccessThreshold Minimum number of consecutive successful measurements required to consider the metric successful
-	SuccessThreshold *int `json:"successThreshold,omitempty"`
-}
-
-// VerificationMetricStatus defines model for VerificationMetricStatus.
-type VerificationMetricStatus struct {
-	// Count Number of measurements to take
-	Count int `json:"count"`
-
-	// FailureCondition CEL expression to evaluate measurement failure (e.g., "result.statusCode == 500"), if not provided, a failure is just the opposite of the success condition
-	FailureCondition *string `json:"failureCondition,omitempty"`
-
-	// FailureThreshold Stop after this many consecutive failures (0 = no limit)
-	FailureThreshold *int `json:"failureThreshold,omitempty"`
-
-	// IntervalSeconds Interval between measurements in seconds
-	IntervalSeconds int32 `json:"intervalSeconds"`
-
-	// Measurements Individual verification measurements taken for this metric
-	Measurements []VerificationMeasurement `json:"measurements"`
 
 	// Name Name of the verification metric
 	Name     string         `json:"name"`
@@ -1187,13 +1189,13 @@ type GetReleaseTargetStateParams struct {
 	BypassCache *bool `form:"bypassCache,omitempty" json:"bypassCache,omitempty"`
 }
 
-// SetResourceProvidersResourcesPatchJSONBody defines parameters for SetResourceProvidersResourcesPatch.
-type SetResourceProvidersResourcesPatchJSONBody struct {
+// RequestResourceProvidersResourcesPatchJSONBody defines parameters for RequestResourceProvidersResourcesPatch.
+type RequestResourceProvidersResourcesPatchJSONBody struct {
 	Resources []ResourceProviderResource `json:"resources"`
 }
 
-// SetResourceProvidersResourcesJSONBody defines parameters for SetResourceProvidersResources.
-type SetResourceProvidersResourcesJSONBody struct {
+// RequestResourceProvidersResourcesJSONBody defines parameters for RequestResourceProvidersResources.
+type RequestResourceProvidersResourcesJSONBody struct {
 	Resources []ResourceProviderResource `json:"resources"`
 }
 
@@ -1218,8 +1220,8 @@ type GetVariablesForResourceParams struct {
 	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
-// UpdateVariablesForResourceJSONBody defines parameters for UpdateVariablesForResource.
-type UpdateVariablesForResourceJSONBody map[string]interface{}
+// RequestResourceVariablesUpdateJSONBody defines parameters for RequestResourceVariablesUpdate.
+type RequestResourceVariablesUpdateJSONBody map[string]interface{}
 
 // ListSystemsParams defines parameters for ListSystems.
 type ListSystemsParams struct {
@@ -1242,20 +1244,20 @@ type CreateWorkspaceJSONRequestBody = CreateWorkspaceRequest
 // UpdateWorkspaceJSONRequestBody defines body for UpdateWorkspace for application/json ContentType.
 type UpdateWorkspaceJSONRequestBody = UpdateWorkspaceRequest
 
-// CreateUserApprovalRecordJSONRequestBody defines body for CreateUserApprovalRecord for application/json ContentType.
-type CreateUserApprovalRecordJSONRequestBody = UpsertUserApprovalRecordRequest
+// RequestUserApprovalRecordUpdateJSONRequestBody defines body for RequestUserApprovalRecordUpdate for application/json ContentType.
+type RequestUserApprovalRecordUpdateJSONRequestBody = UpsertUserApprovalRecordRequest
 
-// CreateDeploymentJSONRequestBody defines body for CreateDeployment for application/json ContentType.
-type CreateDeploymentJSONRequestBody = CreateDeploymentRequest
+// RequestDeploymentCreationJSONRequestBody defines body for RequestDeploymentCreation for application/json ContentType.
+type RequestDeploymentCreationJSONRequestBody = CreateDeploymentRequest
 
-// UpsertDeploymentJSONRequestBody defines body for UpsertDeployment for application/json ContentType.
-type UpsertDeploymentJSONRequestBody = UpsertDeploymentRequest
+// RequestDeploymentUpdateJSONRequestBody defines body for RequestDeploymentUpdate for application/json ContentType.
+type RequestDeploymentUpdateJSONRequestBody = UpsertDeploymentRequest
 
-// UpsertDeploymentVariableJSONRequestBody defines body for UpsertDeploymentVariable for application/json ContentType.
-type UpsertDeploymentVariableJSONRequestBody = UpsertDeploymentVariableRequest
+// RequestDeploymentVariableUpdateJSONRequestBody defines body for RequestDeploymentVariableUpdate for application/json ContentType.
+type RequestDeploymentVariableUpdateJSONRequestBody = UpsertDeploymentVariableRequest
 
-// UpsertDeploymentVariableValueJSONRequestBody defines body for UpsertDeploymentVariableValue for application/json ContentType.
-type UpsertDeploymentVariableValueJSONRequestBody = UpsertDeploymentVariableValueRequest
+// RequestDeploymentVariableValueUpdateJSONRequestBody defines body for RequestDeploymentVariableValueUpdate for application/json ContentType.
+type RequestDeploymentVariableValueUpdateJSONRequestBody = UpsertDeploymentVariableValueRequest
 
 // CreateDeploymentVersionJSONRequestBody defines body for CreateDeploymentVersion for application/json ContentType.
 type CreateDeploymentVersionJSONRequestBody = CreateDeploymentVersionRequest
@@ -1263,23 +1265,23 @@ type CreateDeploymentVersionJSONRequestBody = CreateDeploymentVersionRequest
 // UpdateDeploymentVersionJSONRequestBody defines body for UpdateDeploymentVersion for application/json ContentType.
 type UpdateDeploymentVersionJSONRequestBody = UpdateDeploymentVersionRequest
 
-// CreateEnvironmentJSONRequestBody defines body for CreateEnvironment for application/json ContentType.
-type CreateEnvironmentJSONRequestBody = CreateEnvironmentRequest
+// RequestEnvironmentCreationJSONRequestBody defines body for RequestEnvironmentCreation for application/json ContentType.
+type RequestEnvironmentCreationJSONRequestBody = CreateEnvironmentRequest
 
-// UpsertEnvironmentByIdJSONRequestBody defines body for UpsertEnvironmentById for application/json ContentType.
-type UpsertEnvironmentByIdJSONRequestBody = UpsertEnvironmentRequest
+// RequestEnvironmentUpdateJSONRequestBody defines body for RequestEnvironmentUpdate for application/json ContentType.
+type RequestEnvironmentUpdateJSONRequestBody = UpsertEnvironmentRequest
 
-// UpsertJobAgentJSONRequestBody defines body for UpsertJobAgent for application/json ContentType.
-type UpsertJobAgentJSONRequestBody = UpsertJobAgentRequest
+// RequestJobAgentUpdateJSONRequestBody defines body for RequestJobAgentUpdate for application/json ContentType.
+type RequestJobAgentUpdateJSONRequestBody = UpsertJobAgentRequest
 
-// UpdateJobStatusJSONRequestBody defines body for UpdateJobStatus for application/json ContentType.
-type UpdateJobStatusJSONRequestBody = JobStatus
+// RequestJobStatusUpdateJSONRequestBody defines body for RequestJobStatusUpdate for application/json ContentType.
+type RequestJobStatusUpdateJSONRequestBody = JobStatus
 
-// CreatePolicyJSONRequestBody defines body for CreatePolicy for application/json ContentType.
-type CreatePolicyJSONRequestBody = CreatePolicyRequest
+// RequestPolicyCreationJSONRequestBody defines body for RequestPolicyCreation for application/json ContentType.
+type RequestPolicyCreationJSONRequestBody = CreatePolicyRequest
 
-// UpsertPolicyJSONRequestBody defines body for UpsertPolicy for application/json ContentType.
-type UpsertPolicyJSONRequestBody = UpsertPolicyRequest
+// RequestPolicyUpdateJSONRequestBody defines body for RequestPolicyUpdate for application/json ContentType.
+type RequestPolicyUpdateJSONRequestBody = UpsertPolicyRequest
 
 // CreateRelationshipRuleJSONRequestBody defines body for CreateRelationshipRule for application/json ContentType.
 type CreateRelationshipRuleJSONRequestBody = CreateRelationshipRuleRequest
@@ -1287,23 +1289,23 @@ type CreateRelationshipRuleJSONRequestBody = CreateRelationshipRuleRequest
 // UpsertRelationshipByIdJSONRequestBody defines body for UpsertRelationshipById for application/json ContentType.
 type UpsertRelationshipByIdJSONRequestBody = UpsertRelationshipRuleRequest
 
-// UpsertResourceProviderJSONRequestBody defines body for UpsertResourceProvider for application/json ContentType.
-type UpsertResourceProviderJSONRequestBody = UpsertResourceProviderRequest
+// RequestResourceProviderUpsertJSONRequestBody defines body for RequestResourceProviderUpsert for application/json ContentType.
+type RequestResourceProviderUpsertJSONRequestBody = UpsertResourceProviderRequest
 
-// SetResourceProvidersResourcesPatchJSONRequestBody defines body for SetResourceProvidersResourcesPatch for application/json ContentType.
-type SetResourceProvidersResourcesPatchJSONRequestBody SetResourceProvidersResourcesPatchJSONBody
+// RequestResourceProvidersResourcesPatchJSONRequestBody defines body for RequestResourceProvidersResourcesPatch for application/json ContentType.
+type RequestResourceProvidersResourcesPatchJSONRequestBody RequestResourceProvidersResourcesPatchJSONBody
 
-// SetResourceProvidersResourcesJSONRequestBody defines body for SetResourceProvidersResources for application/json ContentType.
-type SetResourceProvidersResourcesJSONRequestBody SetResourceProvidersResourcesJSONBody
+// RequestResourceProvidersResourcesJSONRequestBody defines body for RequestResourceProvidersResources for application/json ContentType.
+type RequestResourceProvidersResourcesJSONRequestBody RequestResourceProvidersResourcesJSONBody
 
-// UpdateVariablesForResourceJSONRequestBody defines body for UpdateVariablesForResource for application/json ContentType.
-type UpdateVariablesForResourceJSONRequestBody UpdateVariablesForResourceJSONBody
+// RequestResourceVariablesUpdateJSONRequestBody defines body for RequestResourceVariablesUpdate for application/json ContentType.
+type RequestResourceVariablesUpdateJSONRequestBody RequestResourceVariablesUpdateJSONBody
 
-// CreateSystemJSONRequestBody defines body for CreateSystem for application/json ContentType.
-type CreateSystemJSONRequestBody = CreateSystemRequest
+// RequestSystemCreationJSONRequestBody defines body for RequestSystemCreation for application/json ContentType.
+type RequestSystemCreationJSONRequestBody = CreateSystemRequest
 
-// UpsertSystemByIdJSONRequestBody defines body for UpsertSystemById for application/json ContentType.
-type UpsertSystemByIdJSONRequestBody = UpsertSystemRequest
+// RequestSystemUpdateJSONRequestBody defines body for RequestSystemUpdate for application/json ContentType.
+type RequestSystemUpdateJSONRequestBody = UpsertSystemRequest
 
 // CreateWorkflowTemplateFromYamlJSONRequestBody defines body for CreateWorkflowTemplateFromYaml for application/json ContentType.
 type CreateWorkflowTemplateFromYamlJSONRequestBody CreateWorkflowTemplateFromYamlJSONBody
@@ -2214,57 +2216,57 @@ type ClientInterface interface {
 
 	UpdateWorkspace(ctx context.Context, workspaceId openapi_types.UUID, body UpdateWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// CreateUserApprovalRecordWithBody request with any body
-	CreateUserApprovalRecordWithBody(ctx context.Context, workspaceId string, deploymentVersionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// RequestUserApprovalRecordUpdateWithBody request with any body
+	RequestUserApprovalRecordUpdateWithBody(ctx context.Context, workspaceId string, deploymentVersionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateUserApprovalRecord(ctx context.Context, workspaceId string, deploymentVersionId string, body CreateUserApprovalRecordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RequestUserApprovalRecordUpdate(ctx context.Context, workspaceId string, deploymentVersionId string, body RequestUserApprovalRecordUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListDeployments request
 	ListDeployments(ctx context.Context, workspaceId string, params *ListDeploymentsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// CreateDeploymentWithBody request with any body
-	CreateDeploymentWithBody(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// RequestDeploymentCreationWithBody request with any body
+	RequestDeploymentCreationWithBody(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateDeployment(ctx context.Context, workspaceId string, body CreateDeploymentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RequestDeploymentCreation(ctx context.Context, workspaceId string, body RequestDeploymentCreationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// DeleteDeployment request
-	DeleteDeployment(ctx context.Context, workspaceId string, deploymentId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// RequestDeploymentDeletion request
+	RequestDeploymentDeletion(ctx context.Context, workspaceId string, deploymentId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetDeployment request
 	GetDeployment(ctx context.Context, workspaceId string, deploymentId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// UpsertDeploymentWithBody request with any body
-	UpsertDeploymentWithBody(ctx context.Context, workspaceId string, deploymentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// RequestDeploymentUpdateWithBody request with any body
+	RequestDeploymentUpdateWithBody(ctx context.Context, workspaceId string, deploymentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpsertDeployment(ctx context.Context, workspaceId string, deploymentId string, body UpsertDeploymentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RequestDeploymentUpdate(ctx context.Context, workspaceId string, deploymentId string, body RequestDeploymentUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListDeploymentVariables request
 	ListDeploymentVariables(ctx context.Context, workspaceId string, deploymentId string, params *ListDeploymentVariablesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// DeleteDeploymentVariable request
-	DeleteDeploymentVariable(ctx context.Context, workspaceId string, deploymentId string, variableId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// RequestDeploymentVariableDeletion request
+	RequestDeploymentVariableDeletion(ctx context.Context, workspaceId string, deploymentId string, variableId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetDeploymentVariable request
 	GetDeploymentVariable(ctx context.Context, workspaceId string, deploymentId string, variableId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// UpsertDeploymentVariableWithBody request with any body
-	UpsertDeploymentVariableWithBody(ctx context.Context, workspaceId string, deploymentId string, variableId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// RequestDeploymentVariableUpdateWithBody request with any body
+	RequestDeploymentVariableUpdateWithBody(ctx context.Context, workspaceId string, deploymentId string, variableId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpsertDeploymentVariable(ctx context.Context, workspaceId string, deploymentId string, variableId string, body UpsertDeploymentVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RequestDeploymentVariableUpdate(ctx context.Context, workspaceId string, deploymentId string, variableId string, body RequestDeploymentVariableUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListDeploymentVariableValues request
 	ListDeploymentVariableValues(ctx context.Context, workspaceId string, deploymentId string, variableId string, params *ListDeploymentVariableValuesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// DeleteDeploymentVariableValue request
-	DeleteDeploymentVariableValue(ctx context.Context, workspaceId string, deploymentId string, variableId string, valueId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// RequestDeploymentVariableValueDeletion request
+	RequestDeploymentVariableValueDeletion(ctx context.Context, workspaceId string, deploymentId string, variableId string, valueId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetDeploymentVariableValue request
 	GetDeploymentVariableValue(ctx context.Context, workspaceId string, deploymentId string, variableId string, valueId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// UpsertDeploymentVariableValueWithBody request with any body
-	UpsertDeploymentVariableValueWithBody(ctx context.Context, workspaceId string, deploymentId string, variableId string, valueId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// RequestDeploymentVariableValueUpdateWithBody request with any body
+	RequestDeploymentVariableValueUpdateWithBody(ctx context.Context, workspaceId string, deploymentId string, variableId string, valueId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpsertDeploymentVariableValue(ctx context.Context, workspaceId string, deploymentId string, variableId string, valueId string, body UpsertDeploymentVariableValueJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RequestDeploymentVariableValueUpdate(ctx context.Context, workspaceId string, deploymentId string, variableId string, valueId string, body RequestDeploymentVariableValueUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListDeploymentVersions request
 	ListDeploymentVersions(ctx context.Context, workspaceId string, deploymentId string, params *ListDeploymentVersionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2282,35 +2284,35 @@ type ClientInterface interface {
 	// ListEnvironments request
 	ListEnvironments(ctx context.Context, workspaceId string, params *ListEnvironmentsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// CreateEnvironmentWithBody request with any body
-	CreateEnvironmentWithBody(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// RequestEnvironmentCreationWithBody request with any body
+	RequestEnvironmentCreationWithBody(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateEnvironment(ctx context.Context, workspaceId string, body CreateEnvironmentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RequestEnvironmentCreation(ctx context.Context, workspaceId string, body RequestEnvironmentCreationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// DeleteEnvironment request
-	DeleteEnvironment(ctx context.Context, workspaceId string, environmentId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// RequestEnvironmentDeletion request
+	RequestEnvironmentDeletion(ctx context.Context, workspaceId string, environmentId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetEnvironment request
 	GetEnvironment(ctx context.Context, workspaceId string, environmentId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// UpsertEnvironmentByIdWithBody request with any body
-	UpsertEnvironmentByIdWithBody(ctx context.Context, workspaceId string, environmentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// RequestEnvironmentUpdateWithBody request with any body
+	RequestEnvironmentUpdateWithBody(ctx context.Context, workspaceId string, environmentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpsertEnvironmentById(ctx context.Context, workspaceId string, environmentId string, body UpsertEnvironmentByIdJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RequestEnvironmentUpdate(ctx context.Context, workspaceId string, environmentId string, body RequestEnvironmentUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListJobAgents request
 	ListJobAgents(ctx context.Context, workspaceId string, params *ListJobAgentsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// DeleteJobAgent request
-	DeleteJobAgent(ctx context.Context, workspaceId string, jobAgentId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// RequestJobAgentDeletion request
+	RequestJobAgentDeletion(ctx context.Context, workspaceId string, jobAgentId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetJobAgent request
 	GetJobAgent(ctx context.Context, workspaceId string, jobAgentId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// UpsertJobAgentWithBody request with any body
-	UpsertJobAgentWithBody(ctx context.Context, workspaceId string, jobAgentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// RequestJobAgentUpdateWithBody request with any body
+	RequestJobAgentUpdateWithBody(ctx context.Context, workspaceId string, jobAgentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpsertJobAgent(ctx context.Context, workspaceId string, jobAgentId string, body UpsertJobAgentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RequestJobAgentUpdate(ctx context.Context, workspaceId string, jobAgentId string, body RequestJobAgentUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetJobs request
 	GetJobs(ctx context.Context, workspaceId string, params *GetJobsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2318,32 +2320,29 @@ type ClientInterface interface {
 	// GetJob request
 	GetJob(ctx context.Context, workspaceId string, jobId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// UpdateJobStatusWithBody request with any body
-	UpdateJobStatusWithBody(ctx context.Context, workspaceId string, jobId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// RequestJobStatusUpdateWithBody request with any body
+	RequestJobStatusUpdateWithBody(ctx context.Context, workspaceId string, jobId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateJobStatus(ctx context.Context, workspaceId string, jobId string, body UpdateJobStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetJobWithRelease request
-	GetJobWithRelease(ctx context.Context, workspaceId string, jobId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RequestJobStatusUpdate(ctx context.Context, workspaceId string, jobId string, body RequestJobStatusUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListPolicies request
 	ListPolicies(ctx context.Context, workspaceId string, params *ListPoliciesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// CreatePolicyWithBody request with any body
-	CreatePolicyWithBody(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// RequestPolicyCreationWithBody request with any body
+	RequestPolicyCreationWithBody(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreatePolicy(ctx context.Context, workspaceId string, body CreatePolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RequestPolicyCreation(ctx context.Context, workspaceId string, body RequestPolicyCreationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// DeletePolicy request
-	DeletePolicy(ctx context.Context, workspaceId string, policyId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// RequestPolicyDeletion request
+	RequestPolicyDeletion(ctx context.Context, workspaceId string, policyId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetPolicy request
 	GetPolicy(ctx context.Context, workspaceId string, policyId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// UpsertPolicyWithBody request with any body
-	UpsertPolicyWithBody(ctx context.Context, workspaceId string, policyId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// RequestPolicyUpdateWithBody request with any body
+	RequestPolicyUpdateWithBody(ctx context.Context, workspaceId string, policyId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpsertPolicy(ctx context.Context, workspaceId string, policyId string, body UpsertPolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RequestPolicyUpdate(ctx context.Context, workspaceId string, policyId string, body RequestPolicyUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateRelationshipRuleWithBody request with any body
 	CreateRelationshipRuleWithBody(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2373,32 +2372,29 @@ type ClientInterface interface {
 	// GetRelease request
 	GetRelease(ctx context.Context, workspaceId string, releaseId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetReleaseVerifications request
-	GetReleaseVerifications(ctx context.Context, workspaceId string, releaseId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// RequestResourceProviderUpsertWithBody request with any body
+	RequestResourceProviderUpsertWithBody(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// UpsertResourceProviderWithBody request with any body
-	UpsertResourceProviderWithBody(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	UpsertResourceProvider(ctx context.Context, workspaceId string, body UpsertResourceProviderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RequestResourceProviderUpsert(ctx context.Context, workspaceId string, body RequestResourceProviderUpsertJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetResourceProviderByName request
 	GetResourceProviderByName(ctx context.Context, workspaceId string, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// SetResourceProvidersResourcesPatchWithBody request with any body
-	SetResourceProvidersResourcesPatchWithBody(ctx context.Context, workspaceId string, providerId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// RequestResourceProvidersResourcesPatchWithBody request with any body
+	RequestResourceProvidersResourcesPatchWithBody(ctx context.Context, workspaceId string, providerId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	SetResourceProvidersResourcesPatch(ctx context.Context, workspaceId string, providerId string, body SetResourceProvidersResourcesPatchJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RequestResourceProvidersResourcesPatch(ctx context.Context, workspaceId string, providerId string, body RequestResourceProvidersResourcesPatchJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// SetResourceProvidersResourcesWithBody request with any body
-	SetResourceProvidersResourcesWithBody(ctx context.Context, workspaceId string, providerId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// RequestResourceProvidersResourcesWithBody request with any body
+	RequestResourceProvidersResourcesWithBody(ctx context.Context, workspaceId string, providerId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	SetResourceProvidersResources(ctx context.Context, workspaceId string, providerId string, body SetResourceProvidersResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RequestResourceProvidersResources(ctx context.Context, workspaceId string, providerId string, body RequestResourceProvidersResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetAllResources request
 	GetAllResources(ctx context.Context, workspaceId string, params *GetAllResourcesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// DeleteResourceByIdentifier request
-	DeleteResourceByIdentifier(ctx context.Context, workspaceId string, identifier string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// RequestResourceDeletionByIdentifier request
+	RequestResourceDeletionByIdentifier(ctx context.Context, workspaceId string, identifier string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetResourceByIdentifier request
 	GetResourceByIdentifier(ctx context.Context, workspaceId string, identifier string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2406,10 +2402,10 @@ type ClientInterface interface {
 	// GetVariablesForResource request
 	GetVariablesForResource(ctx context.Context, workspaceId string, identifier string, params *GetVariablesForResourceParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// UpdateVariablesForResourceWithBody request with any body
-	UpdateVariablesForResourceWithBody(ctx context.Context, workspaceId string, identifier string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// RequestResourceVariablesUpdateWithBody request with any body
+	RequestResourceVariablesUpdateWithBody(ctx context.Context, workspaceId string, identifier string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateVariablesForResource(ctx context.Context, workspaceId string, identifier string, body UpdateVariablesForResourceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RequestResourceVariablesUpdate(ctx context.Context, workspaceId string, identifier string, body RequestResourceVariablesUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetReleaseTargetForResourceInDeployment request
 	GetReleaseTargetForResourceInDeployment(ctx context.Context, workspaceId string, resourceIdentifier string, deploymentId string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2417,21 +2413,21 @@ type ClientInterface interface {
 	// ListSystems request
 	ListSystems(ctx context.Context, workspaceId string, params *ListSystemsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// CreateSystemWithBody request with any body
-	CreateSystemWithBody(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// RequestSystemCreationWithBody request with any body
+	RequestSystemCreationWithBody(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateSystem(ctx context.Context, workspaceId string, body CreateSystemJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RequestSystemCreation(ctx context.Context, workspaceId string, body RequestSystemCreationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// DeleteSystem request
-	DeleteSystem(ctx context.Context, workspaceId string, systemId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// RequestSystemDeletion request
+	RequestSystemDeletion(ctx context.Context, workspaceId string, systemId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetSystem request
 	GetSystem(ctx context.Context, workspaceId string, systemId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// UpsertSystemByIdWithBody request with any body
-	UpsertSystemByIdWithBody(ctx context.Context, workspaceId string, systemId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// RequestSystemUpdateWithBody request with any body
+	RequestSystemUpdateWithBody(ctx context.Context, workspaceId string, systemId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpsertSystemById(ctx context.Context, workspaceId string, systemId string, body UpsertSystemByIdJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RequestSystemUpdate(ctx context.Context, workspaceId string, systemId string, body RequestSystemUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateWorkflowTemplateFromYamlWithBody request with any body
 	CreateWorkflowTemplateFromYamlWithBody(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2535,8 +2531,8 @@ func (c *Client) UpdateWorkspace(ctx context.Context, workspaceId openapi_types.
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateUserApprovalRecordWithBody(ctx context.Context, workspaceId string, deploymentVersionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateUserApprovalRecordRequestWithBody(c.Server, workspaceId, deploymentVersionId, contentType, body)
+func (c *Client) RequestUserApprovalRecordUpdateWithBody(ctx context.Context, workspaceId string, deploymentVersionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestUserApprovalRecordUpdateRequestWithBody(c.Server, workspaceId, deploymentVersionId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2547,8 +2543,8 @@ func (c *Client) CreateUserApprovalRecordWithBody(ctx context.Context, workspace
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateUserApprovalRecord(ctx context.Context, workspaceId string, deploymentVersionId string, body CreateUserApprovalRecordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateUserApprovalRecordRequest(c.Server, workspaceId, deploymentVersionId, body)
+func (c *Client) RequestUserApprovalRecordUpdate(ctx context.Context, workspaceId string, deploymentVersionId string, body RequestUserApprovalRecordUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestUserApprovalRecordUpdateRequest(c.Server, workspaceId, deploymentVersionId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2571,8 +2567,8 @@ func (c *Client) ListDeployments(ctx context.Context, workspaceId string, params
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateDeploymentWithBody(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateDeploymentRequestWithBody(c.Server, workspaceId, contentType, body)
+func (c *Client) RequestDeploymentCreationWithBody(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestDeploymentCreationRequestWithBody(c.Server, workspaceId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2583,8 +2579,8 @@ func (c *Client) CreateDeploymentWithBody(ctx context.Context, workspaceId strin
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateDeployment(ctx context.Context, workspaceId string, body CreateDeploymentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateDeploymentRequest(c.Server, workspaceId, body)
+func (c *Client) RequestDeploymentCreation(ctx context.Context, workspaceId string, body RequestDeploymentCreationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestDeploymentCreationRequest(c.Server, workspaceId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2595,8 +2591,8 @@ func (c *Client) CreateDeployment(ctx context.Context, workspaceId string, body 
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteDeployment(ctx context.Context, workspaceId string, deploymentId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteDeploymentRequest(c.Server, workspaceId, deploymentId)
+func (c *Client) RequestDeploymentDeletion(ctx context.Context, workspaceId string, deploymentId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestDeploymentDeletionRequest(c.Server, workspaceId, deploymentId)
 	if err != nil {
 		return nil, err
 	}
@@ -2619,8 +2615,8 @@ func (c *Client) GetDeployment(ctx context.Context, workspaceId string, deployme
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpsertDeploymentWithBody(ctx context.Context, workspaceId string, deploymentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpsertDeploymentRequestWithBody(c.Server, workspaceId, deploymentId, contentType, body)
+func (c *Client) RequestDeploymentUpdateWithBody(ctx context.Context, workspaceId string, deploymentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestDeploymentUpdateRequestWithBody(c.Server, workspaceId, deploymentId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2631,8 +2627,8 @@ func (c *Client) UpsertDeploymentWithBody(ctx context.Context, workspaceId strin
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpsertDeployment(ctx context.Context, workspaceId string, deploymentId string, body UpsertDeploymentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpsertDeploymentRequest(c.Server, workspaceId, deploymentId, body)
+func (c *Client) RequestDeploymentUpdate(ctx context.Context, workspaceId string, deploymentId string, body RequestDeploymentUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestDeploymentUpdateRequest(c.Server, workspaceId, deploymentId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2655,8 +2651,8 @@ func (c *Client) ListDeploymentVariables(ctx context.Context, workspaceId string
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteDeploymentVariable(ctx context.Context, workspaceId string, deploymentId string, variableId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteDeploymentVariableRequest(c.Server, workspaceId, deploymentId, variableId)
+func (c *Client) RequestDeploymentVariableDeletion(ctx context.Context, workspaceId string, deploymentId string, variableId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestDeploymentVariableDeletionRequest(c.Server, workspaceId, deploymentId, variableId)
 	if err != nil {
 		return nil, err
 	}
@@ -2679,8 +2675,8 @@ func (c *Client) GetDeploymentVariable(ctx context.Context, workspaceId string, 
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpsertDeploymentVariableWithBody(ctx context.Context, workspaceId string, deploymentId string, variableId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpsertDeploymentVariableRequestWithBody(c.Server, workspaceId, deploymentId, variableId, contentType, body)
+func (c *Client) RequestDeploymentVariableUpdateWithBody(ctx context.Context, workspaceId string, deploymentId string, variableId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestDeploymentVariableUpdateRequestWithBody(c.Server, workspaceId, deploymentId, variableId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2691,8 +2687,8 @@ func (c *Client) UpsertDeploymentVariableWithBody(ctx context.Context, workspace
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpsertDeploymentVariable(ctx context.Context, workspaceId string, deploymentId string, variableId string, body UpsertDeploymentVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpsertDeploymentVariableRequest(c.Server, workspaceId, deploymentId, variableId, body)
+func (c *Client) RequestDeploymentVariableUpdate(ctx context.Context, workspaceId string, deploymentId string, variableId string, body RequestDeploymentVariableUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestDeploymentVariableUpdateRequest(c.Server, workspaceId, deploymentId, variableId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2715,8 +2711,8 @@ func (c *Client) ListDeploymentVariableValues(ctx context.Context, workspaceId s
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteDeploymentVariableValue(ctx context.Context, workspaceId string, deploymentId string, variableId string, valueId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteDeploymentVariableValueRequest(c.Server, workspaceId, deploymentId, variableId, valueId)
+func (c *Client) RequestDeploymentVariableValueDeletion(ctx context.Context, workspaceId string, deploymentId string, variableId string, valueId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestDeploymentVariableValueDeletionRequest(c.Server, workspaceId, deploymentId, variableId, valueId)
 	if err != nil {
 		return nil, err
 	}
@@ -2739,8 +2735,8 @@ func (c *Client) GetDeploymentVariableValue(ctx context.Context, workspaceId str
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpsertDeploymentVariableValueWithBody(ctx context.Context, workspaceId string, deploymentId string, variableId string, valueId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpsertDeploymentVariableValueRequestWithBody(c.Server, workspaceId, deploymentId, variableId, valueId, contentType, body)
+func (c *Client) RequestDeploymentVariableValueUpdateWithBody(ctx context.Context, workspaceId string, deploymentId string, variableId string, valueId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestDeploymentVariableValueUpdateRequestWithBody(c.Server, workspaceId, deploymentId, variableId, valueId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2751,8 +2747,8 @@ func (c *Client) UpsertDeploymentVariableValueWithBody(ctx context.Context, work
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpsertDeploymentVariableValue(ctx context.Context, workspaceId string, deploymentId string, variableId string, valueId string, body UpsertDeploymentVariableValueJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpsertDeploymentVariableValueRequest(c.Server, workspaceId, deploymentId, variableId, valueId, body)
+func (c *Client) RequestDeploymentVariableValueUpdate(ctx context.Context, workspaceId string, deploymentId string, variableId string, valueId string, body RequestDeploymentVariableValueUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestDeploymentVariableValueUpdateRequest(c.Server, workspaceId, deploymentId, variableId, valueId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2835,8 +2831,8 @@ func (c *Client) ListEnvironments(ctx context.Context, workspaceId string, param
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateEnvironmentWithBody(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateEnvironmentRequestWithBody(c.Server, workspaceId, contentType, body)
+func (c *Client) RequestEnvironmentCreationWithBody(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestEnvironmentCreationRequestWithBody(c.Server, workspaceId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2847,8 +2843,8 @@ func (c *Client) CreateEnvironmentWithBody(ctx context.Context, workspaceId stri
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateEnvironment(ctx context.Context, workspaceId string, body CreateEnvironmentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateEnvironmentRequest(c.Server, workspaceId, body)
+func (c *Client) RequestEnvironmentCreation(ctx context.Context, workspaceId string, body RequestEnvironmentCreationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestEnvironmentCreationRequest(c.Server, workspaceId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2859,8 +2855,8 @@ func (c *Client) CreateEnvironment(ctx context.Context, workspaceId string, body
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteEnvironment(ctx context.Context, workspaceId string, environmentId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteEnvironmentRequest(c.Server, workspaceId, environmentId)
+func (c *Client) RequestEnvironmentDeletion(ctx context.Context, workspaceId string, environmentId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestEnvironmentDeletionRequest(c.Server, workspaceId, environmentId)
 	if err != nil {
 		return nil, err
 	}
@@ -2883,8 +2879,8 @@ func (c *Client) GetEnvironment(ctx context.Context, workspaceId string, environ
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpsertEnvironmentByIdWithBody(ctx context.Context, workspaceId string, environmentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpsertEnvironmentByIdRequestWithBody(c.Server, workspaceId, environmentId, contentType, body)
+func (c *Client) RequestEnvironmentUpdateWithBody(ctx context.Context, workspaceId string, environmentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestEnvironmentUpdateRequestWithBody(c.Server, workspaceId, environmentId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2895,8 +2891,8 @@ func (c *Client) UpsertEnvironmentByIdWithBody(ctx context.Context, workspaceId 
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpsertEnvironmentById(ctx context.Context, workspaceId string, environmentId string, body UpsertEnvironmentByIdJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpsertEnvironmentByIdRequest(c.Server, workspaceId, environmentId, body)
+func (c *Client) RequestEnvironmentUpdate(ctx context.Context, workspaceId string, environmentId string, body RequestEnvironmentUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestEnvironmentUpdateRequest(c.Server, workspaceId, environmentId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2919,8 +2915,8 @@ func (c *Client) ListJobAgents(ctx context.Context, workspaceId string, params *
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteJobAgent(ctx context.Context, workspaceId string, jobAgentId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteJobAgentRequest(c.Server, workspaceId, jobAgentId)
+func (c *Client) RequestJobAgentDeletion(ctx context.Context, workspaceId string, jobAgentId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestJobAgentDeletionRequest(c.Server, workspaceId, jobAgentId)
 	if err != nil {
 		return nil, err
 	}
@@ -2943,8 +2939,8 @@ func (c *Client) GetJobAgent(ctx context.Context, workspaceId string, jobAgentId
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpsertJobAgentWithBody(ctx context.Context, workspaceId string, jobAgentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpsertJobAgentRequestWithBody(c.Server, workspaceId, jobAgentId, contentType, body)
+func (c *Client) RequestJobAgentUpdateWithBody(ctx context.Context, workspaceId string, jobAgentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestJobAgentUpdateRequestWithBody(c.Server, workspaceId, jobAgentId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2955,8 +2951,8 @@ func (c *Client) UpsertJobAgentWithBody(ctx context.Context, workspaceId string,
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpsertJobAgent(ctx context.Context, workspaceId string, jobAgentId string, body UpsertJobAgentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpsertJobAgentRequest(c.Server, workspaceId, jobAgentId, body)
+func (c *Client) RequestJobAgentUpdate(ctx context.Context, workspaceId string, jobAgentId string, body RequestJobAgentUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestJobAgentUpdateRequest(c.Server, workspaceId, jobAgentId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2991,8 +2987,8 @@ func (c *Client) GetJob(ctx context.Context, workspaceId string, jobId string, r
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateJobStatusWithBody(ctx context.Context, workspaceId string, jobId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateJobStatusRequestWithBody(c.Server, workspaceId, jobId, contentType, body)
+func (c *Client) RequestJobStatusUpdateWithBody(ctx context.Context, workspaceId string, jobId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestJobStatusUpdateRequestWithBody(c.Server, workspaceId, jobId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3003,20 +2999,8 @@ func (c *Client) UpdateJobStatusWithBody(ctx context.Context, workspaceId string
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateJobStatus(ctx context.Context, workspaceId string, jobId string, body UpdateJobStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateJobStatusRequest(c.Server, workspaceId, jobId, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetJobWithRelease(ctx context.Context, workspaceId string, jobId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetJobWithReleaseRequest(c.Server, workspaceId, jobId)
+func (c *Client) RequestJobStatusUpdate(ctx context.Context, workspaceId string, jobId string, body RequestJobStatusUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestJobStatusUpdateRequest(c.Server, workspaceId, jobId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3039,8 +3023,8 @@ func (c *Client) ListPolicies(ctx context.Context, workspaceId string, params *L
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreatePolicyWithBody(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreatePolicyRequestWithBody(c.Server, workspaceId, contentType, body)
+func (c *Client) RequestPolicyCreationWithBody(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestPolicyCreationRequestWithBody(c.Server, workspaceId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3051,8 +3035,8 @@ func (c *Client) CreatePolicyWithBody(ctx context.Context, workspaceId string, c
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreatePolicy(ctx context.Context, workspaceId string, body CreatePolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreatePolicyRequest(c.Server, workspaceId, body)
+func (c *Client) RequestPolicyCreation(ctx context.Context, workspaceId string, body RequestPolicyCreationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestPolicyCreationRequest(c.Server, workspaceId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3063,8 +3047,8 @@ func (c *Client) CreatePolicy(ctx context.Context, workspaceId string, body Crea
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeletePolicy(ctx context.Context, workspaceId string, policyId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeletePolicyRequest(c.Server, workspaceId, policyId)
+func (c *Client) RequestPolicyDeletion(ctx context.Context, workspaceId string, policyId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestPolicyDeletionRequest(c.Server, workspaceId, policyId)
 	if err != nil {
 		return nil, err
 	}
@@ -3087,8 +3071,8 @@ func (c *Client) GetPolicy(ctx context.Context, workspaceId string, policyId str
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpsertPolicyWithBody(ctx context.Context, workspaceId string, policyId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpsertPolicyRequestWithBody(c.Server, workspaceId, policyId, contentType, body)
+func (c *Client) RequestPolicyUpdateWithBody(ctx context.Context, workspaceId string, policyId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestPolicyUpdateRequestWithBody(c.Server, workspaceId, policyId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3099,8 +3083,8 @@ func (c *Client) UpsertPolicyWithBody(ctx context.Context, workspaceId string, p
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpsertPolicy(ctx context.Context, workspaceId string, policyId string, body UpsertPolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpsertPolicyRequest(c.Server, workspaceId, policyId, body)
+func (c *Client) RequestPolicyUpdate(ctx context.Context, workspaceId string, policyId string, body RequestPolicyUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestPolicyUpdateRequest(c.Server, workspaceId, policyId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3231,8 +3215,8 @@ func (c *Client) GetRelease(ctx context.Context, workspaceId string, releaseId s
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetReleaseVerifications(ctx context.Context, workspaceId string, releaseId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetReleaseVerificationsRequest(c.Server, workspaceId, releaseId)
+func (c *Client) RequestResourceProviderUpsertWithBody(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestResourceProviderUpsertRequestWithBody(c.Server, workspaceId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3243,20 +3227,8 @@ func (c *Client) GetReleaseVerifications(ctx context.Context, workspaceId string
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpsertResourceProviderWithBody(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpsertResourceProviderRequestWithBody(c.Server, workspaceId, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) UpsertResourceProvider(ctx context.Context, workspaceId string, body UpsertResourceProviderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpsertResourceProviderRequest(c.Server, workspaceId, body)
+func (c *Client) RequestResourceProviderUpsert(ctx context.Context, workspaceId string, body RequestResourceProviderUpsertJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestResourceProviderUpsertRequest(c.Server, workspaceId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3279,8 +3251,8 @@ func (c *Client) GetResourceProviderByName(ctx context.Context, workspaceId stri
 	return c.Client.Do(req)
 }
 
-func (c *Client) SetResourceProvidersResourcesPatchWithBody(ctx context.Context, workspaceId string, providerId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSetResourceProvidersResourcesPatchRequestWithBody(c.Server, workspaceId, providerId, contentType, body)
+func (c *Client) RequestResourceProvidersResourcesPatchWithBody(ctx context.Context, workspaceId string, providerId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestResourceProvidersResourcesPatchRequestWithBody(c.Server, workspaceId, providerId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3291,8 +3263,8 @@ func (c *Client) SetResourceProvidersResourcesPatchWithBody(ctx context.Context,
 	return c.Client.Do(req)
 }
 
-func (c *Client) SetResourceProvidersResourcesPatch(ctx context.Context, workspaceId string, providerId string, body SetResourceProvidersResourcesPatchJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSetResourceProvidersResourcesPatchRequest(c.Server, workspaceId, providerId, body)
+func (c *Client) RequestResourceProvidersResourcesPatch(ctx context.Context, workspaceId string, providerId string, body RequestResourceProvidersResourcesPatchJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestResourceProvidersResourcesPatchRequest(c.Server, workspaceId, providerId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3303,8 +3275,8 @@ func (c *Client) SetResourceProvidersResourcesPatch(ctx context.Context, workspa
 	return c.Client.Do(req)
 }
 
-func (c *Client) SetResourceProvidersResourcesWithBody(ctx context.Context, workspaceId string, providerId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSetResourceProvidersResourcesRequestWithBody(c.Server, workspaceId, providerId, contentType, body)
+func (c *Client) RequestResourceProvidersResourcesWithBody(ctx context.Context, workspaceId string, providerId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestResourceProvidersResourcesRequestWithBody(c.Server, workspaceId, providerId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3315,8 +3287,8 @@ func (c *Client) SetResourceProvidersResourcesWithBody(ctx context.Context, work
 	return c.Client.Do(req)
 }
 
-func (c *Client) SetResourceProvidersResources(ctx context.Context, workspaceId string, providerId string, body SetResourceProvidersResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSetResourceProvidersResourcesRequest(c.Server, workspaceId, providerId, body)
+func (c *Client) RequestResourceProvidersResources(ctx context.Context, workspaceId string, providerId string, body RequestResourceProvidersResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestResourceProvidersResourcesRequest(c.Server, workspaceId, providerId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3339,8 +3311,8 @@ func (c *Client) GetAllResources(ctx context.Context, workspaceId string, params
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteResourceByIdentifier(ctx context.Context, workspaceId string, identifier string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteResourceByIdentifierRequest(c.Server, workspaceId, identifier)
+func (c *Client) RequestResourceDeletionByIdentifier(ctx context.Context, workspaceId string, identifier string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestResourceDeletionByIdentifierRequest(c.Server, workspaceId, identifier)
 	if err != nil {
 		return nil, err
 	}
@@ -3375,8 +3347,8 @@ func (c *Client) GetVariablesForResource(ctx context.Context, workspaceId string
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateVariablesForResourceWithBody(ctx context.Context, workspaceId string, identifier string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateVariablesForResourceRequestWithBody(c.Server, workspaceId, identifier, contentType, body)
+func (c *Client) RequestResourceVariablesUpdateWithBody(ctx context.Context, workspaceId string, identifier string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestResourceVariablesUpdateRequestWithBody(c.Server, workspaceId, identifier, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3387,8 +3359,8 @@ func (c *Client) UpdateVariablesForResourceWithBody(ctx context.Context, workspa
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateVariablesForResource(ctx context.Context, workspaceId string, identifier string, body UpdateVariablesForResourceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateVariablesForResourceRequest(c.Server, workspaceId, identifier, body)
+func (c *Client) RequestResourceVariablesUpdate(ctx context.Context, workspaceId string, identifier string, body RequestResourceVariablesUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestResourceVariablesUpdateRequest(c.Server, workspaceId, identifier, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3423,8 +3395,8 @@ func (c *Client) ListSystems(ctx context.Context, workspaceId string, params *Li
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateSystemWithBody(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateSystemRequestWithBody(c.Server, workspaceId, contentType, body)
+func (c *Client) RequestSystemCreationWithBody(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestSystemCreationRequestWithBody(c.Server, workspaceId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3435,8 +3407,8 @@ func (c *Client) CreateSystemWithBody(ctx context.Context, workspaceId string, c
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateSystem(ctx context.Context, workspaceId string, body CreateSystemJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateSystemRequest(c.Server, workspaceId, body)
+func (c *Client) RequestSystemCreation(ctx context.Context, workspaceId string, body RequestSystemCreationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestSystemCreationRequest(c.Server, workspaceId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3447,8 +3419,8 @@ func (c *Client) CreateSystem(ctx context.Context, workspaceId string, body Crea
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteSystem(ctx context.Context, workspaceId string, systemId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteSystemRequest(c.Server, workspaceId, systemId)
+func (c *Client) RequestSystemDeletion(ctx context.Context, workspaceId string, systemId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestSystemDeletionRequest(c.Server, workspaceId, systemId)
 	if err != nil {
 		return nil, err
 	}
@@ -3471,8 +3443,8 @@ func (c *Client) GetSystem(ctx context.Context, workspaceId string, systemId str
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpsertSystemByIdWithBody(ctx context.Context, workspaceId string, systemId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpsertSystemByIdRequestWithBody(c.Server, workspaceId, systemId, contentType, body)
+func (c *Client) RequestSystemUpdateWithBody(ctx context.Context, workspaceId string, systemId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestSystemUpdateRequestWithBody(c.Server, workspaceId, systemId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3483,8 +3455,8 @@ func (c *Client) UpsertSystemByIdWithBody(ctx context.Context, workspaceId strin
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpsertSystemById(ctx context.Context, workspaceId string, systemId string, body UpsertSystemByIdJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpsertSystemByIdRequest(c.Server, workspaceId, systemId, body)
+func (c *Client) RequestSystemUpdate(ctx context.Context, workspaceId string, systemId string, body RequestSystemUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestSystemUpdateRequest(c.Server, workspaceId, systemId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3735,19 +3707,19 @@ func NewUpdateWorkspaceRequestWithBody(server string, workspaceId openapi_types.
 	return req, nil
 }
 
-// NewCreateUserApprovalRecordRequest calls the generic CreateUserApprovalRecord builder with application/json body
-func NewCreateUserApprovalRecordRequest(server string, workspaceId string, deploymentVersionId string, body CreateUserApprovalRecordJSONRequestBody) (*http.Request, error) {
+// NewRequestUserApprovalRecordUpdateRequest calls the generic RequestUserApprovalRecordUpdate builder with application/json body
+func NewRequestUserApprovalRecordUpdateRequest(server string, workspaceId string, deploymentVersionId string, body RequestUserApprovalRecordUpdateJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateUserApprovalRecordRequestWithBody(server, workspaceId, deploymentVersionId, "application/json", bodyReader)
+	return NewRequestUserApprovalRecordUpdateRequestWithBody(server, workspaceId, deploymentVersionId, "application/json", bodyReader)
 }
 
-// NewCreateUserApprovalRecordRequestWithBody generates requests for CreateUserApprovalRecord with any type of body
-func NewCreateUserApprovalRecordRequestWithBody(server string, workspaceId string, deploymentVersionId string, contentType string, body io.Reader) (*http.Request, error) {
+// NewRequestUserApprovalRecordUpdateRequestWithBody generates requests for RequestUserApprovalRecordUpdate with any type of body
+func NewRequestUserApprovalRecordUpdateRequestWithBody(server string, workspaceId string, deploymentVersionId string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -3779,7 +3751,7 @@ func NewCreateUserApprovalRecordRequestWithBody(server string, workspaceId strin
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", queryURL.String(), body)
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -3861,19 +3833,19 @@ func NewListDeploymentsRequest(server string, workspaceId string, params *ListDe
 	return req, nil
 }
 
-// NewCreateDeploymentRequest calls the generic CreateDeployment builder with application/json body
-func NewCreateDeploymentRequest(server string, workspaceId string, body CreateDeploymentJSONRequestBody) (*http.Request, error) {
+// NewRequestDeploymentCreationRequest calls the generic RequestDeploymentCreation builder with application/json body
+func NewRequestDeploymentCreationRequest(server string, workspaceId string, body RequestDeploymentCreationJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateDeploymentRequestWithBody(server, workspaceId, "application/json", bodyReader)
+	return NewRequestDeploymentCreationRequestWithBody(server, workspaceId, "application/json", bodyReader)
 }
 
-// NewCreateDeploymentRequestWithBody generates requests for CreateDeployment with any type of body
-func NewCreateDeploymentRequestWithBody(server string, workspaceId string, contentType string, body io.Reader) (*http.Request, error) {
+// NewRequestDeploymentCreationRequestWithBody generates requests for RequestDeploymentCreation with any type of body
+func NewRequestDeploymentCreationRequestWithBody(server string, workspaceId string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -3908,8 +3880,8 @@ func NewCreateDeploymentRequestWithBody(server string, workspaceId string, conte
 	return req, nil
 }
 
-// NewDeleteDeploymentRequest generates requests for DeleteDeployment
-func NewDeleteDeploymentRequest(server string, workspaceId string, deploymentId string) (*http.Request, error) {
+// NewRequestDeploymentDeletionRequest generates requests for RequestDeploymentDeletion
+func NewRequestDeploymentDeletionRequest(server string, workspaceId string, deploymentId string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -3990,19 +3962,19 @@ func NewGetDeploymentRequest(server string, workspaceId string, deploymentId str
 	return req, nil
 }
 
-// NewUpsertDeploymentRequest calls the generic UpsertDeployment builder with application/json body
-func NewUpsertDeploymentRequest(server string, workspaceId string, deploymentId string, body UpsertDeploymentJSONRequestBody) (*http.Request, error) {
+// NewRequestDeploymentUpdateRequest calls the generic RequestDeploymentUpdate builder with application/json body
+func NewRequestDeploymentUpdateRequest(server string, workspaceId string, deploymentId string, body RequestDeploymentUpdateJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpsertDeploymentRequestWithBody(server, workspaceId, deploymentId, "application/json", bodyReader)
+	return NewRequestDeploymentUpdateRequestWithBody(server, workspaceId, deploymentId, "application/json", bodyReader)
 }
 
-// NewUpsertDeploymentRequestWithBody generates requests for UpsertDeployment with any type of body
-func NewUpsertDeploymentRequestWithBody(server string, workspaceId string, deploymentId string, contentType string, body io.Reader) (*http.Request, error) {
+// NewRequestDeploymentUpdateRequestWithBody generates requests for RequestDeploymentUpdate with any type of body
+func NewRequestDeploymentUpdateRequestWithBody(server string, workspaceId string, deploymentId string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -4123,8 +4095,8 @@ func NewListDeploymentVariablesRequest(server string, workspaceId string, deploy
 	return req, nil
 }
 
-// NewDeleteDeploymentVariableRequest generates requests for DeleteDeploymentVariable
-func NewDeleteDeploymentVariableRequest(server string, workspaceId string, deploymentId string, variableId string) (*http.Request, error) {
+// NewRequestDeploymentVariableDeletionRequest generates requests for RequestDeploymentVariableDeletion
+func NewRequestDeploymentVariableDeletionRequest(server string, workspaceId string, deploymentId string, variableId string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -4219,19 +4191,19 @@ func NewGetDeploymentVariableRequest(server string, workspaceId string, deployme
 	return req, nil
 }
 
-// NewUpsertDeploymentVariableRequest calls the generic UpsertDeploymentVariable builder with application/json body
-func NewUpsertDeploymentVariableRequest(server string, workspaceId string, deploymentId string, variableId string, body UpsertDeploymentVariableJSONRequestBody) (*http.Request, error) {
+// NewRequestDeploymentVariableUpdateRequest calls the generic RequestDeploymentVariableUpdate builder with application/json body
+func NewRequestDeploymentVariableUpdateRequest(server string, workspaceId string, deploymentId string, variableId string, body RequestDeploymentVariableUpdateJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpsertDeploymentVariableRequestWithBody(server, workspaceId, deploymentId, variableId, "application/json", bodyReader)
+	return NewRequestDeploymentVariableUpdateRequestWithBody(server, workspaceId, deploymentId, variableId, "application/json", bodyReader)
 }
 
-// NewUpsertDeploymentVariableRequestWithBody generates requests for UpsertDeploymentVariable with any type of body
-func NewUpsertDeploymentVariableRequestWithBody(server string, workspaceId string, deploymentId string, variableId string, contentType string, body io.Reader) (*http.Request, error) {
+// NewRequestDeploymentVariableUpdateRequestWithBody generates requests for RequestDeploymentVariableUpdate with any type of body
+func NewRequestDeploymentVariableUpdateRequestWithBody(server string, workspaceId string, deploymentId string, variableId string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -4366,8 +4338,8 @@ func NewListDeploymentVariableValuesRequest(server string, workspaceId string, d
 	return req, nil
 }
 
-// NewDeleteDeploymentVariableValueRequest generates requests for DeleteDeploymentVariableValue
-func NewDeleteDeploymentVariableValueRequest(server string, workspaceId string, deploymentId string, variableId string, valueId string) (*http.Request, error) {
+// NewRequestDeploymentVariableValueDeletionRequest generates requests for RequestDeploymentVariableValueDeletion
+func NewRequestDeploymentVariableValueDeletionRequest(server string, workspaceId string, deploymentId string, variableId string, valueId string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -4476,19 +4448,19 @@ func NewGetDeploymentVariableValueRequest(server string, workspaceId string, dep
 	return req, nil
 }
 
-// NewUpsertDeploymentVariableValueRequest calls the generic UpsertDeploymentVariableValue builder with application/json body
-func NewUpsertDeploymentVariableValueRequest(server string, workspaceId string, deploymentId string, variableId string, valueId string, body UpsertDeploymentVariableValueJSONRequestBody) (*http.Request, error) {
+// NewRequestDeploymentVariableValueUpdateRequest calls the generic RequestDeploymentVariableValueUpdate builder with application/json body
+func NewRequestDeploymentVariableValueUpdateRequest(server string, workspaceId string, deploymentId string, variableId string, valueId string, body RequestDeploymentVariableValueUpdateJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpsertDeploymentVariableValueRequestWithBody(server, workspaceId, deploymentId, variableId, valueId, "application/json", bodyReader)
+	return NewRequestDeploymentVariableValueUpdateRequestWithBody(server, workspaceId, deploymentId, variableId, valueId, "application/json", bodyReader)
 }
 
-// NewUpsertDeploymentVariableValueRequestWithBody generates requests for UpsertDeploymentVariableValue with any type of body
-func NewUpsertDeploymentVariableValueRequestWithBody(server string, workspaceId string, deploymentId string, variableId string, valueId string, contentType string, body io.Reader) (*http.Request, error) {
+// NewRequestDeploymentVariableValueUpdateRequestWithBody generates requests for RequestDeploymentVariableValueUpdate with any type of body
+func NewRequestDeploymentVariableValueUpdateRequestWithBody(server string, workspaceId string, deploymentId string, variableId string, valueId string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -4803,19 +4775,19 @@ func NewListEnvironmentsRequest(server string, workspaceId string, params *ListE
 	return req, nil
 }
 
-// NewCreateEnvironmentRequest calls the generic CreateEnvironment builder with application/json body
-func NewCreateEnvironmentRequest(server string, workspaceId string, body CreateEnvironmentJSONRequestBody) (*http.Request, error) {
+// NewRequestEnvironmentCreationRequest calls the generic RequestEnvironmentCreation builder with application/json body
+func NewRequestEnvironmentCreationRequest(server string, workspaceId string, body RequestEnvironmentCreationJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateEnvironmentRequestWithBody(server, workspaceId, "application/json", bodyReader)
+	return NewRequestEnvironmentCreationRequestWithBody(server, workspaceId, "application/json", bodyReader)
 }
 
-// NewCreateEnvironmentRequestWithBody generates requests for CreateEnvironment with any type of body
-func NewCreateEnvironmentRequestWithBody(server string, workspaceId string, contentType string, body io.Reader) (*http.Request, error) {
+// NewRequestEnvironmentCreationRequestWithBody generates requests for RequestEnvironmentCreation with any type of body
+func NewRequestEnvironmentCreationRequestWithBody(server string, workspaceId string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -4850,8 +4822,8 @@ func NewCreateEnvironmentRequestWithBody(server string, workspaceId string, cont
 	return req, nil
 }
 
-// NewDeleteEnvironmentRequest generates requests for DeleteEnvironment
-func NewDeleteEnvironmentRequest(server string, workspaceId string, environmentId string) (*http.Request, error) {
+// NewRequestEnvironmentDeletionRequest generates requests for RequestEnvironmentDeletion
+func NewRequestEnvironmentDeletionRequest(server string, workspaceId string, environmentId string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -4932,19 +4904,19 @@ func NewGetEnvironmentRequest(server string, workspaceId string, environmentId s
 	return req, nil
 }
 
-// NewUpsertEnvironmentByIdRequest calls the generic UpsertEnvironmentById builder with application/json body
-func NewUpsertEnvironmentByIdRequest(server string, workspaceId string, environmentId string, body UpsertEnvironmentByIdJSONRequestBody) (*http.Request, error) {
+// NewRequestEnvironmentUpdateRequest calls the generic RequestEnvironmentUpdate builder with application/json body
+func NewRequestEnvironmentUpdateRequest(server string, workspaceId string, environmentId string, body RequestEnvironmentUpdateJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpsertEnvironmentByIdRequestWithBody(server, workspaceId, environmentId, "application/json", bodyReader)
+	return NewRequestEnvironmentUpdateRequestWithBody(server, workspaceId, environmentId, "application/json", bodyReader)
 }
 
-// NewUpsertEnvironmentByIdRequestWithBody generates requests for UpsertEnvironmentById with any type of body
-func NewUpsertEnvironmentByIdRequestWithBody(server string, workspaceId string, environmentId string, contentType string, body io.Reader) (*http.Request, error) {
+// NewRequestEnvironmentUpdateRequestWithBody generates requests for RequestEnvironmentUpdate with any type of body
+func NewRequestEnvironmentUpdateRequestWithBody(server string, workspaceId string, environmentId string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -5058,8 +5030,8 @@ func NewListJobAgentsRequest(server string, workspaceId string, params *ListJobA
 	return req, nil
 }
 
-// NewDeleteJobAgentRequest generates requests for DeleteJobAgent
-func NewDeleteJobAgentRequest(server string, workspaceId string, jobAgentId string) (*http.Request, error) {
+// NewRequestJobAgentDeletionRequest generates requests for RequestJobAgentDeletion
+func NewRequestJobAgentDeletionRequest(server string, workspaceId string, jobAgentId string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -5140,19 +5112,19 @@ func NewGetJobAgentRequest(server string, workspaceId string, jobAgentId string)
 	return req, nil
 }
 
-// NewUpsertJobAgentRequest calls the generic UpsertJobAgent builder with application/json body
-func NewUpsertJobAgentRequest(server string, workspaceId string, jobAgentId string, body UpsertJobAgentJSONRequestBody) (*http.Request, error) {
+// NewRequestJobAgentUpdateRequest calls the generic RequestJobAgentUpdate builder with application/json body
+func NewRequestJobAgentUpdateRequest(server string, workspaceId string, jobAgentId string, body RequestJobAgentUpdateJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpsertJobAgentRequestWithBody(server, workspaceId, jobAgentId, "application/json", bodyReader)
+	return NewRequestJobAgentUpdateRequestWithBody(server, workspaceId, jobAgentId, "application/json", bodyReader)
 }
 
-// NewUpsertJobAgentRequestWithBody generates requests for UpsertJobAgent with any type of body
-func NewUpsertJobAgentRequestWithBody(server string, workspaceId string, jobAgentId string, contentType string, body io.Reader) (*http.Request, error) {
+// NewRequestJobAgentUpdateRequestWithBody generates requests for RequestJobAgentUpdate with any type of body
+func NewRequestJobAgentUpdateRequestWithBody(server string, workspaceId string, jobAgentId string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -5307,19 +5279,19 @@ func NewGetJobRequest(server string, workspaceId string, jobId string) (*http.Re
 	return req, nil
 }
 
-// NewUpdateJobStatusRequest calls the generic UpdateJobStatus builder with application/json body
-func NewUpdateJobStatusRequest(server string, workspaceId string, jobId string, body UpdateJobStatusJSONRequestBody) (*http.Request, error) {
+// NewRequestJobStatusUpdateRequest calls the generic RequestJobStatusUpdate builder with application/json body
+func NewRequestJobStatusUpdateRequest(server string, workspaceId string, jobId string, body RequestJobStatusUpdateJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateJobStatusRequestWithBody(server, workspaceId, jobId, "application/json", bodyReader)
+	return NewRequestJobStatusUpdateRequestWithBody(server, workspaceId, jobId, "application/json", bodyReader)
 }
 
-// NewUpdateJobStatusRequestWithBody generates requests for UpdateJobStatus with any type of body
-func NewUpdateJobStatusRequestWithBody(server string, workspaceId string, jobId string, contentType string, body io.Reader) (*http.Request, error) {
+// NewRequestJobStatusUpdateRequestWithBody generates requests for RequestJobStatusUpdate with any type of body
+func NewRequestJobStatusUpdateRequestWithBody(server string, workspaceId string, jobId string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -5357,47 +5329,6 @@ func NewUpdateJobStatusRequestWithBody(server string, workspaceId string, jobId 
 	}
 
 	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewGetJobWithReleaseRequest generates requests for GetJobWithRelease
-func NewGetJobWithReleaseRequest(server string, workspaceId string, jobId string) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "workspaceId", runtime.ParamLocationPath, workspaceId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "jobId", runtime.ParamLocationPath, jobId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/v1/workspaces/%s/jobs/%s/with-release", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
 
 	return req, nil
 }
@@ -5474,19 +5405,19 @@ func NewListPoliciesRequest(server string, workspaceId string, params *ListPolic
 	return req, nil
 }
 
-// NewCreatePolicyRequest calls the generic CreatePolicy builder with application/json body
-func NewCreatePolicyRequest(server string, workspaceId string, body CreatePolicyJSONRequestBody) (*http.Request, error) {
+// NewRequestPolicyCreationRequest calls the generic RequestPolicyCreation builder with application/json body
+func NewRequestPolicyCreationRequest(server string, workspaceId string, body RequestPolicyCreationJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreatePolicyRequestWithBody(server, workspaceId, "application/json", bodyReader)
+	return NewRequestPolicyCreationRequestWithBody(server, workspaceId, "application/json", bodyReader)
 }
 
-// NewCreatePolicyRequestWithBody generates requests for CreatePolicy with any type of body
-func NewCreatePolicyRequestWithBody(server string, workspaceId string, contentType string, body io.Reader) (*http.Request, error) {
+// NewRequestPolicyCreationRequestWithBody generates requests for RequestPolicyCreation with any type of body
+func NewRequestPolicyCreationRequestWithBody(server string, workspaceId string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -5521,8 +5452,8 @@ func NewCreatePolicyRequestWithBody(server string, workspaceId string, contentTy
 	return req, nil
 }
 
-// NewDeletePolicyRequest generates requests for DeletePolicy
-func NewDeletePolicyRequest(server string, workspaceId string, policyId string) (*http.Request, error) {
+// NewRequestPolicyDeletionRequest generates requests for RequestPolicyDeletion
+func NewRequestPolicyDeletionRequest(server string, workspaceId string, policyId string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -5603,19 +5534,19 @@ func NewGetPolicyRequest(server string, workspaceId string, policyId string) (*h
 	return req, nil
 }
 
-// NewUpsertPolicyRequest calls the generic UpsertPolicy builder with application/json body
-func NewUpsertPolicyRequest(server string, workspaceId string, policyId string, body UpsertPolicyJSONRequestBody) (*http.Request, error) {
+// NewRequestPolicyUpdateRequest calls the generic RequestPolicyUpdate builder with application/json body
+func NewRequestPolicyUpdateRequest(server string, workspaceId string, policyId string, body RequestPolicyUpdateJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpsertPolicyRequestWithBody(server, workspaceId, policyId, "application/json", bodyReader)
+	return NewRequestPolicyUpdateRequestWithBody(server, workspaceId, policyId, "application/json", bodyReader)
 }
 
-// NewUpsertPolicyRequestWithBody generates requests for UpsertPolicy with any type of body
-func NewUpsertPolicyRequestWithBody(server string, workspaceId string, policyId string, contentType string, body io.Reader) (*http.Request, error) {
+// NewRequestPolicyUpdateRequestWithBody generates requests for RequestPolicyUpdate with any type of body
+func NewRequestPolicyUpdateRequestWithBody(server string, workspaceId string, policyId string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6080,60 +6011,19 @@ func NewGetReleaseRequest(server string, workspaceId string, releaseId string) (
 	return req, nil
 }
 
-// NewGetReleaseVerificationsRequest generates requests for GetReleaseVerifications
-func NewGetReleaseVerificationsRequest(server string, workspaceId string, releaseId string) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "workspaceId", runtime.ParamLocationPath, workspaceId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "releaseId", runtime.ParamLocationPath, releaseId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/v1/workspaces/%s/releases/%s/verifications", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewUpsertResourceProviderRequest calls the generic UpsertResourceProvider builder with application/json body
-func NewUpsertResourceProviderRequest(server string, workspaceId string, body UpsertResourceProviderJSONRequestBody) (*http.Request, error) {
+// NewRequestResourceProviderUpsertRequest calls the generic RequestResourceProviderUpsert builder with application/json body
+func NewRequestResourceProviderUpsertRequest(server string, workspaceId string, body RequestResourceProviderUpsertJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpsertResourceProviderRequestWithBody(server, workspaceId, "application/json", bodyReader)
+	return NewRequestResourceProviderUpsertRequestWithBody(server, workspaceId, "application/json", bodyReader)
 }
 
-// NewUpsertResourceProviderRequestWithBody generates requests for UpsertResourceProvider with any type of body
-func NewUpsertResourceProviderRequestWithBody(server string, workspaceId string, contentType string, body io.Reader) (*http.Request, error) {
+// NewRequestResourceProviderUpsertRequestWithBody generates requests for RequestResourceProviderUpsert with any type of body
+func NewRequestResourceProviderUpsertRequestWithBody(server string, workspaceId string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6209,19 +6099,19 @@ func NewGetResourceProviderByNameRequest(server string, workspaceId string, name
 	return req, nil
 }
 
-// NewSetResourceProvidersResourcesPatchRequest calls the generic SetResourceProvidersResourcesPatch builder with application/json body
-func NewSetResourceProvidersResourcesPatchRequest(server string, workspaceId string, providerId string, body SetResourceProvidersResourcesPatchJSONRequestBody) (*http.Request, error) {
+// NewRequestResourceProvidersResourcesPatchRequest calls the generic RequestResourceProvidersResourcesPatch builder with application/json body
+func NewRequestResourceProvidersResourcesPatchRequest(server string, workspaceId string, providerId string, body RequestResourceProvidersResourcesPatchJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewSetResourceProvidersResourcesPatchRequestWithBody(server, workspaceId, providerId, "application/json", bodyReader)
+	return NewRequestResourceProvidersResourcesPatchRequestWithBody(server, workspaceId, providerId, "application/json", bodyReader)
 }
 
-// NewSetResourceProvidersResourcesPatchRequestWithBody generates requests for SetResourceProvidersResourcesPatch with any type of body
-func NewSetResourceProvidersResourcesPatchRequestWithBody(server string, workspaceId string, providerId string, contentType string, body io.Reader) (*http.Request, error) {
+// NewRequestResourceProvidersResourcesPatchRequestWithBody generates requests for RequestResourceProvidersResourcesPatch with any type of body
+func NewRequestResourceProvidersResourcesPatchRequestWithBody(server string, workspaceId string, providerId string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6263,19 +6153,19 @@ func NewSetResourceProvidersResourcesPatchRequestWithBody(server string, workspa
 	return req, nil
 }
 
-// NewSetResourceProvidersResourcesRequest calls the generic SetResourceProvidersResources builder with application/json body
-func NewSetResourceProvidersResourcesRequest(server string, workspaceId string, providerId string, body SetResourceProvidersResourcesJSONRequestBody) (*http.Request, error) {
+// NewRequestResourceProvidersResourcesRequest calls the generic RequestResourceProvidersResources builder with application/json body
+func NewRequestResourceProvidersResourcesRequest(server string, workspaceId string, providerId string, body RequestResourceProvidersResourcesJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewSetResourceProvidersResourcesRequestWithBody(server, workspaceId, providerId, "application/json", bodyReader)
+	return NewRequestResourceProvidersResourcesRequestWithBody(server, workspaceId, providerId, "application/json", bodyReader)
 }
 
-// NewSetResourceProvidersResourcesRequestWithBody generates requests for SetResourceProvidersResources with any type of body
-func NewSetResourceProvidersResourcesRequestWithBody(server string, workspaceId string, providerId string, contentType string, body io.Reader) (*http.Request, error) {
+// NewRequestResourceProvidersResourcesRequestWithBody generates requests for RequestResourceProvidersResources with any type of body
+func NewRequestResourceProvidersResourcesRequestWithBody(server string, workspaceId string, providerId string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6405,8 +6295,8 @@ func NewGetAllResourcesRequest(server string, workspaceId string, params *GetAll
 	return req, nil
 }
 
-// NewDeleteResourceByIdentifierRequest generates requests for DeleteResourceByIdentifier
-func NewDeleteResourceByIdentifierRequest(server string, workspaceId string, identifier string) (*http.Request, error) {
+// NewRequestResourceDeletionByIdentifierRequest generates requests for RequestResourceDeletionByIdentifier
+func NewRequestResourceDeletionByIdentifierRequest(server string, workspaceId string, identifier string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6566,19 +6456,19 @@ func NewGetVariablesForResourceRequest(server string, workspaceId string, identi
 	return req, nil
 }
 
-// NewUpdateVariablesForResourceRequest calls the generic UpdateVariablesForResource builder with application/json body
-func NewUpdateVariablesForResourceRequest(server string, workspaceId string, identifier string, body UpdateVariablesForResourceJSONRequestBody) (*http.Request, error) {
+// NewRequestResourceVariablesUpdateRequest calls the generic RequestResourceVariablesUpdate builder with application/json body
+func NewRequestResourceVariablesUpdateRequest(server string, workspaceId string, identifier string, body RequestResourceVariablesUpdateJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateVariablesForResourceRequestWithBody(server, workspaceId, identifier, "application/json", bodyReader)
+	return NewRequestResourceVariablesUpdateRequestWithBody(server, workspaceId, identifier, "application/json", bodyReader)
 }
 
-// NewUpdateVariablesForResourceRequestWithBody generates requests for UpdateVariablesForResource with any type of body
-func NewUpdateVariablesForResourceRequestWithBody(server string, workspaceId string, identifier string, contentType string, body io.Reader) (*http.Request, error) {
+// NewRequestResourceVariablesUpdateRequestWithBody generates requests for RequestResourceVariablesUpdate with any type of body
+func NewRequestResourceVariablesUpdateRequestWithBody(server string, workspaceId string, identifier string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6740,19 +6630,19 @@ func NewListSystemsRequest(server string, workspaceId string, params *ListSystem
 	return req, nil
 }
 
-// NewCreateSystemRequest calls the generic CreateSystem builder with application/json body
-func NewCreateSystemRequest(server string, workspaceId string, body CreateSystemJSONRequestBody) (*http.Request, error) {
+// NewRequestSystemCreationRequest calls the generic RequestSystemCreation builder with application/json body
+func NewRequestSystemCreationRequest(server string, workspaceId string, body RequestSystemCreationJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateSystemRequestWithBody(server, workspaceId, "application/json", bodyReader)
+	return NewRequestSystemCreationRequestWithBody(server, workspaceId, "application/json", bodyReader)
 }
 
-// NewCreateSystemRequestWithBody generates requests for CreateSystem with any type of body
-func NewCreateSystemRequestWithBody(server string, workspaceId string, contentType string, body io.Reader) (*http.Request, error) {
+// NewRequestSystemCreationRequestWithBody generates requests for RequestSystemCreation with any type of body
+func NewRequestSystemCreationRequestWithBody(server string, workspaceId string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6787,8 +6677,8 @@ func NewCreateSystemRequestWithBody(server string, workspaceId string, contentTy
 	return req, nil
 }
 
-// NewDeleteSystemRequest generates requests for DeleteSystem
-func NewDeleteSystemRequest(server string, workspaceId string, systemId string) (*http.Request, error) {
+// NewRequestSystemDeletionRequest generates requests for RequestSystemDeletion
+func NewRequestSystemDeletionRequest(server string, workspaceId string, systemId string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6869,19 +6759,19 @@ func NewGetSystemRequest(server string, workspaceId string, systemId string) (*h
 	return req, nil
 }
 
-// NewUpsertSystemByIdRequest calls the generic UpsertSystemById builder with application/json body
-func NewUpsertSystemByIdRequest(server string, workspaceId string, systemId string, body UpsertSystemByIdJSONRequestBody) (*http.Request, error) {
+// NewRequestSystemUpdateRequest calls the generic RequestSystemUpdate builder with application/json body
+func NewRequestSystemUpdateRequest(server string, workspaceId string, systemId string, body RequestSystemUpdateJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpsertSystemByIdRequestWithBody(server, workspaceId, systemId, "application/json", bodyReader)
+	return NewRequestSystemUpdateRequestWithBody(server, workspaceId, systemId, "application/json", bodyReader)
 }
 
-// NewUpsertSystemByIdRequestWithBody generates requests for UpsertSystemById with any type of body
-func NewUpsertSystemByIdRequestWithBody(server string, workspaceId string, systemId string, contentType string, body io.Reader) (*http.Request, error) {
+// NewRequestSystemUpdateRequestWithBody generates requests for RequestSystemUpdate with any type of body
+func NewRequestSystemUpdateRequestWithBody(server string, workspaceId string, systemId string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -7035,57 +6925,57 @@ type ClientWithResponsesInterface interface {
 
 	UpdateWorkspaceWithResponse(ctx context.Context, workspaceId openapi_types.UUID, body UpdateWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateWorkspaceResponse, error)
 
-	// CreateUserApprovalRecordWithBodyWithResponse request with any body
-	CreateUserApprovalRecordWithBodyWithResponse(ctx context.Context, workspaceId string, deploymentVersionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUserApprovalRecordResponse, error)
+	// RequestUserApprovalRecordUpdateWithBodyWithResponse request with any body
+	RequestUserApprovalRecordUpdateWithBodyWithResponse(ctx context.Context, workspaceId string, deploymentVersionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestUserApprovalRecordUpdateResponse, error)
 
-	CreateUserApprovalRecordWithResponse(ctx context.Context, workspaceId string, deploymentVersionId string, body CreateUserApprovalRecordJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateUserApprovalRecordResponse, error)
+	RequestUserApprovalRecordUpdateWithResponse(ctx context.Context, workspaceId string, deploymentVersionId string, body RequestUserApprovalRecordUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestUserApprovalRecordUpdateResponse, error)
 
 	// ListDeploymentsWithResponse request
 	ListDeploymentsWithResponse(ctx context.Context, workspaceId string, params *ListDeploymentsParams, reqEditors ...RequestEditorFn) (*ListDeploymentsResponse, error)
 
-	// CreateDeploymentWithBodyWithResponse request with any body
-	CreateDeploymentWithBodyWithResponse(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateDeploymentResponse, error)
+	// RequestDeploymentCreationWithBodyWithResponse request with any body
+	RequestDeploymentCreationWithBodyWithResponse(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestDeploymentCreationResponse, error)
 
-	CreateDeploymentWithResponse(ctx context.Context, workspaceId string, body CreateDeploymentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateDeploymentResponse, error)
+	RequestDeploymentCreationWithResponse(ctx context.Context, workspaceId string, body RequestDeploymentCreationJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestDeploymentCreationResponse, error)
 
-	// DeleteDeploymentWithResponse request
-	DeleteDeploymentWithResponse(ctx context.Context, workspaceId string, deploymentId string, reqEditors ...RequestEditorFn) (*DeleteDeploymentResponse, error)
+	// RequestDeploymentDeletionWithResponse request
+	RequestDeploymentDeletionWithResponse(ctx context.Context, workspaceId string, deploymentId string, reqEditors ...RequestEditorFn) (*RequestDeploymentDeletionResponse, error)
 
 	// GetDeploymentWithResponse request
 	GetDeploymentWithResponse(ctx context.Context, workspaceId string, deploymentId string, reqEditors ...RequestEditorFn) (*GetDeploymentResponse, error)
 
-	// UpsertDeploymentWithBodyWithResponse request with any body
-	UpsertDeploymentWithBodyWithResponse(ctx context.Context, workspaceId string, deploymentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpsertDeploymentResponse, error)
+	// RequestDeploymentUpdateWithBodyWithResponse request with any body
+	RequestDeploymentUpdateWithBodyWithResponse(ctx context.Context, workspaceId string, deploymentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestDeploymentUpdateResponse, error)
 
-	UpsertDeploymentWithResponse(ctx context.Context, workspaceId string, deploymentId string, body UpsertDeploymentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpsertDeploymentResponse, error)
+	RequestDeploymentUpdateWithResponse(ctx context.Context, workspaceId string, deploymentId string, body RequestDeploymentUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestDeploymentUpdateResponse, error)
 
 	// ListDeploymentVariablesWithResponse request
 	ListDeploymentVariablesWithResponse(ctx context.Context, workspaceId string, deploymentId string, params *ListDeploymentVariablesParams, reqEditors ...RequestEditorFn) (*ListDeploymentVariablesResponse, error)
 
-	// DeleteDeploymentVariableWithResponse request
-	DeleteDeploymentVariableWithResponse(ctx context.Context, workspaceId string, deploymentId string, variableId string, reqEditors ...RequestEditorFn) (*DeleteDeploymentVariableResponse, error)
+	// RequestDeploymentVariableDeletionWithResponse request
+	RequestDeploymentVariableDeletionWithResponse(ctx context.Context, workspaceId string, deploymentId string, variableId string, reqEditors ...RequestEditorFn) (*RequestDeploymentVariableDeletionResponse, error)
 
 	// GetDeploymentVariableWithResponse request
 	GetDeploymentVariableWithResponse(ctx context.Context, workspaceId string, deploymentId string, variableId string, reqEditors ...RequestEditorFn) (*GetDeploymentVariableResponse, error)
 
-	// UpsertDeploymentVariableWithBodyWithResponse request with any body
-	UpsertDeploymentVariableWithBodyWithResponse(ctx context.Context, workspaceId string, deploymentId string, variableId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpsertDeploymentVariableResponse, error)
+	// RequestDeploymentVariableUpdateWithBodyWithResponse request with any body
+	RequestDeploymentVariableUpdateWithBodyWithResponse(ctx context.Context, workspaceId string, deploymentId string, variableId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestDeploymentVariableUpdateResponse, error)
 
-	UpsertDeploymentVariableWithResponse(ctx context.Context, workspaceId string, deploymentId string, variableId string, body UpsertDeploymentVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*UpsertDeploymentVariableResponse, error)
+	RequestDeploymentVariableUpdateWithResponse(ctx context.Context, workspaceId string, deploymentId string, variableId string, body RequestDeploymentVariableUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestDeploymentVariableUpdateResponse, error)
 
 	// ListDeploymentVariableValuesWithResponse request
 	ListDeploymentVariableValuesWithResponse(ctx context.Context, workspaceId string, deploymentId string, variableId string, params *ListDeploymentVariableValuesParams, reqEditors ...RequestEditorFn) (*ListDeploymentVariableValuesResponse, error)
 
-	// DeleteDeploymentVariableValueWithResponse request
-	DeleteDeploymentVariableValueWithResponse(ctx context.Context, workspaceId string, deploymentId string, variableId string, valueId string, reqEditors ...RequestEditorFn) (*DeleteDeploymentVariableValueResponse, error)
+	// RequestDeploymentVariableValueDeletionWithResponse request
+	RequestDeploymentVariableValueDeletionWithResponse(ctx context.Context, workspaceId string, deploymentId string, variableId string, valueId string, reqEditors ...RequestEditorFn) (*RequestDeploymentVariableValueDeletionResponse, error)
 
 	// GetDeploymentVariableValueWithResponse request
 	GetDeploymentVariableValueWithResponse(ctx context.Context, workspaceId string, deploymentId string, variableId string, valueId string, reqEditors ...RequestEditorFn) (*GetDeploymentVariableValueResponse, error)
 
-	// UpsertDeploymentVariableValueWithBodyWithResponse request with any body
-	UpsertDeploymentVariableValueWithBodyWithResponse(ctx context.Context, workspaceId string, deploymentId string, variableId string, valueId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpsertDeploymentVariableValueResponse, error)
+	// RequestDeploymentVariableValueUpdateWithBodyWithResponse request with any body
+	RequestDeploymentVariableValueUpdateWithBodyWithResponse(ctx context.Context, workspaceId string, deploymentId string, variableId string, valueId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestDeploymentVariableValueUpdateResponse, error)
 
-	UpsertDeploymentVariableValueWithResponse(ctx context.Context, workspaceId string, deploymentId string, variableId string, valueId string, body UpsertDeploymentVariableValueJSONRequestBody, reqEditors ...RequestEditorFn) (*UpsertDeploymentVariableValueResponse, error)
+	RequestDeploymentVariableValueUpdateWithResponse(ctx context.Context, workspaceId string, deploymentId string, variableId string, valueId string, body RequestDeploymentVariableValueUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestDeploymentVariableValueUpdateResponse, error)
 
 	// ListDeploymentVersionsWithResponse request
 	ListDeploymentVersionsWithResponse(ctx context.Context, workspaceId string, deploymentId string, params *ListDeploymentVersionsParams, reqEditors ...RequestEditorFn) (*ListDeploymentVersionsResponse, error)
@@ -7103,35 +6993,35 @@ type ClientWithResponsesInterface interface {
 	// ListEnvironmentsWithResponse request
 	ListEnvironmentsWithResponse(ctx context.Context, workspaceId string, params *ListEnvironmentsParams, reqEditors ...RequestEditorFn) (*ListEnvironmentsResponse, error)
 
-	// CreateEnvironmentWithBodyWithResponse request with any body
-	CreateEnvironmentWithBodyWithResponse(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateEnvironmentResponse, error)
+	// RequestEnvironmentCreationWithBodyWithResponse request with any body
+	RequestEnvironmentCreationWithBodyWithResponse(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestEnvironmentCreationResponse, error)
 
-	CreateEnvironmentWithResponse(ctx context.Context, workspaceId string, body CreateEnvironmentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateEnvironmentResponse, error)
+	RequestEnvironmentCreationWithResponse(ctx context.Context, workspaceId string, body RequestEnvironmentCreationJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestEnvironmentCreationResponse, error)
 
-	// DeleteEnvironmentWithResponse request
-	DeleteEnvironmentWithResponse(ctx context.Context, workspaceId string, environmentId string, reqEditors ...RequestEditorFn) (*DeleteEnvironmentResponse, error)
+	// RequestEnvironmentDeletionWithResponse request
+	RequestEnvironmentDeletionWithResponse(ctx context.Context, workspaceId string, environmentId string, reqEditors ...RequestEditorFn) (*RequestEnvironmentDeletionResponse, error)
 
 	// GetEnvironmentWithResponse request
 	GetEnvironmentWithResponse(ctx context.Context, workspaceId string, environmentId string, reqEditors ...RequestEditorFn) (*GetEnvironmentResponse, error)
 
-	// UpsertEnvironmentByIdWithBodyWithResponse request with any body
-	UpsertEnvironmentByIdWithBodyWithResponse(ctx context.Context, workspaceId string, environmentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpsertEnvironmentByIdResponse, error)
+	// RequestEnvironmentUpdateWithBodyWithResponse request with any body
+	RequestEnvironmentUpdateWithBodyWithResponse(ctx context.Context, workspaceId string, environmentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestEnvironmentUpdateResponse, error)
 
-	UpsertEnvironmentByIdWithResponse(ctx context.Context, workspaceId string, environmentId string, body UpsertEnvironmentByIdJSONRequestBody, reqEditors ...RequestEditorFn) (*UpsertEnvironmentByIdResponse, error)
+	RequestEnvironmentUpdateWithResponse(ctx context.Context, workspaceId string, environmentId string, body RequestEnvironmentUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestEnvironmentUpdateResponse, error)
 
 	// ListJobAgentsWithResponse request
 	ListJobAgentsWithResponse(ctx context.Context, workspaceId string, params *ListJobAgentsParams, reqEditors ...RequestEditorFn) (*ListJobAgentsResponse, error)
 
-	// DeleteJobAgentWithResponse request
-	DeleteJobAgentWithResponse(ctx context.Context, workspaceId string, jobAgentId string, reqEditors ...RequestEditorFn) (*DeleteJobAgentResponse, error)
+	// RequestJobAgentDeletionWithResponse request
+	RequestJobAgentDeletionWithResponse(ctx context.Context, workspaceId string, jobAgentId string, reqEditors ...RequestEditorFn) (*RequestJobAgentDeletionResponse, error)
 
 	// GetJobAgentWithResponse request
 	GetJobAgentWithResponse(ctx context.Context, workspaceId string, jobAgentId string, reqEditors ...RequestEditorFn) (*GetJobAgentResponse, error)
 
-	// UpsertJobAgentWithBodyWithResponse request with any body
-	UpsertJobAgentWithBodyWithResponse(ctx context.Context, workspaceId string, jobAgentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpsertJobAgentResponse, error)
+	// RequestJobAgentUpdateWithBodyWithResponse request with any body
+	RequestJobAgentUpdateWithBodyWithResponse(ctx context.Context, workspaceId string, jobAgentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestJobAgentUpdateResponse, error)
 
-	UpsertJobAgentWithResponse(ctx context.Context, workspaceId string, jobAgentId string, body UpsertJobAgentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpsertJobAgentResponse, error)
+	RequestJobAgentUpdateWithResponse(ctx context.Context, workspaceId string, jobAgentId string, body RequestJobAgentUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestJobAgentUpdateResponse, error)
 
 	// GetJobsWithResponse request
 	GetJobsWithResponse(ctx context.Context, workspaceId string, params *GetJobsParams, reqEditors ...RequestEditorFn) (*GetJobsResponse, error)
@@ -7139,32 +7029,29 @@ type ClientWithResponsesInterface interface {
 	// GetJobWithResponse request
 	GetJobWithResponse(ctx context.Context, workspaceId string, jobId string, reqEditors ...RequestEditorFn) (*GetJobResponse, error)
 
-	// UpdateJobStatusWithBodyWithResponse request with any body
-	UpdateJobStatusWithBodyWithResponse(ctx context.Context, workspaceId string, jobId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateJobStatusResponse, error)
+	// RequestJobStatusUpdateWithBodyWithResponse request with any body
+	RequestJobStatusUpdateWithBodyWithResponse(ctx context.Context, workspaceId string, jobId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestJobStatusUpdateResponse, error)
 
-	UpdateJobStatusWithResponse(ctx context.Context, workspaceId string, jobId string, body UpdateJobStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateJobStatusResponse, error)
-
-	// GetJobWithReleaseWithResponse request
-	GetJobWithReleaseWithResponse(ctx context.Context, workspaceId string, jobId string, reqEditors ...RequestEditorFn) (*GetJobWithReleaseResponse, error)
+	RequestJobStatusUpdateWithResponse(ctx context.Context, workspaceId string, jobId string, body RequestJobStatusUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestJobStatusUpdateResponse, error)
 
 	// ListPoliciesWithResponse request
 	ListPoliciesWithResponse(ctx context.Context, workspaceId string, params *ListPoliciesParams, reqEditors ...RequestEditorFn) (*ListPoliciesResponse, error)
 
-	// CreatePolicyWithBodyWithResponse request with any body
-	CreatePolicyWithBodyWithResponse(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreatePolicyResponse, error)
+	// RequestPolicyCreationWithBodyWithResponse request with any body
+	RequestPolicyCreationWithBodyWithResponse(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestPolicyCreationResponse, error)
 
-	CreatePolicyWithResponse(ctx context.Context, workspaceId string, body CreatePolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*CreatePolicyResponse, error)
+	RequestPolicyCreationWithResponse(ctx context.Context, workspaceId string, body RequestPolicyCreationJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestPolicyCreationResponse, error)
 
-	// DeletePolicyWithResponse request
-	DeletePolicyWithResponse(ctx context.Context, workspaceId string, policyId string, reqEditors ...RequestEditorFn) (*DeletePolicyResponse, error)
+	// RequestPolicyDeletionWithResponse request
+	RequestPolicyDeletionWithResponse(ctx context.Context, workspaceId string, policyId string, reqEditors ...RequestEditorFn) (*RequestPolicyDeletionResponse, error)
 
 	// GetPolicyWithResponse request
 	GetPolicyWithResponse(ctx context.Context, workspaceId string, policyId string, reqEditors ...RequestEditorFn) (*GetPolicyResponse, error)
 
-	// UpsertPolicyWithBodyWithResponse request with any body
-	UpsertPolicyWithBodyWithResponse(ctx context.Context, workspaceId string, policyId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpsertPolicyResponse, error)
+	// RequestPolicyUpdateWithBodyWithResponse request with any body
+	RequestPolicyUpdateWithBodyWithResponse(ctx context.Context, workspaceId string, policyId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestPolicyUpdateResponse, error)
 
-	UpsertPolicyWithResponse(ctx context.Context, workspaceId string, policyId string, body UpsertPolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*UpsertPolicyResponse, error)
+	RequestPolicyUpdateWithResponse(ctx context.Context, workspaceId string, policyId string, body RequestPolicyUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestPolicyUpdateResponse, error)
 
 	// CreateRelationshipRuleWithBodyWithResponse request with any body
 	CreateRelationshipRuleWithBodyWithResponse(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateRelationshipRuleResponse, error)
@@ -7194,32 +7081,29 @@ type ClientWithResponsesInterface interface {
 	// GetReleaseWithResponse request
 	GetReleaseWithResponse(ctx context.Context, workspaceId string, releaseId string, reqEditors ...RequestEditorFn) (*GetReleaseResponse, error)
 
-	// GetReleaseVerificationsWithResponse request
-	GetReleaseVerificationsWithResponse(ctx context.Context, workspaceId string, releaseId string, reqEditors ...RequestEditorFn) (*GetReleaseVerificationsResponse, error)
+	// RequestResourceProviderUpsertWithBodyWithResponse request with any body
+	RequestResourceProviderUpsertWithBodyWithResponse(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestResourceProviderUpsertResponse, error)
 
-	// UpsertResourceProviderWithBodyWithResponse request with any body
-	UpsertResourceProviderWithBodyWithResponse(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpsertResourceProviderResponse, error)
-
-	UpsertResourceProviderWithResponse(ctx context.Context, workspaceId string, body UpsertResourceProviderJSONRequestBody, reqEditors ...RequestEditorFn) (*UpsertResourceProviderResponse, error)
+	RequestResourceProviderUpsertWithResponse(ctx context.Context, workspaceId string, body RequestResourceProviderUpsertJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestResourceProviderUpsertResponse, error)
 
 	// GetResourceProviderByNameWithResponse request
 	GetResourceProviderByNameWithResponse(ctx context.Context, workspaceId string, name string, reqEditors ...RequestEditorFn) (*GetResourceProviderByNameResponse, error)
 
-	// SetResourceProvidersResourcesPatchWithBodyWithResponse request with any body
-	SetResourceProvidersResourcesPatchWithBodyWithResponse(ctx context.Context, workspaceId string, providerId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetResourceProvidersResourcesPatchResponse, error)
+	// RequestResourceProvidersResourcesPatchWithBodyWithResponse request with any body
+	RequestResourceProvidersResourcesPatchWithBodyWithResponse(ctx context.Context, workspaceId string, providerId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestResourceProvidersResourcesPatchResponse, error)
 
-	SetResourceProvidersResourcesPatchWithResponse(ctx context.Context, workspaceId string, providerId string, body SetResourceProvidersResourcesPatchJSONRequestBody, reqEditors ...RequestEditorFn) (*SetResourceProvidersResourcesPatchResponse, error)
+	RequestResourceProvidersResourcesPatchWithResponse(ctx context.Context, workspaceId string, providerId string, body RequestResourceProvidersResourcesPatchJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestResourceProvidersResourcesPatchResponse, error)
 
-	// SetResourceProvidersResourcesWithBodyWithResponse request with any body
-	SetResourceProvidersResourcesWithBodyWithResponse(ctx context.Context, workspaceId string, providerId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetResourceProvidersResourcesResponse, error)
+	// RequestResourceProvidersResourcesWithBodyWithResponse request with any body
+	RequestResourceProvidersResourcesWithBodyWithResponse(ctx context.Context, workspaceId string, providerId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestResourceProvidersResourcesResponse, error)
 
-	SetResourceProvidersResourcesWithResponse(ctx context.Context, workspaceId string, providerId string, body SetResourceProvidersResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*SetResourceProvidersResourcesResponse, error)
+	RequestResourceProvidersResourcesWithResponse(ctx context.Context, workspaceId string, providerId string, body RequestResourceProvidersResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestResourceProvidersResourcesResponse, error)
 
 	// GetAllResourcesWithResponse request
 	GetAllResourcesWithResponse(ctx context.Context, workspaceId string, params *GetAllResourcesParams, reqEditors ...RequestEditorFn) (*GetAllResourcesResponse, error)
 
-	// DeleteResourceByIdentifierWithResponse request
-	DeleteResourceByIdentifierWithResponse(ctx context.Context, workspaceId string, identifier string, reqEditors ...RequestEditorFn) (*DeleteResourceByIdentifierResponse, error)
+	// RequestResourceDeletionByIdentifierWithResponse request
+	RequestResourceDeletionByIdentifierWithResponse(ctx context.Context, workspaceId string, identifier string, reqEditors ...RequestEditorFn) (*RequestResourceDeletionByIdentifierResponse, error)
 
 	// GetResourceByIdentifierWithResponse request
 	GetResourceByIdentifierWithResponse(ctx context.Context, workspaceId string, identifier string, reqEditors ...RequestEditorFn) (*GetResourceByIdentifierResponse, error)
@@ -7227,10 +7111,10 @@ type ClientWithResponsesInterface interface {
 	// GetVariablesForResourceWithResponse request
 	GetVariablesForResourceWithResponse(ctx context.Context, workspaceId string, identifier string, params *GetVariablesForResourceParams, reqEditors ...RequestEditorFn) (*GetVariablesForResourceResponse, error)
 
-	// UpdateVariablesForResourceWithBodyWithResponse request with any body
-	UpdateVariablesForResourceWithBodyWithResponse(ctx context.Context, workspaceId string, identifier string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateVariablesForResourceResponse, error)
+	// RequestResourceVariablesUpdateWithBodyWithResponse request with any body
+	RequestResourceVariablesUpdateWithBodyWithResponse(ctx context.Context, workspaceId string, identifier string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestResourceVariablesUpdateResponse, error)
 
-	UpdateVariablesForResourceWithResponse(ctx context.Context, workspaceId string, identifier string, body UpdateVariablesForResourceJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateVariablesForResourceResponse, error)
+	RequestResourceVariablesUpdateWithResponse(ctx context.Context, workspaceId string, identifier string, body RequestResourceVariablesUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestResourceVariablesUpdateResponse, error)
 
 	// GetReleaseTargetForResourceInDeploymentWithResponse request
 	GetReleaseTargetForResourceInDeploymentWithResponse(ctx context.Context, workspaceId string, resourceIdentifier string, deploymentId string, reqEditors ...RequestEditorFn) (*GetReleaseTargetForResourceInDeploymentResponse, error)
@@ -7238,21 +7122,21 @@ type ClientWithResponsesInterface interface {
 	// ListSystemsWithResponse request
 	ListSystemsWithResponse(ctx context.Context, workspaceId string, params *ListSystemsParams, reqEditors ...RequestEditorFn) (*ListSystemsResponse, error)
 
-	// CreateSystemWithBodyWithResponse request with any body
-	CreateSystemWithBodyWithResponse(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateSystemResponse, error)
+	// RequestSystemCreationWithBodyWithResponse request with any body
+	RequestSystemCreationWithBodyWithResponse(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestSystemCreationResponse, error)
 
-	CreateSystemWithResponse(ctx context.Context, workspaceId string, body CreateSystemJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateSystemResponse, error)
+	RequestSystemCreationWithResponse(ctx context.Context, workspaceId string, body RequestSystemCreationJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestSystemCreationResponse, error)
 
-	// DeleteSystemWithResponse request
-	DeleteSystemWithResponse(ctx context.Context, workspaceId string, systemId string, reqEditors ...RequestEditorFn) (*DeleteSystemResponse, error)
+	// RequestSystemDeletionWithResponse request
+	RequestSystemDeletionWithResponse(ctx context.Context, workspaceId string, systemId string, reqEditors ...RequestEditorFn) (*RequestSystemDeletionResponse, error)
 
 	// GetSystemWithResponse request
 	GetSystemWithResponse(ctx context.Context, workspaceId string, systemId string, reqEditors ...RequestEditorFn) (*GetSystemResponse, error)
 
-	// UpsertSystemByIdWithBodyWithResponse request with any body
-	UpsertSystemByIdWithBodyWithResponse(ctx context.Context, workspaceId string, systemId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpsertSystemByIdResponse, error)
+	// RequestSystemUpdateWithBodyWithResponse request with any body
+	RequestSystemUpdateWithBodyWithResponse(ctx context.Context, workspaceId string, systemId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestSystemUpdateResponse, error)
 
-	UpsertSystemByIdWithResponse(ctx context.Context, workspaceId string, systemId string, body UpsertSystemByIdJSONRequestBody, reqEditors ...RequestEditorFn) (*UpsertSystemByIdResponse, error)
+	RequestSystemUpdateWithResponse(ctx context.Context, workspaceId string, systemId string, body RequestSystemUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestSystemUpdateResponse, error)
 
 	// CreateWorkflowTemplateFromYamlWithBodyWithResponse request with any body
 	CreateWorkflowTemplateFromYamlWithBodyWithResponse(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateWorkflowTemplateFromYamlResponse, error)
@@ -7411,18 +7295,16 @@ func (r UpdateWorkspaceResponse) StatusCode() int {
 	return 0
 }
 
-type CreateUserApprovalRecordResponse struct {
+type RequestUserApprovalRecordUpdateResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *struct {
-		Success *bool `json:"success,omitempty"`
-	}
-	JSON400 *ErrorResponse
-	JSON404 *ErrorResponse
+	JSON202      *UserApprovalRecordRequestAccepted
+	JSON400      *ErrorResponse
+	JSON404      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
-func (r CreateUserApprovalRecordResponse) Status() string {
+func (r RequestUserApprovalRecordUpdateResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -7430,7 +7312,7 @@ func (r CreateUserApprovalRecordResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r CreateUserApprovalRecordResponse) StatusCode() int {
+func (r RequestUserApprovalRecordUpdateResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -7470,14 +7352,14 @@ func (r ListDeploymentsResponse) StatusCode() int {
 	return 0
 }
 
-type CreateDeploymentResponse struct {
+type RequestDeploymentCreationResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON202      *Deployment
+	JSON202      *DeploymentRequestAccepted
 }
 
 // Status returns HTTPResponse.Status
-func (r CreateDeploymentResponse) Status() string {
+func (r RequestDeploymentCreationResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -7485,21 +7367,23 @@ func (r CreateDeploymentResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r CreateDeploymentResponse) StatusCode() int {
+func (r RequestDeploymentCreationResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type DeleteDeploymentResponse struct {
+type RequestDeploymentDeletionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON202      *Deployment
+	JSON202      *DeploymentRequestAccepted
+	JSON400      *ErrorResponse
+	JSON404      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
-func (r DeleteDeploymentResponse) Status() string {
+func (r RequestDeploymentDeletionResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -7507,7 +7391,7 @@ func (r DeleteDeploymentResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r DeleteDeploymentResponse) StatusCode() int {
+func (r RequestDeploymentDeletionResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -7538,14 +7422,14 @@ func (r GetDeploymentResponse) StatusCode() int {
 	return 0
 }
 
-type UpsertDeploymentResponse struct {
+type RequestDeploymentUpdateResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON202      *Deployment
+	JSON202      *DeploymentRequestAccepted
 }
 
 // Status returns HTTPResponse.Status
-func (r UpsertDeploymentResponse) Status() string {
+func (r RequestDeploymentUpdateResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -7553,7 +7437,7 @@ func (r UpsertDeploymentResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r UpsertDeploymentResponse) StatusCode() int {
+func (r RequestDeploymentUpdateResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -7593,14 +7477,16 @@ func (r ListDeploymentVariablesResponse) StatusCode() int {
 	return 0
 }
 
-type DeleteDeploymentVariableResponse struct {
+type RequestDeploymentVariableDeletionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON202      *DeploymentVariable
+	JSON202      *DeploymentVariableRequestAccepted
+	JSON400      *ErrorResponse
+	JSON404      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
-func (r DeleteDeploymentVariableResponse) Status() string {
+func (r RequestDeploymentVariableDeletionResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -7608,7 +7494,7 @@ func (r DeleteDeploymentVariableResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r DeleteDeploymentVariableResponse) StatusCode() int {
+func (r RequestDeploymentVariableDeletionResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -7639,14 +7525,16 @@ func (r GetDeploymentVariableResponse) StatusCode() int {
 	return 0
 }
 
-type UpsertDeploymentVariableResponse struct {
+type RequestDeploymentVariableUpdateResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON202      *DeploymentVariable
+	JSON202      *DeploymentVariableRequestAccepted
+	JSON400      *ErrorResponse
+	JSON404      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
-func (r UpsertDeploymentVariableResponse) Status() string {
+func (r RequestDeploymentVariableUpdateResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -7654,7 +7542,7 @@ func (r UpsertDeploymentVariableResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r UpsertDeploymentVariableResponse) StatusCode() int {
+func (r RequestDeploymentVariableUpdateResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -7694,14 +7582,16 @@ func (r ListDeploymentVariableValuesResponse) StatusCode() int {
 	return 0
 }
 
-type DeleteDeploymentVariableValueResponse struct {
+type RequestDeploymentVariableValueDeletionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON202      *DeploymentVariableValue
+	JSON202      *DeploymentVariableValueRequestAccepted
+	JSON400      *ErrorResponse
+	JSON404      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
-func (r DeleteDeploymentVariableValueResponse) Status() string {
+func (r RequestDeploymentVariableValueDeletionResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -7709,7 +7599,7 @@ func (r DeleteDeploymentVariableValueResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r DeleteDeploymentVariableValueResponse) StatusCode() int {
+func (r RequestDeploymentVariableValueDeletionResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -7740,14 +7630,16 @@ func (r GetDeploymentVariableValueResponse) StatusCode() int {
 	return 0
 }
 
-type UpsertDeploymentVariableValueResponse struct {
+type RequestDeploymentVariableValueUpdateResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON202      *DeploymentVariableValue
+	JSON202      *DeploymentVariableValueRequestAccepted
+	JSON400      *ErrorResponse
+	JSON404      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
-func (r UpsertDeploymentVariableValueResponse) Status() string {
+func (r RequestDeploymentVariableValueUpdateResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -7755,7 +7647,7 @@ func (r UpsertDeploymentVariableValueResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r UpsertDeploymentVariableValueResponse) StatusCode() int {
+func (r RequestDeploymentVariableValueUpdateResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -7876,14 +7768,14 @@ func (r ListEnvironmentsResponse) StatusCode() int {
 	return 0
 }
 
-type CreateEnvironmentResponse struct {
+type RequestEnvironmentCreationResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON202      *Environment
+	JSON202      *EnvironmentRequestAccepted
 }
 
 // Status returns HTTPResponse.Status
-func (r CreateEnvironmentResponse) Status() string {
+func (r RequestEnvironmentCreationResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -7891,21 +7783,23 @@ func (r CreateEnvironmentResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r CreateEnvironmentResponse) StatusCode() int {
+func (r RequestEnvironmentCreationResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type DeleteEnvironmentResponse struct {
+type RequestEnvironmentDeletionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON202      *Environment
+	JSON202      *EnvironmentRequestAccepted
+	JSON400      *ErrorResponse
+	JSON404      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
-func (r DeleteEnvironmentResponse) Status() string {
+func (r RequestEnvironmentDeletionResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -7913,7 +7807,7 @@ func (r DeleteEnvironmentResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r DeleteEnvironmentResponse) StatusCode() int {
+func (r RequestEnvironmentDeletionResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -7944,16 +7838,16 @@ func (r GetEnvironmentResponse) StatusCode() int {
 	return 0
 }
 
-type UpsertEnvironmentByIdResponse struct {
+type RequestEnvironmentUpdateResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON202      *Environment
+	JSON202      *EnvironmentRequestAccepted
 	JSON400      *ErrorResponse
 	JSON404      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
-func (r UpsertEnvironmentByIdResponse) Status() string {
+func (r RequestEnvironmentUpdateResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -7961,7 +7855,7 @@ func (r UpsertEnvironmentByIdResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r UpsertEnvironmentByIdResponse) StatusCode() int {
+func (r RequestEnvironmentUpdateResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -8002,16 +7896,16 @@ func (r ListJobAgentsResponse) StatusCode() int {
 	return 0
 }
 
-type DeleteJobAgentResponse struct {
+type RequestJobAgentDeletionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON202      *JobAgent
+	JSON202      *JobAgentRequestAccepted
 	JSON400      *ErrorResponse
 	JSON404      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
-func (r DeleteJobAgentResponse) Status() string {
+func (r RequestJobAgentDeletionResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -8019,7 +7913,7 @@ func (r DeleteJobAgentResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r DeleteJobAgentResponse) StatusCode() int {
+func (r RequestJobAgentDeletionResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -8048,14 +7942,16 @@ func (r GetJobAgentResponse) StatusCode() int {
 	return 0
 }
 
-type UpsertJobAgentResponse struct {
+type RequestJobAgentUpdateResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON202      *JobAgent
+	JSON202      *JobAgentRequestAccepted
+	JSON400      *ErrorResponse
+	JSON404      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
-func (r UpsertJobAgentResponse) Status() string {
+func (r RequestJobAgentUpdateResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -8063,7 +7959,7 @@ func (r UpsertJobAgentResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r UpsertJobAgentResponse) StatusCode() int {
+func (r RequestJobAgentUpdateResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -8129,16 +8025,16 @@ func (r GetJobResponse) StatusCode() int {
 	return 0
 }
 
-type UpdateJobStatusResponse struct {
+type RequestJobStatusUpdateResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *Job
+	JSON202      *JobStatusRequestAccepted
 	JSON400      *ErrorResponse
 	JSON404      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
-func (r UpdateJobStatusResponse) Status() string {
+func (r RequestJobStatusUpdateResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -8146,31 +8042,7 @@ func (r UpdateJobStatusResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r UpdateJobStatusResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetJobWithReleaseResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *JobWithRelease
-	JSON400      *ErrorResponse
-	JSON404      *ErrorResponse
-}
-
-// Status returns HTTPResponse.Status
-func (r GetJobWithReleaseResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetJobWithReleaseResponse) StatusCode() int {
+func (r RequestJobStatusUpdateResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -8210,15 +8082,15 @@ func (r ListPoliciesResponse) StatusCode() int {
 	return 0
 }
 
-type CreatePolicyResponse struct {
+type RequestPolicyCreationResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON202      *Policy
+	JSON202      *PolicyRequestAccepted
 	JSON400      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
-func (r CreatePolicyResponse) Status() string {
+func (r RequestPolicyCreationResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -8226,23 +8098,23 @@ func (r CreatePolicyResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r CreatePolicyResponse) StatusCode() int {
+func (r RequestPolicyCreationResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type DeletePolicyResponse struct {
+type RequestPolicyDeletionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON202      *Policy
+	JSON202      *PolicyRequestAccepted
 	JSON400      *ErrorResponse
 	JSON404      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
-func (r DeletePolicyResponse) Status() string {
+func (r RequestPolicyDeletionResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -8250,7 +8122,7 @@ func (r DeletePolicyResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r DeletePolicyResponse) StatusCode() int {
+func (r RequestPolicyDeletionResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -8281,16 +8153,16 @@ func (r GetPolicyResponse) StatusCode() int {
 	return 0
 }
 
-type UpsertPolicyResponse struct {
+type RequestPolicyUpdateResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON202      *Policy
+	JSON202      *PolicyRequestAccepted
 	JSON400      *ErrorResponse
 	JSON404      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
-func (r UpsertPolicyResponse) Status() string {
+func (r RequestPolicyUpdateResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -8298,7 +8170,7 @@ func (r UpsertPolicyResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r UpsertPolicyResponse) StatusCode() int {
+func (r RequestPolicyUpdateResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -8508,16 +8380,15 @@ func (r GetReleaseResponse) StatusCode() int {
 	return 0
 }
 
-type GetReleaseVerificationsResponse struct {
+type RequestResourceProviderUpsertResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *[]JobVerification
+	JSON202      *ResourceProviderRequestAccepted
 	JSON400      *ErrorResponse
-	JSON404      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
-func (r GetReleaseVerificationsResponse) Status() string {
+func (r RequestResourceProviderUpsertResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -8525,29 +8396,7 @@ func (r GetReleaseVerificationsResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r GetReleaseVerificationsResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type UpsertResourceProviderResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *ResourceProvider
-}
-
-// Status returns HTTPResponse.Status
-func (r UpsertResourceProviderResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r UpsertResourceProviderResponse) StatusCode() int {
+func (r RequestResourceProviderUpsertResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -8576,14 +8425,16 @@ func (r GetResourceProviderByNameResponse) StatusCode() int {
 	return 0
 }
 
-type SetResourceProvidersResourcesPatchResponse struct {
+type RequestResourceProvidersResourcesPatchResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON202      *map[string]interface{}
+	JSON202      *ResourceProviderRequestAccepted
+	JSON400      *ErrorResponse
+	JSON404      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
-func (r SetResourceProvidersResourcesPatchResponse) Status() string {
+func (r RequestResourceProvidersResourcesPatchResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -8591,21 +8442,23 @@ func (r SetResourceProvidersResourcesPatchResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r SetResourceProvidersResourcesPatchResponse) StatusCode() int {
+func (r RequestResourceProvidersResourcesPatchResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type SetResourceProvidersResourcesResponse struct {
+type RequestResourceProvidersResourcesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON202      *map[string]interface{}
+	JSON202      *ResourceProviderRequestAccepted
+	JSON400      *ErrorResponse
+	JSON404      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
-func (r SetResourceProvidersResourcesResponse) Status() string {
+func (r RequestResourceProvidersResourcesResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -8613,7 +8466,7 @@ func (r SetResourceProvidersResourcesResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r SetResourceProvidersResourcesResponse) StatusCode() int {
+func (r RequestResourceProvidersResourcesResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -8653,15 +8506,16 @@ func (r GetAllResourcesResponse) StatusCode() int {
 	return 0
 }
 
-type DeleteResourceByIdentifierResponse struct {
+type RequestResourceDeletionByIdentifierResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON202      *ResourceRequestAccepted
 	JSON400      *ErrorResponse
 	JSON404      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
-func (r DeleteResourceByIdentifierResponse) Status() string {
+func (r RequestResourceDeletionByIdentifierResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -8669,7 +8523,7 @@ func (r DeleteResourceByIdentifierResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r DeleteResourceByIdentifierResponse) StatusCode() int {
+func (r RequestResourceDeletionByIdentifierResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -8733,16 +8587,16 @@ func (r GetVariablesForResourceResponse) StatusCode() int {
 	return 0
 }
 
-type UpdateVariablesForResourceResponse struct {
+type RequestResourceVariablesUpdateResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON202      *map[string]interface{}
+	JSON202      *ResourceRequestAccepted
 	JSON400      *ErrorResponse
 	JSON404      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
-func (r UpdateVariablesForResourceResponse) Status() string {
+func (r RequestResourceVariablesUpdateResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -8750,7 +8604,7 @@ func (r UpdateVariablesForResourceResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r UpdateVariablesForResourceResponse) StatusCode() int {
+func (r RequestResourceVariablesUpdateResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -8814,14 +8668,14 @@ func (r ListSystemsResponse) StatusCode() int {
 	return 0
 }
 
-type CreateSystemResponse struct {
+type RequestSystemCreationResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON202      *System
+	JSON202      *SystemRequestAccepted
 }
 
 // Status returns HTTPResponse.Status
-func (r CreateSystemResponse) Status() string {
+func (r RequestSystemCreationResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -8829,23 +8683,23 @@ func (r CreateSystemResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r CreateSystemResponse) StatusCode() int {
+func (r RequestSystemCreationResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type DeleteSystemResponse struct {
+type RequestSystemDeletionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON202      *System
+	JSON202      *SystemRequestAccepted
 	JSON400      *ErrorResponse
 	JSON404      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
-func (r DeleteSystemResponse) Status() string {
+func (r RequestSystemDeletionResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -8853,7 +8707,7 @@ func (r DeleteSystemResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r DeleteSystemResponse) StatusCode() int {
+func (r RequestSystemDeletionResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -8884,14 +8738,14 @@ func (r GetSystemResponse) StatusCode() int {
 	return 0
 }
 
-type UpsertSystemByIdResponse struct {
+type RequestSystemUpdateResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON202      *System
+	JSON202      *SystemRequestAccepted
 }
 
 // Status returns HTTPResponse.Status
-func (r UpsertSystemByIdResponse) Status() string {
+func (r RequestSystemUpdateResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -8899,7 +8753,7 @@ func (r UpsertSystemByIdResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r UpsertSystemByIdResponse) StatusCode() int {
+func (r RequestSystemUpdateResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -8999,21 +8853,21 @@ func (c *ClientWithResponses) UpdateWorkspaceWithResponse(ctx context.Context, w
 	return ParseUpdateWorkspaceResponse(rsp)
 }
 
-// CreateUserApprovalRecordWithBodyWithResponse request with arbitrary body returning *CreateUserApprovalRecordResponse
-func (c *ClientWithResponses) CreateUserApprovalRecordWithBodyWithResponse(ctx context.Context, workspaceId string, deploymentVersionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUserApprovalRecordResponse, error) {
-	rsp, err := c.CreateUserApprovalRecordWithBody(ctx, workspaceId, deploymentVersionId, contentType, body, reqEditors...)
+// RequestUserApprovalRecordUpdateWithBodyWithResponse request with arbitrary body returning *RequestUserApprovalRecordUpdateResponse
+func (c *ClientWithResponses) RequestUserApprovalRecordUpdateWithBodyWithResponse(ctx context.Context, workspaceId string, deploymentVersionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestUserApprovalRecordUpdateResponse, error) {
+	rsp, err := c.RequestUserApprovalRecordUpdateWithBody(ctx, workspaceId, deploymentVersionId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseCreateUserApprovalRecordResponse(rsp)
+	return ParseRequestUserApprovalRecordUpdateResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateUserApprovalRecordWithResponse(ctx context.Context, workspaceId string, deploymentVersionId string, body CreateUserApprovalRecordJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateUserApprovalRecordResponse, error) {
-	rsp, err := c.CreateUserApprovalRecord(ctx, workspaceId, deploymentVersionId, body, reqEditors...)
+func (c *ClientWithResponses) RequestUserApprovalRecordUpdateWithResponse(ctx context.Context, workspaceId string, deploymentVersionId string, body RequestUserApprovalRecordUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestUserApprovalRecordUpdateResponse, error) {
+	rsp, err := c.RequestUserApprovalRecordUpdate(ctx, workspaceId, deploymentVersionId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseCreateUserApprovalRecordResponse(rsp)
+	return ParseRequestUserApprovalRecordUpdateResponse(rsp)
 }
 
 // ListDeploymentsWithResponse request returning *ListDeploymentsResponse
@@ -9025,30 +8879,30 @@ func (c *ClientWithResponses) ListDeploymentsWithResponse(ctx context.Context, w
 	return ParseListDeploymentsResponse(rsp)
 }
 
-// CreateDeploymentWithBodyWithResponse request with arbitrary body returning *CreateDeploymentResponse
-func (c *ClientWithResponses) CreateDeploymentWithBodyWithResponse(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateDeploymentResponse, error) {
-	rsp, err := c.CreateDeploymentWithBody(ctx, workspaceId, contentType, body, reqEditors...)
+// RequestDeploymentCreationWithBodyWithResponse request with arbitrary body returning *RequestDeploymentCreationResponse
+func (c *ClientWithResponses) RequestDeploymentCreationWithBodyWithResponse(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestDeploymentCreationResponse, error) {
+	rsp, err := c.RequestDeploymentCreationWithBody(ctx, workspaceId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseCreateDeploymentResponse(rsp)
+	return ParseRequestDeploymentCreationResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateDeploymentWithResponse(ctx context.Context, workspaceId string, body CreateDeploymentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateDeploymentResponse, error) {
-	rsp, err := c.CreateDeployment(ctx, workspaceId, body, reqEditors...)
+func (c *ClientWithResponses) RequestDeploymentCreationWithResponse(ctx context.Context, workspaceId string, body RequestDeploymentCreationJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestDeploymentCreationResponse, error) {
+	rsp, err := c.RequestDeploymentCreation(ctx, workspaceId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseCreateDeploymentResponse(rsp)
+	return ParseRequestDeploymentCreationResponse(rsp)
 }
 
-// DeleteDeploymentWithResponse request returning *DeleteDeploymentResponse
-func (c *ClientWithResponses) DeleteDeploymentWithResponse(ctx context.Context, workspaceId string, deploymentId string, reqEditors ...RequestEditorFn) (*DeleteDeploymentResponse, error) {
-	rsp, err := c.DeleteDeployment(ctx, workspaceId, deploymentId, reqEditors...)
+// RequestDeploymentDeletionWithResponse request returning *RequestDeploymentDeletionResponse
+func (c *ClientWithResponses) RequestDeploymentDeletionWithResponse(ctx context.Context, workspaceId string, deploymentId string, reqEditors ...RequestEditorFn) (*RequestDeploymentDeletionResponse, error) {
+	rsp, err := c.RequestDeploymentDeletion(ctx, workspaceId, deploymentId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseDeleteDeploymentResponse(rsp)
+	return ParseRequestDeploymentDeletionResponse(rsp)
 }
 
 // GetDeploymentWithResponse request returning *GetDeploymentResponse
@@ -9060,21 +8914,21 @@ func (c *ClientWithResponses) GetDeploymentWithResponse(ctx context.Context, wor
 	return ParseGetDeploymentResponse(rsp)
 }
 
-// UpsertDeploymentWithBodyWithResponse request with arbitrary body returning *UpsertDeploymentResponse
-func (c *ClientWithResponses) UpsertDeploymentWithBodyWithResponse(ctx context.Context, workspaceId string, deploymentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpsertDeploymentResponse, error) {
-	rsp, err := c.UpsertDeploymentWithBody(ctx, workspaceId, deploymentId, contentType, body, reqEditors...)
+// RequestDeploymentUpdateWithBodyWithResponse request with arbitrary body returning *RequestDeploymentUpdateResponse
+func (c *ClientWithResponses) RequestDeploymentUpdateWithBodyWithResponse(ctx context.Context, workspaceId string, deploymentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestDeploymentUpdateResponse, error) {
+	rsp, err := c.RequestDeploymentUpdateWithBody(ctx, workspaceId, deploymentId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUpsertDeploymentResponse(rsp)
+	return ParseRequestDeploymentUpdateResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpsertDeploymentWithResponse(ctx context.Context, workspaceId string, deploymentId string, body UpsertDeploymentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpsertDeploymentResponse, error) {
-	rsp, err := c.UpsertDeployment(ctx, workspaceId, deploymentId, body, reqEditors...)
+func (c *ClientWithResponses) RequestDeploymentUpdateWithResponse(ctx context.Context, workspaceId string, deploymentId string, body RequestDeploymentUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestDeploymentUpdateResponse, error) {
+	rsp, err := c.RequestDeploymentUpdate(ctx, workspaceId, deploymentId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUpsertDeploymentResponse(rsp)
+	return ParseRequestDeploymentUpdateResponse(rsp)
 }
 
 // ListDeploymentVariablesWithResponse request returning *ListDeploymentVariablesResponse
@@ -9086,13 +8940,13 @@ func (c *ClientWithResponses) ListDeploymentVariablesWithResponse(ctx context.Co
 	return ParseListDeploymentVariablesResponse(rsp)
 }
 
-// DeleteDeploymentVariableWithResponse request returning *DeleteDeploymentVariableResponse
-func (c *ClientWithResponses) DeleteDeploymentVariableWithResponse(ctx context.Context, workspaceId string, deploymentId string, variableId string, reqEditors ...RequestEditorFn) (*DeleteDeploymentVariableResponse, error) {
-	rsp, err := c.DeleteDeploymentVariable(ctx, workspaceId, deploymentId, variableId, reqEditors...)
+// RequestDeploymentVariableDeletionWithResponse request returning *RequestDeploymentVariableDeletionResponse
+func (c *ClientWithResponses) RequestDeploymentVariableDeletionWithResponse(ctx context.Context, workspaceId string, deploymentId string, variableId string, reqEditors ...RequestEditorFn) (*RequestDeploymentVariableDeletionResponse, error) {
+	rsp, err := c.RequestDeploymentVariableDeletion(ctx, workspaceId, deploymentId, variableId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseDeleteDeploymentVariableResponse(rsp)
+	return ParseRequestDeploymentVariableDeletionResponse(rsp)
 }
 
 // GetDeploymentVariableWithResponse request returning *GetDeploymentVariableResponse
@@ -9104,21 +8958,21 @@ func (c *ClientWithResponses) GetDeploymentVariableWithResponse(ctx context.Cont
 	return ParseGetDeploymentVariableResponse(rsp)
 }
 
-// UpsertDeploymentVariableWithBodyWithResponse request with arbitrary body returning *UpsertDeploymentVariableResponse
-func (c *ClientWithResponses) UpsertDeploymentVariableWithBodyWithResponse(ctx context.Context, workspaceId string, deploymentId string, variableId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpsertDeploymentVariableResponse, error) {
-	rsp, err := c.UpsertDeploymentVariableWithBody(ctx, workspaceId, deploymentId, variableId, contentType, body, reqEditors...)
+// RequestDeploymentVariableUpdateWithBodyWithResponse request with arbitrary body returning *RequestDeploymentVariableUpdateResponse
+func (c *ClientWithResponses) RequestDeploymentVariableUpdateWithBodyWithResponse(ctx context.Context, workspaceId string, deploymentId string, variableId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestDeploymentVariableUpdateResponse, error) {
+	rsp, err := c.RequestDeploymentVariableUpdateWithBody(ctx, workspaceId, deploymentId, variableId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUpsertDeploymentVariableResponse(rsp)
+	return ParseRequestDeploymentVariableUpdateResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpsertDeploymentVariableWithResponse(ctx context.Context, workspaceId string, deploymentId string, variableId string, body UpsertDeploymentVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*UpsertDeploymentVariableResponse, error) {
-	rsp, err := c.UpsertDeploymentVariable(ctx, workspaceId, deploymentId, variableId, body, reqEditors...)
+func (c *ClientWithResponses) RequestDeploymentVariableUpdateWithResponse(ctx context.Context, workspaceId string, deploymentId string, variableId string, body RequestDeploymentVariableUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestDeploymentVariableUpdateResponse, error) {
+	rsp, err := c.RequestDeploymentVariableUpdate(ctx, workspaceId, deploymentId, variableId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUpsertDeploymentVariableResponse(rsp)
+	return ParseRequestDeploymentVariableUpdateResponse(rsp)
 }
 
 // ListDeploymentVariableValuesWithResponse request returning *ListDeploymentVariableValuesResponse
@@ -9130,13 +8984,13 @@ func (c *ClientWithResponses) ListDeploymentVariableValuesWithResponse(ctx conte
 	return ParseListDeploymentVariableValuesResponse(rsp)
 }
 
-// DeleteDeploymentVariableValueWithResponse request returning *DeleteDeploymentVariableValueResponse
-func (c *ClientWithResponses) DeleteDeploymentVariableValueWithResponse(ctx context.Context, workspaceId string, deploymentId string, variableId string, valueId string, reqEditors ...RequestEditorFn) (*DeleteDeploymentVariableValueResponse, error) {
-	rsp, err := c.DeleteDeploymentVariableValue(ctx, workspaceId, deploymentId, variableId, valueId, reqEditors...)
+// RequestDeploymentVariableValueDeletionWithResponse request returning *RequestDeploymentVariableValueDeletionResponse
+func (c *ClientWithResponses) RequestDeploymentVariableValueDeletionWithResponse(ctx context.Context, workspaceId string, deploymentId string, variableId string, valueId string, reqEditors ...RequestEditorFn) (*RequestDeploymentVariableValueDeletionResponse, error) {
+	rsp, err := c.RequestDeploymentVariableValueDeletion(ctx, workspaceId, deploymentId, variableId, valueId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseDeleteDeploymentVariableValueResponse(rsp)
+	return ParseRequestDeploymentVariableValueDeletionResponse(rsp)
 }
 
 // GetDeploymentVariableValueWithResponse request returning *GetDeploymentVariableValueResponse
@@ -9148,21 +9002,21 @@ func (c *ClientWithResponses) GetDeploymentVariableValueWithResponse(ctx context
 	return ParseGetDeploymentVariableValueResponse(rsp)
 }
 
-// UpsertDeploymentVariableValueWithBodyWithResponse request with arbitrary body returning *UpsertDeploymentVariableValueResponse
-func (c *ClientWithResponses) UpsertDeploymentVariableValueWithBodyWithResponse(ctx context.Context, workspaceId string, deploymentId string, variableId string, valueId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpsertDeploymentVariableValueResponse, error) {
-	rsp, err := c.UpsertDeploymentVariableValueWithBody(ctx, workspaceId, deploymentId, variableId, valueId, contentType, body, reqEditors...)
+// RequestDeploymentVariableValueUpdateWithBodyWithResponse request with arbitrary body returning *RequestDeploymentVariableValueUpdateResponse
+func (c *ClientWithResponses) RequestDeploymentVariableValueUpdateWithBodyWithResponse(ctx context.Context, workspaceId string, deploymentId string, variableId string, valueId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestDeploymentVariableValueUpdateResponse, error) {
+	rsp, err := c.RequestDeploymentVariableValueUpdateWithBody(ctx, workspaceId, deploymentId, variableId, valueId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUpsertDeploymentVariableValueResponse(rsp)
+	return ParseRequestDeploymentVariableValueUpdateResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpsertDeploymentVariableValueWithResponse(ctx context.Context, workspaceId string, deploymentId string, variableId string, valueId string, body UpsertDeploymentVariableValueJSONRequestBody, reqEditors ...RequestEditorFn) (*UpsertDeploymentVariableValueResponse, error) {
-	rsp, err := c.UpsertDeploymentVariableValue(ctx, workspaceId, deploymentId, variableId, valueId, body, reqEditors...)
+func (c *ClientWithResponses) RequestDeploymentVariableValueUpdateWithResponse(ctx context.Context, workspaceId string, deploymentId string, variableId string, valueId string, body RequestDeploymentVariableValueUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestDeploymentVariableValueUpdateResponse, error) {
+	rsp, err := c.RequestDeploymentVariableValueUpdate(ctx, workspaceId, deploymentId, variableId, valueId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUpsertDeploymentVariableValueResponse(rsp)
+	return ParseRequestDeploymentVariableValueUpdateResponse(rsp)
 }
 
 // ListDeploymentVersionsWithResponse request returning *ListDeploymentVersionsResponse
@@ -9217,30 +9071,30 @@ func (c *ClientWithResponses) ListEnvironmentsWithResponse(ctx context.Context, 
 	return ParseListEnvironmentsResponse(rsp)
 }
 
-// CreateEnvironmentWithBodyWithResponse request with arbitrary body returning *CreateEnvironmentResponse
-func (c *ClientWithResponses) CreateEnvironmentWithBodyWithResponse(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateEnvironmentResponse, error) {
-	rsp, err := c.CreateEnvironmentWithBody(ctx, workspaceId, contentType, body, reqEditors...)
+// RequestEnvironmentCreationWithBodyWithResponse request with arbitrary body returning *RequestEnvironmentCreationResponse
+func (c *ClientWithResponses) RequestEnvironmentCreationWithBodyWithResponse(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestEnvironmentCreationResponse, error) {
+	rsp, err := c.RequestEnvironmentCreationWithBody(ctx, workspaceId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseCreateEnvironmentResponse(rsp)
+	return ParseRequestEnvironmentCreationResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateEnvironmentWithResponse(ctx context.Context, workspaceId string, body CreateEnvironmentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateEnvironmentResponse, error) {
-	rsp, err := c.CreateEnvironment(ctx, workspaceId, body, reqEditors...)
+func (c *ClientWithResponses) RequestEnvironmentCreationWithResponse(ctx context.Context, workspaceId string, body RequestEnvironmentCreationJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestEnvironmentCreationResponse, error) {
+	rsp, err := c.RequestEnvironmentCreation(ctx, workspaceId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseCreateEnvironmentResponse(rsp)
+	return ParseRequestEnvironmentCreationResponse(rsp)
 }
 
-// DeleteEnvironmentWithResponse request returning *DeleteEnvironmentResponse
-func (c *ClientWithResponses) DeleteEnvironmentWithResponse(ctx context.Context, workspaceId string, environmentId string, reqEditors ...RequestEditorFn) (*DeleteEnvironmentResponse, error) {
-	rsp, err := c.DeleteEnvironment(ctx, workspaceId, environmentId, reqEditors...)
+// RequestEnvironmentDeletionWithResponse request returning *RequestEnvironmentDeletionResponse
+func (c *ClientWithResponses) RequestEnvironmentDeletionWithResponse(ctx context.Context, workspaceId string, environmentId string, reqEditors ...RequestEditorFn) (*RequestEnvironmentDeletionResponse, error) {
+	rsp, err := c.RequestEnvironmentDeletion(ctx, workspaceId, environmentId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseDeleteEnvironmentResponse(rsp)
+	return ParseRequestEnvironmentDeletionResponse(rsp)
 }
 
 // GetEnvironmentWithResponse request returning *GetEnvironmentResponse
@@ -9252,21 +9106,21 @@ func (c *ClientWithResponses) GetEnvironmentWithResponse(ctx context.Context, wo
 	return ParseGetEnvironmentResponse(rsp)
 }
 
-// UpsertEnvironmentByIdWithBodyWithResponse request with arbitrary body returning *UpsertEnvironmentByIdResponse
-func (c *ClientWithResponses) UpsertEnvironmentByIdWithBodyWithResponse(ctx context.Context, workspaceId string, environmentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpsertEnvironmentByIdResponse, error) {
-	rsp, err := c.UpsertEnvironmentByIdWithBody(ctx, workspaceId, environmentId, contentType, body, reqEditors...)
+// RequestEnvironmentUpdateWithBodyWithResponse request with arbitrary body returning *RequestEnvironmentUpdateResponse
+func (c *ClientWithResponses) RequestEnvironmentUpdateWithBodyWithResponse(ctx context.Context, workspaceId string, environmentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestEnvironmentUpdateResponse, error) {
+	rsp, err := c.RequestEnvironmentUpdateWithBody(ctx, workspaceId, environmentId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUpsertEnvironmentByIdResponse(rsp)
+	return ParseRequestEnvironmentUpdateResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpsertEnvironmentByIdWithResponse(ctx context.Context, workspaceId string, environmentId string, body UpsertEnvironmentByIdJSONRequestBody, reqEditors ...RequestEditorFn) (*UpsertEnvironmentByIdResponse, error) {
-	rsp, err := c.UpsertEnvironmentById(ctx, workspaceId, environmentId, body, reqEditors...)
+func (c *ClientWithResponses) RequestEnvironmentUpdateWithResponse(ctx context.Context, workspaceId string, environmentId string, body RequestEnvironmentUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestEnvironmentUpdateResponse, error) {
+	rsp, err := c.RequestEnvironmentUpdate(ctx, workspaceId, environmentId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUpsertEnvironmentByIdResponse(rsp)
+	return ParseRequestEnvironmentUpdateResponse(rsp)
 }
 
 // ListJobAgentsWithResponse request returning *ListJobAgentsResponse
@@ -9278,13 +9132,13 @@ func (c *ClientWithResponses) ListJobAgentsWithResponse(ctx context.Context, wor
 	return ParseListJobAgentsResponse(rsp)
 }
 
-// DeleteJobAgentWithResponse request returning *DeleteJobAgentResponse
-func (c *ClientWithResponses) DeleteJobAgentWithResponse(ctx context.Context, workspaceId string, jobAgentId string, reqEditors ...RequestEditorFn) (*DeleteJobAgentResponse, error) {
-	rsp, err := c.DeleteJobAgent(ctx, workspaceId, jobAgentId, reqEditors...)
+// RequestJobAgentDeletionWithResponse request returning *RequestJobAgentDeletionResponse
+func (c *ClientWithResponses) RequestJobAgentDeletionWithResponse(ctx context.Context, workspaceId string, jobAgentId string, reqEditors ...RequestEditorFn) (*RequestJobAgentDeletionResponse, error) {
+	rsp, err := c.RequestJobAgentDeletion(ctx, workspaceId, jobAgentId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseDeleteJobAgentResponse(rsp)
+	return ParseRequestJobAgentDeletionResponse(rsp)
 }
 
 // GetJobAgentWithResponse request returning *GetJobAgentResponse
@@ -9296,21 +9150,21 @@ func (c *ClientWithResponses) GetJobAgentWithResponse(ctx context.Context, works
 	return ParseGetJobAgentResponse(rsp)
 }
 
-// UpsertJobAgentWithBodyWithResponse request with arbitrary body returning *UpsertJobAgentResponse
-func (c *ClientWithResponses) UpsertJobAgentWithBodyWithResponse(ctx context.Context, workspaceId string, jobAgentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpsertJobAgentResponse, error) {
-	rsp, err := c.UpsertJobAgentWithBody(ctx, workspaceId, jobAgentId, contentType, body, reqEditors...)
+// RequestJobAgentUpdateWithBodyWithResponse request with arbitrary body returning *RequestJobAgentUpdateResponse
+func (c *ClientWithResponses) RequestJobAgentUpdateWithBodyWithResponse(ctx context.Context, workspaceId string, jobAgentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestJobAgentUpdateResponse, error) {
+	rsp, err := c.RequestJobAgentUpdateWithBody(ctx, workspaceId, jobAgentId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUpsertJobAgentResponse(rsp)
+	return ParseRequestJobAgentUpdateResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpsertJobAgentWithResponse(ctx context.Context, workspaceId string, jobAgentId string, body UpsertJobAgentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpsertJobAgentResponse, error) {
-	rsp, err := c.UpsertJobAgent(ctx, workspaceId, jobAgentId, body, reqEditors...)
+func (c *ClientWithResponses) RequestJobAgentUpdateWithResponse(ctx context.Context, workspaceId string, jobAgentId string, body RequestJobAgentUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestJobAgentUpdateResponse, error) {
+	rsp, err := c.RequestJobAgentUpdate(ctx, workspaceId, jobAgentId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUpsertJobAgentResponse(rsp)
+	return ParseRequestJobAgentUpdateResponse(rsp)
 }
 
 // GetJobsWithResponse request returning *GetJobsResponse
@@ -9331,30 +9185,21 @@ func (c *ClientWithResponses) GetJobWithResponse(ctx context.Context, workspaceI
 	return ParseGetJobResponse(rsp)
 }
 
-// UpdateJobStatusWithBodyWithResponse request with arbitrary body returning *UpdateJobStatusResponse
-func (c *ClientWithResponses) UpdateJobStatusWithBodyWithResponse(ctx context.Context, workspaceId string, jobId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateJobStatusResponse, error) {
-	rsp, err := c.UpdateJobStatusWithBody(ctx, workspaceId, jobId, contentType, body, reqEditors...)
+// RequestJobStatusUpdateWithBodyWithResponse request with arbitrary body returning *RequestJobStatusUpdateResponse
+func (c *ClientWithResponses) RequestJobStatusUpdateWithBodyWithResponse(ctx context.Context, workspaceId string, jobId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestJobStatusUpdateResponse, error) {
+	rsp, err := c.RequestJobStatusUpdateWithBody(ctx, workspaceId, jobId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUpdateJobStatusResponse(rsp)
+	return ParseRequestJobStatusUpdateResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateJobStatusWithResponse(ctx context.Context, workspaceId string, jobId string, body UpdateJobStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateJobStatusResponse, error) {
-	rsp, err := c.UpdateJobStatus(ctx, workspaceId, jobId, body, reqEditors...)
+func (c *ClientWithResponses) RequestJobStatusUpdateWithResponse(ctx context.Context, workspaceId string, jobId string, body RequestJobStatusUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestJobStatusUpdateResponse, error) {
+	rsp, err := c.RequestJobStatusUpdate(ctx, workspaceId, jobId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUpdateJobStatusResponse(rsp)
-}
-
-// GetJobWithReleaseWithResponse request returning *GetJobWithReleaseResponse
-func (c *ClientWithResponses) GetJobWithReleaseWithResponse(ctx context.Context, workspaceId string, jobId string, reqEditors ...RequestEditorFn) (*GetJobWithReleaseResponse, error) {
-	rsp, err := c.GetJobWithRelease(ctx, workspaceId, jobId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetJobWithReleaseResponse(rsp)
+	return ParseRequestJobStatusUpdateResponse(rsp)
 }
 
 // ListPoliciesWithResponse request returning *ListPoliciesResponse
@@ -9366,30 +9211,30 @@ func (c *ClientWithResponses) ListPoliciesWithResponse(ctx context.Context, work
 	return ParseListPoliciesResponse(rsp)
 }
 
-// CreatePolicyWithBodyWithResponse request with arbitrary body returning *CreatePolicyResponse
-func (c *ClientWithResponses) CreatePolicyWithBodyWithResponse(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreatePolicyResponse, error) {
-	rsp, err := c.CreatePolicyWithBody(ctx, workspaceId, contentType, body, reqEditors...)
+// RequestPolicyCreationWithBodyWithResponse request with arbitrary body returning *RequestPolicyCreationResponse
+func (c *ClientWithResponses) RequestPolicyCreationWithBodyWithResponse(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestPolicyCreationResponse, error) {
+	rsp, err := c.RequestPolicyCreationWithBody(ctx, workspaceId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseCreatePolicyResponse(rsp)
+	return ParseRequestPolicyCreationResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreatePolicyWithResponse(ctx context.Context, workspaceId string, body CreatePolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*CreatePolicyResponse, error) {
-	rsp, err := c.CreatePolicy(ctx, workspaceId, body, reqEditors...)
+func (c *ClientWithResponses) RequestPolicyCreationWithResponse(ctx context.Context, workspaceId string, body RequestPolicyCreationJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestPolicyCreationResponse, error) {
+	rsp, err := c.RequestPolicyCreation(ctx, workspaceId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseCreatePolicyResponse(rsp)
+	return ParseRequestPolicyCreationResponse(rsp)
 }
 
-// DeletePolicyWithResponse request returning *DeletePolicyResponse
-func (c *ClientWithResponses) DeletePolicyWithResponse(ctx context.Context, workspaceId string, policyId string, reqEditors ...RequestEditorFn) (*DeletePolicyResponse, error) {
-	rsp, err := c.DeletePolicy(ctx, workspaceId, policyId, reqEditors...)
+// RequestPolicyDeletionWithResponse request returning *RequestPolicyDeletionResponse
+func (c *ClientWithResponses) RequestPolicyDeletionWithResponse(ctx context.Context, workspaceId string, policyId string, reqEditors ...RequestEditorFn) (*RequestPolicyDeletionResponse, error) {
+	rsp, err := c.RequestPolicyDeletion(ctx, workspaceId, policyId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseDeletePolicyResponse(rsp)
+	return ParseRequestPolicyDeletionResponse(rsp)
 }
 
 // GetPolicyWithResponse request returning *GetPolicyResponse
@@ -9401,21 +9246,21 @@ func (c *ClientWithResponses) GetPolicyWithResponse(ctx context.Context, workspa
 	return ParseGetPolicyResponse(rsp)
 }
 
-// UpsertPolicyWithBodyWithResponse request with arbitrary body returning *UpsertPolicyResponse
-func (c *ClientWithResponses) UpsertPolicyWithBodyWithResponse(ctx context.Context, workspaceId string, policyId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpsertPolicyResponse, error) {
-	rsp, err := c.UpsertPolicyWithBody(ctx, workspaceId, policyId, contentType, body, reqEditors...)
+// RequestPolicyUpdateWithBodyWithResponse request with arbitrary body returning *RequestPolicyUpdateResponse
+func (c *ClientWithResponses) RequestPolicyUpdateWithBodyWithResponse(ctx context.Context, workspaceId string, policyId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestPolicyUpdateResponse, error) {
+	rsp, err := c.RequestPolicyUpdateWithBody(ctx, workspaceId, policyId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUpsertPolicyResponse(rsp)
+	return ParseRequestPolicyUpdateResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpsertPolicyWithResponse(ctx context.Context, workspaceId string, policyId string, body UpsertPolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*UpsertPolicyResponse, error) {
-	rsp, err := c.UpsertPolicy(ctx, workspaceId, policyId, body, reqEditors...)
+func (c *ClientWithResponses) RequestPolicyUpdateWithResponse(ctx context.Context, workspaceId string, policyId string, body RequestPolicyUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestPolicyUpdateResponse, error) {
+	rsp, err := c.RequestPolicyUpdate(ctx, workspaceId, policyId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUpsertPolicyResponse(rsp)
+	return ParseRequestPolicyUpdateResponse(rsp)
 }
 
 // CreateRelationshipRuleWithBodyWithResponse request with arbitrary body returning *CreateRelationshipRuleResponse
@@ -9506,30 +9351,21 @@ func (c *ClientWithResponses) GetReleaseWithResponse(ctx context.Context, worksp
 	return ParseGetReleaseResponse(rsp)
 }
 
-// GetReleaseVerificationsWithResponse request returning *GetReleaseVerificationsResponse
-func (c *ClientWithResponses) GetReleaseVerificationsWithResponse(ctx context.Context, workspaceId string, releaseId string, reqEditors ...RequestEditorFn) (*GetReleaseVerificationsResponse, error) {
-	rsp, err := c.GetReleaseVerifications(ctx, workspaceId, releaseId, reqEditors...)
+// RequestResourceProviderUpsertWithBodyWithResponse request with arbitrary body returning *RequestResourceProviderUpsertResponse
+func (c *ClientWithResponses) RequestResourceProviderUpsertWithBodyWithResponse(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestResourceProviderUpsertResponse, error) {
+	rsp, err := c.RequestResourceProviderUpsertWithBody(ctx, workspaceId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseGetReleaseVerificationsResponse(rsp)
+	return ParseRequestResourceProviderUpsertResponse(rsp)
 }
 
-// UpsertResourceProviderWithBodyWithResponse request with arbitrary body returning *UpsertResourceProviderResponse
-func (c *ClientWithResponses) UpsertResourceProviderWithBodyWithResponse(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpsertResourceProviderResponse, error) {
-	rsp, err := c.UpsertResourceProviderWithBody(ctx, workspaceId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) RequestResourceProviderUpsertWithResponse(ctx context.Context, workspaceId string, body RequestResourceProviderUpsertJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestResourceProviderUpsertResponse, error) {
+	rsp, err := c.RequestResourceProviderUpsert(ctx, workspaceId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUpsertResourceProviderResponse(rsp)
-}
-
-func (c *ClientWithResponses) UpsertResourceProviderWithResponse(ctx context.Context, workspaceId string, body UpsertResourceProviderJSONRequestBody, reqEditors ...RequestEditorFn) (*UpsertResourceProviderResponse, error) {
-	rsp, err := c.UpsertResourceProvider(ctx, workspaceId, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseUpsertResourceProviderResponse(rsp)
+	return ParseRequestResourceProviderUpsertResponse(rsp)
 }
 
 // GetResourceProviderByNameWithResponse request returning *GetResourceProviderByNameResponse
@@ -9541,38 +9377,38 @@ func (c *ClientWithResponses) GetResourceProviderByNameWithResponse(ctx context.
 	return ParseGetResourceProviderByNameResponse(rsp)
 }
 
-// SetResourceProvidersResourcesPatchWithBodyWithResponse request with arbitrary body returning *SetResourceProvidersResourcesPatchResponse
-func (c *ClientWithResponses) SetResourceProvidersResourcesPatchWithBodyWithResponse(ctx context.Context, workspaceId string, providerId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetResourceProvidersResourcesPatchResponse, error) {
-	rsp, err := c.SetResourceProvidersResourcesPatchWithBody(ctx, workspaceId, providerId, contentType, body, reqEditors...)
+// RequestResourceProvidersResourcesPatchWithBodyWithResponse request with arbitrary body returning *RequestResourceProvidersResourcesPatchResponse
+func (c *ClientWithResponses) RequestResourceProvidersResourcesPatchWithBodyWithResponse(ctx context.Context, workspaceId string, providerId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestResourceProvidersResourcesPatchResponse, error) {
+	rsp, err := c.RequestResourceProvidersResourcesPatchWithBody(ctx, workspaceId, providerId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseSetResourceProvidersResourcesPatchResponse(rsp)
+	return ParseRequestResourceProvidersResourcesPatchResponse(rsp)
 }
 
-func (c *ClientWithResponses) SetResourceProvidersResourcesPatchWithResponse(ctx context.Context, workspaceId string, providerId string, body SetResourceProvidersResourcesPatchJSONRequestBody, reqEditors ...RequestEditorFn) (*SetResourceProvidersResourcesPatchResponse, error) {
-	rsp, err := c.SetResourceProvidersResourcesPatch(ctx, workspaceId, providerId, body, reqEditors...)
+func (c *ClientWithResponses) RequestResourceProvidersResourcesPatchWithResponse(ctx context.Context, workspaceId string, providerId string, body RequestResourceProvidersResourcesPatchJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestResourceProvidersResourcesPatchResponse, error) {
+	rsp, err := c.RequestResourceProvidersResourcesPatch(ctx, workspaceId, providerId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseSetResourceProvidersResourcesPatchResponse(rsp)
+	return ParseRequestResourceProvidersResourcesPatchResponse(rsp)
 }
 
-// SetResourceProvidersResourcesWithBodyWithResponse request with arbitrary body returning *SetResourceProvidersResourcesResponse
-func (c *ClientWithResponses) SetResourceProvidersResourcesWithBodyWithResponse(ctx context.Context, workspaceId string, providerId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetResourceProvidersResourcesResponse, error) {
-	rsp, err := c.SetResourceProvidersResourcesWithBody(ctx, workspaceId, providerId, contentType, body, reqEditors...)
+// RequestResourceProvidersResourcesWithBodyWithResponse request with arbitrary body returning *RequestResourceProvidersResourcesResponse
+func (c *ClientWithResponses) RequestResourceProvidersResourcesWithBodyWithResponse(ctx context.Context, workspaceId string, providerId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestResourceProvidersResourcesResponse, error) {
+	rsp, err := c.RequestResourceProvidersResourcesWithBody(ctx, workspaceId, providerId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseSetResourceProvidersResourcesResponse(rsp)
+	return ParseRequestResourceProvidersResourcesResponse(rsp)
 }
 
-func (c *ClientWithResponses) SetResourceProvidersResourcesWithResponse(ctx context.Context, workspaceId string, providerId string, body SetResourceProvidersResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*SetResourceProvidersResourcesResponse, error) {
-	rsp, err := c.SetResourceProvidersResources(ctx, workspaceId, providerId, body, reqEditors...)
+func (c *ClientWithResponses) RequestResourceProvidersResourcesWithResponse(ctx context.Context, workspaceId string, providerId string, body RequestResourceProvidersResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestResourceProvidersResourcesResponse, error) {
+	rsp, err := c.RequestResourceProvidersResources(ctx, workspaceId, providerId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseSetResourceProvidersResourcesResponse(rsp)
+	return ParseRequestResourceProvidersResourcesResponse(rsp)
 }
 
 // GetAllResourcesWithResponse request returning *GetAllResourcesResponse
@@ -9584,13 +9420,13 @@ func (c *ClientWithResponses) GetAllResourcesWithResponse(ctx context.Context, w
 	return ParseGetAllResourcesResponse(rsp)
 }
 
-// DeleteResourceByIdentifierWithResponse request returning *DeleteResourceByIdentifierResponse
-func (c *ClientWithResponses) DeleteResourceByIdentifierWithResponse(ctx context.Context, workspaceId string, identifier string, reqEditors ...RequestEditorFn) (*DeleteResourceByIdentifierResponse, error) {
-	rsp, err := c.DeleteResourceByIdentifier(ctx, workspaceId, identifier, reqEditors...)
+// RequestResourceDeletionByIdentifierWithResponse request returning *RequestResourceDeletionByIdentifierResponse
+func (c *ClientWithResponses) RequestResourceDeletionByIdentifierWithResponse(ctx context.Context, workspaceId string, identifier string, reqEditors ...RequestEditorFn) (*RequestResourceDeletionByIdentifierResponse, error) {
+	rsp, err := c.RequestResourceDeletionByIdentifier(ctx, workspaceId, identifier, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseDeleteResourceByIdentifierResponse(rsp)
+	return ParseRequestResourceDeletionByIdentifierResponse(rsp)
 }
 
 // GetResourceByIdentifierWithResponse request returning *GetResourceByIdentifierResponse
@@ -9611,21 +9447,21 @@ func (c *ClientWithResponses) GetVariablesForResourceWithResponse(ctx context.Co
 	return ParseGetVariablesForResourceResponse(rsp)
 }
 
-// UpdateVariablesForResourceWithBodyWithResponse request with arbitrary body returning *UpdateVariablesForResourceResponse
-func (c *ClientWithResponses) UpdateVariablesForResourceWithBodyWithResponse(ctx context.Context, workspaceId string, identifier string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateVariablesForResourceResponse, error) {
-	rsp, err := c.UpdateVariablesForResourceWithBody(ctx, workspaceId, identifier, contentType, body, reqEditors...)
+// RequestResourceVariablesUpdateWithBodyWithResponse request with arbitrary body returning *RequestResourceVariablesUpdateResponse
+func (c *ClientWithResponses) RequestResourceVariablesUpdateWithBodyWithResponse(ctx context.Context, workspaceId string, identifier string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestResourceVariablesUpdateResponse, error) {
+	rsp, err := c.RequestResourceVariablesUpdateWithBody(ctx, workspaceId, identifier, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUpdateVariablesForResourceResponse(rsp)
+	return ParseRequestResourceVariablesUpdateResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateVariablesForResourceWithResponse(ctx context.Context, workspaceId string, identifier string, body UpdateVariablesForResourceJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateVariablesForResourceResponse, error) {
-	rsp, err := c.UpdateVariablesForResource(ctx, workspaceId, identifier, body, reqEditors...)
+func (c *ClientWithResponses) RequestResourceVariablesUpdateWithResponse(ctx context.Context, workspaceId string, identifier string, body RequestResourceVariablesUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestResourceVariablesUpdateResponse, error) {
+	rsp, err := c.RequestResourceVariablesUpdate(ctx, workspaceId, identifier, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUpdateVariablesForResourceResponse(rsp)
+	return ParseRequestResourceVariablesUpdateResponse(rsp)
 }
 
 // GetReleaseTargetForResourceInDeploymentWithResponse request returning *GetReleaseTargetForResourceInDeploymentResponse
@@ -9646,30 +9482,30 @@ func (c *ClientWithResponses) ListSystemsWithResponse(ctx context.Context, works
 	return ParseListSystemsResponse(rsp)
 }
 
-// CreateSystemWithBodyWithResponse request with arbitrary body returning *CreateSystemResponse
-func (c *ClientWithResponses) CreateSystemWithBodyWithResponse(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateSystemResponse, error) {
-	rsp, err := c.CreateSystemWithBody(ctx, workspaceId, contentType, body, reqEditors...)
+// RequestSystemCreationWithBodyWithResponse request with arbitrary body returning *RequestSystemCreationResponse
+func (c *ClientWithResponses) RequestSystemCreationWithBodyWithResponse(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestSystemCreationResponse, error) {
+	rsp, err := c.RequestSystemCreationWithBody(ctx, workspaceId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseCreateSystemResponse(rsp)
+	return ParseRequestSystemCreationResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateSystemWithResponse(ctx context.Context, workspaceId string, body CreateSystemJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateSystemResponse, error) {
-	rsp, err := c.CreateSystem(ctx, workspaceId, body, reqEditors...)
+func (c *ClientWithResponses) RequestSystemCreationWithResponse(ctx context.Context, workspaceId string, body RequestSystemCreationJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestSystemCreationResponse, error) {
+	rsp, err := c.RequestSystemCreation(ctx, workspaceId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseCreateSystemResponse(rsp)
+	return ParseRequestSystemCreationResponse(rsp)
 }
 
-// DeleteSystemWithResponse request returning *DeleteSystemResponse
-func (c *ClientWithResponses) DeleteSystemWithResponse(ctx context.Context, workspaceId string, systemId string, reqEditors ...RequestEditorFn) (*DeleteSystemResponse, error) {
-	rsp, err := c.DeleteSystem(ctx, workspaceId, systemId, reqEditors...)
+// RequestSystemDeletionWithResponse request returning *RequestSystemDeletionResponse
+func (c *ClientWithResponses) RequestSystemDeletionWithResponse(ctx context.Context, workspaceId string, systemId string, reqEditors ...RequestEditorFn) (*RequestSystemDeletionResponse, error) {
+	rsp, err := c.RequestSystemDeletion(ctx, workspaceId, systemId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseDeleteSystemResponse(rsp)
+	return ParseRequestSystemDeletionResponse(rsp)
 }
 
 // GetSystemWithResponse request returning *GetSystemResponse
@@ -9681,21 +9517,21 @@ func (c *ClientWithResponses) GetSystemWithResponse(ctx context.Context, workspa
 	return ParseGetSystemResponse(rsp)
 }
 
-// UpsertSystemByIdWithBodyWithResponse request with arbitrary body returning *UpsertSystemByIdResponse
-func (c *ClientWithResponses) UpsertSystemByIdWithBodyWithResponse(ctx context.Context, workspaceId string, systemId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpsertSystemByIdResponse, error) {
-	rsp, err := c.UpsertSystemByIdWithBody(ctx, workspaceId, systemId, contentType, body, reqEditors...)
+// RequestSystemUpdateWithBodyWithResponse request with arbitrary body returning *RequestSystemUpdateResponse
+func (c *ClientWithResponses) RequestSystemUpdateWithBodyWithResponse(ctx context.Context, workspaceId string, systemId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestSystemUpdateResponse, error) {
+	rsp, err := c.RequestSystemUpdateWithBody(ctx, workspaceId, systemId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUpsertSystemByIdResponse(rsp)
+	return ParseRequestSystemUpdateResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpsertSystemByIdWithResponse(ctx context.Context, workspaceId string, systemId string, body UpsertSystemByIdJSONRequestBody, reqEditors ...RequestEditorFn) (*UpsertSystemByIdResponse, error) {
-	rsp, err := c.UpsertSystemById(ctx, workspaceId, systemId, body, reqEditors...)
+func (c *ClientWithResponses) RequestSystemUpdateWithResponse(ctx context.Context, workspaceId string, systemId string, body RequestSystemUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestSystemUpdateResponse, error) {
+	rsp, err := c.RequestSystemUpdate(ctx, workspaceId, systemId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUpsertSystemByIdResponse(rsp)
+	return ParseRequestSystemUpdateResponse(rsp)
 }
 
 // CreateWorkflowTemplateFromYamlWithBodyWithResponse request with arbitrary body returning *CreateWorkflowTemplateFromYamlResponse
@@ -10004,28 +9840,26 @@ func ParseUpdateWorkspaceResponse(rsp *http.Response) (*UpdateWorkspaceResponse,
 	return response, nil
 }
 
-// ParseCreateUserApprovalRecordResponse parses an HTTP response from a CreateUserApprovalRecordWithResponse call
-func ParseCreateUserApprovalRecordResponse(rsp *http.Response) (*CreateUserApprovalRecordResponse, error) {
+// ParseRequestUserApprovalRecordUpdateResponse parses an HTTP response from a RequestUserApprovalRecordUpdateWithResponse call
+func ParseRequestUserApprovalRecordUpdateResponse(rsp *http.Response) (*RequestUserApprovalRecordUpdateResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &CreateUserApprovalRecordResponse{
+	response := &RequestUserApprovalRecordUpdateResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest struct {
-			Success *bool `json:"success,omitempty"`
-		}
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest UserApprovalRecordRequestAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON202 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest ErrorResponse
@@ -10083,22 +9917,22 @@ func ParseListDeploymentsResponse(rsp *http.Response) (*ListDeploymentsResponse,
 	return response, nil
 }
 
-// ParseCreateDeploymentResponse parses an HTTP response from a CreateDeploymentWithResponse call
-func ParseCreateDeploymentResponse(rsp *http.Response) (*CreateDeploymentResponse, error) {
+// ParseRequestDeploymentCreationResponse parses an HTTP response from a RequestDeploymentCreationWithResponse call
+func ParseRequestDeploymentCreationResponse(rsp *http.Response) (*RequestDeploymentCreationResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &CreateDeploymentResponse{
+	response := &RequestDeploymentCreationResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest Deployment
+		var dest DeploymentRequestAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -10109,26 +9943,40 @@ func ParseCreateDeploymentResponse(rsp *http.Response) (*CreateDeploymentRespons
 	return response, nil
 }
 
-// ParseDeleteDeploymentResponse parses an HTTP response from a DeleteDeploymentWithResponse call
-func ParseDeleteDeploymentResponse(rsp *http.Response) (*DeleteDeploymentResponse, error) {
+// ParseRequestDeploymentDeletionResponse parses an HTTP response from a RequestDeploymentDeletionWithResponse call
+func ParseRequestDeploymentDeletionResponse(rsp *http.Response) (*RequestDeploymentDeletionResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &DeleteDeploymentResponse{
+	response := &RequestDeploymentDeletionResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest Deployment
+		var dest DeploymentRequestAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 
@@ -10175,22 +10023,22 @@ func ParseGetDeploymentResponse(rsp *http.Response) (*GetDeploymentResponse, err
 	return response, nil
 }
 
-// ParseUpsertDeploymentResponse parses an HTTP response from a UpsertDeploymentWithResponse call
-func ParseUpsertDeploymentResponse(rsp *http.Response) (*UpsertDeploymentResponse, error) {
+// ParseRequestDeploymentUpdateResponse parses an HTTP response from a RequestDeploymentUpdateWithResponse call
+func ParseRequestDeploymentUpdateResponse(rsp *http.Response) (*RequestDeploymentUpdateResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &UpsertDeploymentResponse{
+	response := &RequestDeploymentUpdateResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest Deployment
+		var dest DeploymentRequestAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -10238,26 +10086,40 @@ func ParseListDeploymentVariablesResponse(rsp *http.Response) (*ListDeploymentVa
 	return response, nil
 }
 
-// ParseDeleteDeploymentVariableResponse parses an HTTP response from a DeleteDeploymentVariableWithResponse call
-func ParseDeleteDeploymentVariableResponse(rsp *http.Response) (*DeleteDeploymentVariableResponse, error) {
+// ParseRequestDeploymentVariableDeletionResponse parses an HTTP response from a RequestDeploymentVariableDeletionWithResponse call
+func ParseRequestDeploymentVariableDeletionResponse(rsp *http.Response) (*RequestDeploymentVariableDeletionResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &DeleteDeploymentVariableResponse{
+	response := &RequestDeploymentVariableDeletionResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest DeploymentVariable
+		var dest DeploymentVariableRequestAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 
@@ -10304,26 +10166,40 @@ func ParseGetDeploymentVariableResponse(rsp *http.Response) (*GetDeploymentVaria
 	return response, nil
 }
 
-// ParseUpsertDeploymentVariableResponse parses an HTTP response from a UpsertDeploymentVariableWithResponse call
-func ParseUpsertDeploymentVariableResponse(rsp *http.Response) (*UpsertDeploymentVariableResponse, error) {
+// ParseRequestDeploymentVariableUpdateResponse parses an HTTP response from a RequestDeploymentVariableUpdateWithResponse call
+func ParseRequestDeploymentVariableUpdateResponse(rsp *http.Response) (*RequestDeploymentVariableUpdateResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &UpsertDeploymentVariableResponse{
+	response := &RequestDeploymentVariableUpdateResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest DeploymentVariable
+		var dest DeploymentVariableRequestAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 
@@ -10367,26 +10243,40 @@ func ParseListDeploymentVariableValuesResponse(rsp *http.Response) (*ListDeploym
 	return response, nil
 }
 
-// ParseDeleteDeploymentVariableValueResponse parses an HTTP response from a DeleteDeploymentVariableValueWithResponse call
-func ParseDeleteDeploymentVariableValueResponse(rsp *http.Response) (*DeleteDeploymentVariableValueResponse, error) {
+// ParseRequestDeploymentVariableValueDeletionResponse parses an HTTP response from a RequestDeploymentVariableValueDeletionWithResponse call
+func ParseRequestDeploymentVariableValueDeletionResponse(rsp *http.Response) (*RequestDeploymentVariableValueDeletionResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &DeleteDeploymentVariableValueResponse{
+	response := &RequestDeploymentVariableValueDeletionResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest DeploymentVariableValue
+		var dest DeploymentVariableValueRequestAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 
@@ -10433,26 +10323,40 @@ func ParseGetDeploymentVariableValueResponse(rsp *http.Response) (*GetDeployment
 	return response, nil
 }
 
-// ParseUpsertDeploymentVariableValueResponse parses an HTTP response from a UpsertDeploymentVariableValueWithResponse call
-func ParseUpsertDeploymentVariableValueResponse(rsp *http.Response) (*UpsertDeploymentVariableValueResponse, error) {
+// ParseRequestDeploymentVariableValueUpdateResponse parses an HTTP response from a RequestDeploymentVariableValueUpdateWithResponse call
+func ParseRequestDeploymentVariableValueUpdateResponse(rsp *http.Response) (*RequestDeploymentVariableValueUpdateResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &UpsertDeploymentVariableValueResponse{
+	response := &RequestDeploymentVariableValueUpdateResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest DeploymentVariableValue
+		var dest DeploymentVariableValueRequestAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 
@@ -10613,22 +10517,22 @@ func ParseListEnvironmentsResponse(rsp *http.Response) (*ListEnvironmentsRespons
 	return response, nil
 }
 
-// ParseCreateEnvironmentResponse parses an HTTP response from a CreateEnvironmentWithResponse call
-func ParseCreateEnvironmentResponse(rsp *http.Response) (*CreateEnvironmentResponse, error) {
+// ParseRequestEnvironmentCreationResponse parses an HTTP response from a RequestEnvironmentCreationWithResponse call
+func ParseRequestEnvironmentCreationResponse(rsp *http.Response) (*RequestEnvironmentCreationResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &CreateEnvironmentResponse{
+	response := &RequestEnvironmentCreationResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest Environment
+		var dest EnvironmentRequestAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -10639,26 +10543,40 @@ func ParseCreateEnvironmentResponse(rsp *http.Response) (*CreateEnvironmentRespo
 	return response, nil
 }
 
-// ParseDeleteEnvironmentResponse parses an HTTP response from a DeleteEnvironmentWithResponse call
-func ParseDeleteEnvironmentResponse(rsp *http.Response) (*DeleteEnvironmentResponse, error) {
+// ParseRequestEnvironmentDeletionResponse parses an HTTP response from a RequestEnvironmentDeletionWithResponse call
+func ParseRequestEnvironmentDeletionResponse(rsp *http.Response) (*RequestEnvironmentDeletionResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &DeleteEnvironmentResponse{
+	response := &RequestEnvironmentDeletionResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest Environment
+		var dest EnvironmentRequestAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 
@@ -10705,22 +10623,22 @@ func ParseGetEnvironmentResponse(rsp *http.Response) (*GetEnvironmentResponse, e
 	return response, nil
 }
 
-// ParseUpsertEnvironmentByIdResponse parses an HTTP response from a UpsertEnvironmentByIdWithResponse call
-func ParseUpsertEnvironmentByIdResponse(rsp *http.Response) (*UpsertEnvironmentByIdResponse, error) {
+// ParseRequestEnvironmentUpdateResponse parses an HTTP response from a RequestEnvironmentUpdateWithResponse call
+func ParseRequestEnvironmentUpdateResponse(rsp *http.Response) (*RequestEnvironmentUpdateResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &UpsertEnvironmentByIdResponse{
+	response := &RequestEnvironmentUpdateResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest Environment
+		var dest EnvironmentRequestAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -10789,22 +10707,22 @@ func ParseListJobAgentsResponse(rsp *http.Response) (*ListJobAgentsResponse, err
 	return response, nil
 }
 
-// ParseDeleteJobAgentResponse parses an HTTP response from a DeleteJobAgentWithResponse call
-func ParseDeleteJobAgentResponse(rsp *http.Response) (*DeleteJobAgentResponse, error) {
+// ParseRequestJobAgentDeletionResponse parses an HTTP response from a RequestJobAgentDeletionWithResponse call
+func ParseRequestJobAgentDeletionResponse(rsp *http.Response) (*RequestJobAgentDeletionResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &DeleteJobAgentResponse{
+	response := &RequestJobAgentDeletionResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest JobAgent
+		var dest JobAgentRequestAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -10855,26 +10773,40 @@ func ParseGetJobAgentResponse(rsp *http.Response) (*GetJobAgentResponse, error) 
 	return response, nil
 }
 
-// ParseUpsertJobAgentResponse parses an HTTP response from a UpsertJobAgentWithResponse call
-func ParseUpsertJobAgentResponse(rsp *http.Response) (*UpsertJobAgentResponse, error) {
+// ParseRequestJobAgentUpdateResponse parses an HTTP response from a RequestJobAgentUpdateWithResponse call
+func ParseRequestJobAgentUpdateResponse(rsp *http.Response) (*RequestJobAgentUpdateResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &UpsertJobAgentResponse{
+	response := &RequestJobAgentUpdateResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest JobAgent
+		var dest JobAgentRequestAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 
@@ -10972,66 +10904,26 @@ func ParseGetJobResponse(rsp *http.Response) (*GetJobResponse, error) {
 	return response, nil
 }
 
-// ParseUpdateJobStatusResponse parses an HTTP response from a UpdateJobStatusWithResponse call
-func ParseUpdateJobStatusResponse(rsp *http.Response) (*UpdateJobStatusResponse, error) {
+// ParseRequestJobStatusUpdateResponse parses an HTTP response from a RequestJobStatusUpdateWithResponse call
+func ParseRequestJobStatusUpdateResponse(rsp *http.Response) (*RequestJobStatusUpdateResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &UpdateJobStatusResponse{
+	response := &RequestJobStatusUpdateResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Job
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest JobStatusRequestAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetJobWithReleaseResponse parses an HTTP response from a GetJobWithReleaseWithResponse call
-func ParseGetJobWithReleaseResponse(rsp *http.Response) (*GetJobWithReleaseResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetJobWithReleaseResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest JobWithRelease
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
+		response.JSON202 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest ErrorResponse
@@ -11089,22 +10981,22 @@ func ParseListPoliciesResponse(rsp *http.Response) (*ListPoliciesResponse, error
 	return response, nil
 }
 
-// ParseCreatePolicyResponse parses an HTTP response from a CreatePolicyWithResponse call
-func ParseCreatePolicyResponse(rsp *http.Response) (*CreatePolicyResponse, error) {
+// ParseRequestPolicyCreationResponse parses an HTTP response from a RequestPolicyCreationWithResponse call
+func ParseRequestPolicyCreationResponse(rsp *http.Response) (*RequestPolicyCreationResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &CreatePolicyResponse{
+	response := &RequestPolicyCreationResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest Policy
+		var dest PolicyRequestAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -11122,22 +11014,22 @@ func ParseCreatePolicyResponse(rsp *http.Response) (*CreatePolicyResponse, error
 	return response, nil
 }
 
-// ParseDeletePolicyResponse parses an HTTP response from a DeletePolicyWithResponse call
-func ParseDeletePolicyResponse(rsp *http.Response) (*DeletePolicyResponse, error) {
+// ParseRequestPolicyDeletionResponse parses an HTTP response from a RequestPolicyDeletionWithResponse call
+func ParseRequestPolicyDeletionResponse(rsp *http.Response) (*RequestPolicyDeletionResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &DeletePolicyResponse{
+	response := &RequestPolicyDeletionResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest Policy
+		var dest PolicyRequestAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -11202,22 +11094,22 @@ func ParseGetPolicyResponse(rsp *http.Response) (*GetPolicyResponse, error) {
 	return response, nil
 }
 
-// ParseUpsertPolicyResponse parses an HTTP response from a UpsertPolicyWithResponse call
-func ParseUpsertPolicyResponse(rsp *http.Response) (*UpsertPolicyResponse, error) {
+// ParseRequestPolicyUpdateResponse parses an HTTP response from a RequestPolicyUpdateWithResponse call
+func ParseRequestPolicyUpdateResponse(rsp *http.Response) (*RequestPolicyUpdateResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &UpsertPolicyResponse{
+	response := &RequestPolicyUpdateResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest Policy
+		var dest PolicyRequestAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -11561,26 +11453,26 @@ func ParseGetReleaseResponse(rsp *http.Response) (*GetReleaseResponse, error) {
 	return response, nil
 }
 
-// ParseGetReleaseVerificationsResponse parses an HTTP response from a GetReleaseVerificationsWithResponse call
-func ParseGetReleaseVerificationsResponse(rsp *http.Response) (*GetReleaseVerificationsResponse, error) {
+// ParseRequestResourceProviderUpsertResponse parses an HTTP response from a RequestResourceProviderUpsertWithResponse call
+func ParseRequestResourceProviderUpsertResponse(rsp *http.Response) (*RequestResourceProviderUpsertResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &GetReleaseVerificationsResponse{
+	response := &RequestResourceProviderUpsertResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest []JobVerification
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest ResourceProviderRequestAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON202 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest ErrorResponse
@@ -11588,39 +11480,6 @@ func ParseGetReleaseVerificationsResponse(rsp *http.Response) (*GetReleaseVerifi
 			return nil, err
 		}
 		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseUpsertResourceProviderResponse parses an HTTP response from a UpsertResourceProviderWithResponse call
-func ParseUpsertResourceProviderResponse(rsp *http.Response) (*UpsertResourceProviderResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &UpsertResourceProviderResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ResourceProvider
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
 
 	}
 
@@ -11653,52 +11512,80 @@ func ParseGetResourceProviderByNameResponse(rsp *http.Response) (*GetResourcePro
 	return response, nil
 }
 
-// ParseSetResourceProvidersResourcesPatchResponse parses an HTTP response from a SetResourceProvidersResourcesPatchWithResponse call
-func ParseSetResourceProvidersResourcesPatchResponse(rsp *http.Response) (*SetResourceProvidersResourcesPatchResponse, error) {
+// ParseRequestResourceProvidersResourcesPatchResponse parses an HTTP response from a RequestResourceProvidersResourcesPatchWithResponse call
+func ParseRequestResourceProvidersResourcesPatchResponse(rsp *http.Response) (*RequestResourceProvidersResourcesPatchResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &SetResourceProvidersResourcesPatchResponse{
+	response := &RequestResourceProvidersResourcesPatchResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest map[string]interface{}
+		var dest ResourceProviderRequestAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 
 	return response, nil
 }
 
-// ParseSetResourceProvidersResourcesResponse parses an HTTP response from a SetResourceProvidersResourcesWithResponse call
-func ParseSetResourceProvidersResourcesResponse(rsp *http.Response) (*SetResourceProvidersResourcesResponse, error) {
+// ParseRequestResourceProvidersResourcesResponse parses an HTTP response from a RequestResourceProvidersResourcesWithResponse call
+func ParseRequestResourceProvidersResourcesResponse(rsp *http.Response) (*RequestResourceProvidersResourcesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &SetResourceProvidersResourcesResponse{
+	response := &RequestResourceProvidersResourcesResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest map[string]interface{}
+		var dest ResourceProviderRequestAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 
@@ -11742,20 +11629,27 @@ func ParseGetAllResourcesResponse(rsp *http.Response) (*GetAllResourcesResponse,
 	return response, nil
 }
 
-// ParseDeleteResourceByIdentifierResponse parses an HTTP response from a DeleteResourceByIdentifierWithResponse call
-func ParseDeleteResourceByIdentifierResponse(rsp *http.Response) (*DeleteResourceByIdentifierResponse, error) {
+// ParseRequestResourceDeletionByIdentifierResponse parses an HTTP response from a RequestResourceDeletionByIdentifierWithResponse call
+func ParseRequestResourceDeletionByIdentifierResponse(rsp *http.Response) (*RequestResourceDeletionByIdentifierResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &DeleteResourceByIdentifierResponse{
+	response := &RequestResourceDeletionByIdentifierResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest ResourceRequestAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -11852,22 +11746,22 @@ func ParseGetVariablesForResourceResponse(rsp *http.Response) (*GetVariablesForR
 	return response, nil
 }
 
-// ParseUpdateVariablesForResourceResponse parses an HTTP response from a UpdateVariablesForResourceWithResponse call
-func ParseUpdateVariablesForResourceResponse(rsp *http.Response) (*UpdateVariablesForResourceResponse, error) {
+// ParseRequestResourceVariablesUpdateResponse parses an HTTP response from a RequestResourceVariablesUpdateWithResponse call
+func ParseRequestResourceVariablesUpdateResponse(rsp *http.Response) (*RequestResourceVariablesUpdateResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &UpdateVariablesForResourceResponse{
+	response := &RequestResourceVariablesUpdateResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest map[string]interface{}
+		var dest ResourceRequestAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -11969,22 +11863,22 @@ func ParseListSystemsResponse(rsp *http.Response) (*ListSystemsResponse, error) 
 	return response, nil
 }
 
-// ParseCreateSystemResponse parses an HTTP response from a CreateSystemWithResponse call
-func ParseCreateSystemResponse(rsp *http.Response) (*CreateSystemResponse, error) {
+// ParseRequestSystemCreationResponse parses an HTTP response from a RequestSystemCreationWithResponse call
+func ParseRequestSystemCreationResponse(rsp *http.Response) (*RequestSystemCreationResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &CreateSystemResponse{
+	response := &RequestSystemCreationResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest System
+		var dest SystemRequestAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -11995,22 +11889,22 @@ func ParseCreateSystemResponse(rsp *http.Response) (*CreateSystemResponse, error
 	return response, nil
 }
 
-// ParseDeleteSystemResponse parses an HTTP response from a DeleteSystemWithResponse call
-func ParseDeleteSystemResponse(rsp *http.Response) (*DeleteSystemResponse, error) {
+// ParseRequestSystemDeletionResponse parses an HTTP response from a RequestSystemDeletionWithResponse call
+func ParseRequestSystemDeletionResponse(rsp *http.Response) (*RequestSystemDeletionResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &DeleteSystemResponse{
+	response := &RequestSystemDeletionResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest System
+		var dest SystemRequestAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -12075,22 +11969,22 @@ func ParseGetSystemResponse(rsp *http.Response) (*GetSystemResponse, error) {
 	return response, nil
 }
 
-// ParseUpsertSystemByIdResponse parses an HTTP response from a UpsertSystemByIdWithResponse call
-func ParseUpsertSystemByIdResponse(rsp *http.Response) (*UpsertSystemByIdResponse, error) {
+// ParseRequestSystemUpdateResponse parses an HTTP response from a RequestSystemUpdateWithResponse call
+func ParseRequestSystemUpdateResponse(rsp *http.Response) (*RequestSystemUpdateResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &UpsertSystemByIdResponse{
+	response := &RequestSystemUpdateResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest System
+		var dest SystemRequestAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

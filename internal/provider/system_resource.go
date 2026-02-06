@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/ctrlplanedev/terraform-provider-ctrlplane/internal/api"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -14,7 +15,8 @@ import (
 )
 
 var _ resource.Resource = &SystemResource{}
-// var _ resource.ResourceWithImportState = &SystemResource{}
+
+var _ resource.ResourceWithImportState = &SystemResource{}
 var _ resource.ResourceWithConfigure = &SystemResource{}
 
 func NewSystemResource() resource.Resource {
@@ -23,6 +25,11 @@ func NewSystemResource() resource.Resource {
 
 type SystemResource struct {
 	workspace *api.WorkspaceClient
+}
+
+// ImportState implements resource.ResourceWithImportState.
+func (r *SystemResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
 // Configure implements resource.ResourceWithConfigure.
@@ -48,12 +55,13 @@ func (r *SystemResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
-	workspaceId := r.workspace.ID
-	system, err := r.workspace.Client.CreateSystemWithResponse(ctx, workspaceId.String(), api.CreateSystemJSONRequestBody{
+	requestBody := api.RequestSystemCreationJSONRequestBody{
 		Name:        data.Name.ValueString(),
 		Description: data.Description.ValueStringPointer(),
 		Metadata:    stringMapPointer(data.Metadata),
-	})
+	}
+	workspaceId := r.workspace.ID
+	system, err := r.workspace.Client.RequestSystemCreationWithResponse(ctx, workspaceId.String(), requestBody)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create system", err.Error())
 		return
@@ -76,9 +84,6 @@ func (r *SystemResource) Create(ctx context.Context, req resource.CreateRequest,
 	}
 
 	data.ID = types.StringValue(systemId)
-	data.Description = descriptionValue(system.JSON202.Description)
-	data.Metadata = stringMapValue(system.JSON202.Metadata)
-
 	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
 }
 
@@ -90,7 +95,7 @@ func (r *SystemResource) Delete(ctx context.Context, req resource.DeleteRequest,
 		return
 	}
 
-	clientResp, err := r.workspace.Client.DeleteSystemWithResponse(ctx, r.workspace.ID.String(), data.ID.ValueString())
+	clientResp, err := r.workspace.Client.RequestSystemDeletionWithResponse(ctx, r.workspace.ID.String(), data.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to delete system", fmt.Sprintf("Failed to delete system: %s", err.Error()))
 		return
@@ -179,8 +184,8 @@ func (r *SystemResource) Schema(ctx context.Context, req resource.SchemaRequest,
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				Computed:    true,
-				Description: "The ID of the system",
+				Computed:      true,
+				Description:   "The ID of the system",
 				PlanModifiers: []planmodifier.String{},
 			},
 			"name": schema.StringAttribute{
@@ -208,11 +213,14 @@ func (r *SystemResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 
-	system, err := r.workspace.Client.UpsertSystemByIdWithResponse(ctx, r.workspace.ID.String(), data.ID.ValueString(), api.UpsertSystemByIdJSONRequestBody{
+	requestBody := api.RequestSystemUpdateJSONRequestBody{
 		Name:        data.Name.ValueString(),
 		Description: data.Description.ValueStringPointer(),
 		Metadata:    stringMapPointer(data.Metadata),
-	})
+	}
+	system, err := r.workspace.Client.RequestSystemUpdateWithResponse(
+		ctx, r.workspace.ID.String(), data.ID.ValueString(), requestBody,
+	)
 
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -233,15 +241,7 @@ func (r *SystemResource) Update(ctx context.Context, req resource.UpdateRequest,
 	}
 
 	systemId := system.JSON202.Id
-	if system.JSON202.Name == "" {
-		resp.Diagnostics.AddError("Failed to update system", "Empty system name in response")
-		return
-	}
-
 	data.ID = types.StringValue(systemId)
-	data.Name = types.StringValue(system.JSON202.Name)
-	data.Description = descriptionValue(system.JSON202.Description)
-	data.Metadata = stringMapValue(system.JSON202.Metadata)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
 }

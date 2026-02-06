@@ -6,13 +6,16 @@ import (
 	"net/http"
 
 	"github.com/ctrlplanedev/terraform-provider-ctrlplane/internal/api"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 var _ resource.Resource = &EnvironmentResource{}
+var _ resource.ResourceWithImportState = &EnvironmentResource{}
 var _ resource.ResourceWithConfigure = &EnvironmentResource{}
 
 func NewEnvironmentResource() resource.Resource {
@@ -21,6 +24,11 @@ func NewEnvironmentResource() resource.Resource {
 
 type EnvironmentResource struct {
 	workspace *api.WorkspaceClient
+}
+
+// ImportState implements resource.ResourceWithImportState.
+func (r *EnvironmentResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
 // Configure implements resource.ResourceWithConfigure.
@@ -47,12 +55,22 @@ func (r *EnvironmentResource) Create(ctx context.Context, req resource.CreateReq
 	}
 
 	workspaceId := r.workspace.ID
-	envResp, err := r.workspace.Client.CreateEnvironmentWithResponse(ctx, workspaceId.String(), api.CreateEnvironmentJSONRequestBody{
-		Name:        data.Name.ValueString(),
-		Description: data.Description.ValueStringPointer(),
-		SystemId:     data.SystemId.ValueString(),
-		Metadata:    stringMapPointer(data.Metadata),
-	})
+	selector, err := selectorPointerFromString(data.ResourceSelector)
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to create environment", fmt.Sprintf("Invalid resource_selector CEL: %s", err.Error()))
+		return
+	}
+
+	requestBody := api.RequestEnvironmentCreationJSONRequestBody{
+		Name:             data.Name.ValueString(),
+		Description:      data.Description.ValueStringPointer(),
+		ResourceSelector: selector,
+		SystemId:         data.SystemId.ValueString(),
+		Metadata:         stringMapPointer(data.Metadata),
+	}
+	envResp, err := r.workspace.Client.RequestEnvironmentCreationWithResponse(
+		ctx, workspaceId.String(), requestBody,
+	)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create environment", err.Error())
 		return
@@ -75,9 +93,6 @@ func (r *EnvironmentResource) Create(ctx context.Context, req resource.CreateReq
 	}
 
 	data.ID = types.StringValue(envId)
-	data.WorkspaceId = types.StringValue(workspaceId.String())
-	data.Description = descriptionValue(envResp.JSON202.Description)
-	data.Metadata = stringMapValue(envResp.JSON202.Metadata)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
 }
@@ -90,13 +105,15 @@ func (r *EnvironmentResource) Delete(ctx context.Context, req resource.DeleteReq
 		return
 	}
 
-	clientResp, err := r.workspace.Client.DeleteEnvironmentWithResponse(ctx, data.WorkspaceId.ValueString(), data.ID.ValueString())
+	clientResp, err := r.workspace.Client.RequestEnvironmentDeletionWithResponse(
+		ctx, r.workspace.ID.String(), data.ID.ValueString(),
+	)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to delete environment", fmt.Sprintf("Failed to delete environment: %s", err.Error()))
 		return
 	}
 
-	if clientResp.StatusCode() != http.StatusAccepted || clientResp.StatusCode() != http.StatusNoContent {
+	if clientResp.StatusCode() != http.StatusAccepted && clientResp.StatusCode() != http.StatusNoContent {
 		resp.Diagnostics.AddError("Failed to delete environment", formatResponseError(clientResp.StatusCode(), clientResp.Body))
 		return
 	}
@@ -111,12 +128,9 @@ func (r *EnvironmentResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-	workspaceID := data.WorkspaceId.ValueString()
-	if data.WorkspaceId.IsNull() || workspaceID == "" {
-		workspaceID = r.workspace.ID.String()
-	}
-
-	envResp, err := r.workspace.Client.GetEnvironmentWithResponse(ctx, workspaceID, data.ID.ValueString())
+	envResp, err := r.workspace.Client.GetEnvironmentWithResponse(
+		ctx, r.workspace.ID.String(), data.ID.ValueString(),
+	)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to read environment",
@@ -158,11 +172,16 @@ func (r *EnvironmentResource) Read(ctx context.Context, req resource.ReadRequest
 	}
 
 	data.ID = types.StringValue(envResp.JSON200.Id)
-	data.WorkspaceId = types.StringValue(workspaceID)
 	data.Name = types.StringValue(envResp.JSON200.Name)
 	data.Description = descriptionValue(envResp.JSON200.Description)
 	data.SystemId = types.StringValue(envResp.JSON200.SystemId)
 	data.Metadata = stringMapValue(envResp.JSON200.Metadata)
+	if selectorValue, err := selectorStringValue(envResp.JSON200.ResourceSelector); err != nil {
+		resp.Diagnostics.AddError("Failed to read environment", fmt.Sprintf("Invalid resource_selector CEL: %s", err.Error()))
+		return
+	} else {
+		data.ResourceSelector = selectorValue
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -174,7 +193,9 @@ func (r *EnvironmentResource) Schema(ctx context.Context, req resource.SchemaReq
 			"id": schema.StringAttribute{
 				Computed:    true,
 				Description: "The ID of the environment",
-				PlanModifiers: []planmodifier.String{},
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"name": schema.StringAttribute{
 				Required:    true,
@@ -188,9 +209,9 @@ func (r *EnvironmentResource) Schema(ctx context.Context, req resource.SchemaReq
 				Required:    true,
 				Description: "The system ID this environment belongs to",
 			},
-			"workspace_id": schema.StringAttribute{
-				Computed:    true,
-				Description: "The workspace ID the environment belongs to",
+			"resource_selector": schema.StringAttribute{
+				Optional:    true,
+				Description: "CEL expression used to select resources",
 			},
 			"metadata": schema.MapAttribute{
 				Optional:    true,
@@ -209,12 +230,22 @@ func (r *EnvironmentResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	envResp, err := r.workspace.Client.UpsertEnvironmentByIdWithResponse(ctx, data.WorkspaceId.ValueString(), data.ID.ValueString(), api.UpsertEnvironmentByIdJSONRequestBody{
-		Name:        data.Name.ValueString(),
-		Description: data.Description.ValueStringPointer(),
-		SystemId:     data.SystemId.ValueString(),
-		Metadata:    stringMapPointer(data.Metadata),
-	})
+	selector, selErr := selectorPointerFromString(data.ResourceSelector)
+	if selErr != nil {
+		resp.Diagnostics.AddError("Failed to update environment", fmt.Sprintf("Invalid resource_selector CEL: %s", selErr.Error()))
+		return
+	}
+
+	requestBody := api.RequestEnvironmentUpdateJSONRequestBody{
+		ResourceSelector: selector,
+		Name:             data.Name.ValueString(),
+		Description:      data.Description.ValueStringPointer(),
+		SystemId:         data.SystemId.ValueString(),
+		Metadata:         stringMapPointer(data.Metadata),
+	}
+	envResp, err := r.workspace.Client.RequestEnvironmentUpdateWithResponse(
+		ctx, r.workspace.ID.String(), data.ID.ValueString(), requestBody,
+	)
 
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -235,17 +266,12 @@ func (r *EnvironmentResource) Update(ctx context.Context, req resource.UpdateReq
 	}
 
 	envId := envResp.JSON202.Id
-	if envResp.JSON202.Name == "" {
-		resp.Diagnostics.AddError("Failed to update environment", "Empty environment name in response")
+	if envId == "" {
+		resp.Diagnostics.AddError("Failed to update environment", "Empty environment ID in response")
 		return
 	}
 
 	data.ID = types.StringValue(envId)
-	data.WorkspaceId = types.StringValue(r.workspace.ID.String())
-	data.Name = types.StringValue(envResp.JSON202.Name)
-	data.Description = descriptionValue(envResp.JSON202.Description)
-	data.SystemId = types.StringValue(envResp.JSON202.SystemId)
-	data.Metadata = stringMapValue(envResp.JSON202.Metadata)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
 }
@@ -255,10 +281,10 @@ func (r *EnvironmentResource) Metadata(ctx context.Context, req resource.Metadat
 }
 
 type EnvironmentResourceModel struct {
-	ID          types.String `tfsdk:"id"`
-	WorkspaceId types.String `tfsdk:"workspace_id"`
-	Name        types.String `tfsdk:"name"`
-	SystemId    types.String `tfsdk:"system_id"`
-	Description types.String `tfsdk:"description"`
-	Metadata    types.Map `tfsdk:"metadata"`
+	ID               types.String `tfsdk:"id"`
+	Name             types.String `tfsdk:"name"`
+	SystemId         types.String `tfsdk:"system_id"`
+	ResourceSelector types.String `tfsdk:"resource_selector"`
+	Description      types.String `tfsdk:"description"`
+	Metadata         types.Map    `tfsdk:"metadata"`
 }
