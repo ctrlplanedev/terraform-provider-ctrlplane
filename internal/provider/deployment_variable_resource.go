@@ -296,15 +296,15 @@ func literalValueFromInterface(value interface{}) (*api.LiteralValue, error) {
 		}
 		return &literal, nil
 	case bool:
-		if err := literal.FromBooleanValue(api.BooleanValue(v)); err != nil {
+		if err := literal.FromBooleanValue(v); err != nil {
 			return nil, err
 		}
 	case string:
-		if err := literal.FromStringValue(api.StringValue(v)); err != nil {
+		if err := literal.FromStringValue(v); err != nil {
 			return nil, err
 		}
 	case int:
-		if err := literal.FromIntegerValue(api.IntegerValue(v)); err != nil {
+		if err := literal.FromIntegerValue(v); err != nil {
 			return nil, err
 		}
 	case int32:
@@ -348,7 +348,7 @@ func literalValueToDynamic(value *api.LiteralValue) types.Dynamic {
 	}
 
 	if v, err := value.AsBooleanValue(); err == nil {
-		return types.DynamicValue(types.BoolValue(bool(v)))
+		return types.DynamicValue(types.BoolValue(v))
 	}
 	if v, err := value.AsIntegerValue(); err == nil {
 		return types.DynamicValue(types.Int64Value(int64(v)))
@@ -357,7 +357,7 @@ func literalValueToDynamic(value *api.LiteralValue) types.Dynamic {
 		return types.DynamicValue(types.Float64Value(float64(v)))
 	}
 	if v, err := value.AsStringValue(); err == nil {
-		return types.DynamicValue(types.StringValue(string(v)))
+		return types.DynamicValue(types.StringValue(v))
 	}
 	if v, err := value.AsObjectValue(); err == nil {
 		if attrValue, _, err := attrValueFromInterface(v.Object); err == nil {

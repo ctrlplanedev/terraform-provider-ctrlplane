@@ -601,4 +601,3 @@ func toInt64(value interface{}) int64 {
 		return 0
 	}
 }
-
