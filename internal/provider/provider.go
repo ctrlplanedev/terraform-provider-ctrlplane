@@ -119,6 +119,9 @@ func (p *CtrlplaneProvider) Resources(ctx context.Context) []func() resource.Res
 	return []func() resource.Resource{
 		NewSystemResource,
 		NewEnvironmentResource,
+		NewDeploymentResource,
+		NewJobAgentResource,
+		NewDeploymentVariableResource,
 	}
 }
 

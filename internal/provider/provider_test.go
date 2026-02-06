@@ -4,9 +4,12 @@
 package provider
 
 import (
+	"context"
 	"os"
 	"testing"
 
+	"github.com/ctrlplanedev/terraform-provider-ctrlplane/internal/api"
+	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-testing/echoprovider"
@@ -36,4 +39,32 @@ func testAccPreCheck(t *testing.T) {
 	if os.Getenv("CTRLPLANE_WORKSPACE") == "" {
 		t.Skip("CTRLPLANE_WORKSPACE must be set for acceptance tests")
 	}
+
+	if os.Getenv("CTRLPLANE_URL") == "" {
+		t.Skip("CTRLPLANE_URL must be set for acceptance tests")
+	}
+
+	client, err := api.NewAPIKeyClientWithResponses(os.Getenv("CTRLPLANE_URL"), os.Getenv("CTRLPLANE_API_KEY"))
+	if err != nil {
+		t.Skipf("Failed to create API client: %s", err.Error())
+	}
+
+	workspaceID := client.GetWorkspaceID(context.Background(), os.Getenv("CTRLPLANE_WORKSPACE"))
+	if workspaceID == uuid.Nil {
+		t.Skip("CTRLPLANE_WORKSPACE not found for acceptance tests")
+	}
+}
+
+func testAccProviderConfig() string {
+	return `
+terraform {
+  required_providers {
+    ctrlplane = {
+      source = "ctrlplanedev/ctrlplane"
+    }
+  }
+}
+
+provider "ctrlplane" {}
+`
 }

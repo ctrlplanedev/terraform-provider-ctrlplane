@@ -11,51 +11,56 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 )
 
-func TestAccSystemResource(t *testing.T) {
-	name := fmt.Sprintf("tf-acc-%d", time.Now().UnixNano())
+func TestAccEnvironmentResource(t *testing.T) {
+	name := fmt.Sprintf("tf-acc-env-%d", time.Now().UnixNano())
 	updatedName := name + "-updated"
-	description := "Terraform acceptance test"
-	updatedDescription := "Terraform acceptance test updated"
+	description := "Terraform acceptance test environment"
+	updatedDescription := "Terraform acceptance test environment updated"
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV6ProviderFactories: testAccProtoV6ProviderFactoriesWithEcho,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSystemResourceConfig(name, description),
+				Config: testAccEnvironmentResourceConfig(name, description),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
-						"ctrlplane_system.test",
+						"ctrlplane_environment.test",
 						tfjsonpath.New("id"),
 						knownvalue.NotNull(),
 					),
 					statecheck.ExpectKnownValue(
-						"ctrlplane_system.test",
+						"ctrlplane_environment.test",
 						tfjsonpath.New("name"),
 						knownvalue.StringExact(name),
 					),
 					statecheck.ExpectKnownValue(
-						"ctrlplane_system.test",
+						"ctrlplane_environment.test",
 						tfjsonpath.New("description"),
 						knownvalue.StringExact(description),
+					),
+					statecheck.ExpectKnownValue(
+						"ctrlplane_environment.test",
+						tfjsonpath.New("system_id"),
+						knownvalue.NotNull(),
 					),
 				},
 			},
 			{
-				Config: testAccSystemResourceConfig(updatedName, updatedDescription),
+				Config: testAccEnvironmentResourceConfig(updatedName, updatedDescription),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
-						"ctrlplane_system.test",
+						"ctrlplane_environment.test",
 						tfjsonpath.New("id"),
 						knownvalue.NotNull(),
 					),
 					statecheck.ExpectKnownValue(
-						"ctrlplane_system.test",
+						"ctrlplane_environment.test",
 						tfjsonpath.New("name"),
 						knownvalue.StringExact(updatedName),
 					),
 					statecheck.ExpectKnownValue(
-						"ctrlplane_system.test",
+						"ctrlplane_environment.test",
 						tfjsonpath.New("description"),
 						knownvalue.StringExact(updatedDescription),
 					),
@@ -65,12 +70,19 @@ func TestAccSystemResource(t *testing.T) {
 	})
 }
 
-func testAccSystemResourceConfig(name, description string) string {
+func testAccEnvironmentResourceConfig(name, description string) string {
 	return fmt.Sprintf(`
 %s
 resource "ctrlplane_system" "test" {
-  name        = %q
-  description = %q
+  name = %q
 }
-`, testAccProviderConfig(), name, description)
+
+resource "ctrlplane_environment" "test" {
+  system_id = ctrlplane_system.test.id
+  name      = %q
+  description = %q
+
+  resource_selector = "resource.name == '%s'"
+}
+`, testAccProviderConfig(), name, name, description, name)
 }

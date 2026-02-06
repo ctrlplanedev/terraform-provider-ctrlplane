@@ -11,53 +11,41 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 )
 
-func TestAccSystemResource(t *testing.T) {
-	name := fmt.Sprintf("tf-acc-%d", time.Now().UnixNano())
+func TestAccDeploymentResource(t *testing.T) {
+	name := fmt.Sprintf("tf-acc-dep-%d", time.Now().UnixNano())
 	updatedName := name + "-updated"
-	description := "Terraform acceptance test"
-	updatedDescription := "Terraform acceptance test updated"
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV6ProviderFactories: testAccProtoV6ProviderFactoriesWithEcho,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSystemResourceConfig(name, description),
+				Config: testAccDeploymentResourceConfig(name, "successful", "value"),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
-						"ctrlplane_system.test",
+						"ctrlplane_deployment.test",
 						tfjsonpath.New("id"),
 						knownvalue.NotNull(),
 					),
 					statecheck.ExpectKnownValue(
-						"ctrlplane_system.test",
+						"ctrlplane_deployment.test",
 						tfjsonpath.New("name"),
 						knownvalue.StringExact(name),
-					),
-					statecheck.ExpectKnownValue(
-						"ctrlplane_system.test",
-						tfjsonpath.New("description"),
-						knownvalue.StringExact(description),
 					),
 				},
 			},
 			{
-				Config: testAccSystemResourceConfig(updatedName, updatedDescription),
+				Config: testAccDeploymentResourceConfig(updatedName, "failure", "updated"),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
-						"ctrlplane_system.test",
+						"ctrlplane_deployment.test",
 						tfjsonpath.New("id"),
 						knownvalue.NotNull(),
 					),
 					statecheck.ExpectKnownValue(
-						"ctrlplane_system.test",
+						"ctrlplane_deployment.test",
 						tfjsonpath.New("name"),
 						knownvalue.StringExact(updatedName),
-					),
-					statecheck.ExpectKnownValue(
-						"ctrlplane_system.test",
-						tfjsonpath.New("description"),
-						knownvalue.StringExact(updatedDescription),
 					),
 				},
 			},
@@ -65,12 +53,37 @@ func TestAccSystemResource(t *testing.T) {
 	})
 }
 
-func testAccSystemResourceConfig(name, description string) string {
+func testAccDeploymentResourceConfig(name string, status string, metadataValue string) string {
 	return fmt.Sprintf(`
 %s
 resource "ctrlplane_system" "test" {
-  name        = %q
-  description = %q
+  name = %q
 }
-`, testAccProviderConfig(), name, description)
+
+resource "ctrlplane_job_agent" "test" {
+  name = %q
+
+  test_runner {
+    delay_seconds = 5
+    status        = %q
+  }
+}
+
+resource "ctrlplane_deployment" "test" {
+  system_id = ctrlplane_system.test.id
+  name      = %q
+  metadata = {
+    key = %q
+  }
+
+  resource_selector = "resource.name == '%s'"
+
+  job_agent {
+    id = ctrlplane_job_agent.test.id
+    test_runner {
+      delay_seconds = 10
+    }
+  }
+}
+`, testAccProviderConfig(), name, name+"-ja", status, name, metadataValue, name)
 }
