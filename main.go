@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2021, 2025
 // SPDX-License-Identifier: MPL-2.0
 
 package main
@@ -8,9 +8,8 @@ import (
 	"flag"
 	"log"
 
+	"github.com/ctrlplanedev/terraform-provider-ctrlplane/internal/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
-
-	"terraform-provider-ctrlplane/internal/provider"
 )
 
 var (
@@ -29,10 +28,7 @@ func main() {
 	flag.Parse()
 
 	opts := providerserver.ServeOpts{
-		// TODO: Update this string with the published name of your provider.
-		// Also update the tfplugindocs generate command to either remove the
-		// -provider-name flag or set its value to the updated provider name.
-		Address: "registry.terraform.io/ctrlplane/ctrlplane",
+		Address: "registry.terraform.io/ctrlplanedev/ctrlplane",
 		Debug:   debug,
 	}
 
