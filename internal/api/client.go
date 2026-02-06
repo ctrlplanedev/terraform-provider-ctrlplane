@@ -1,3 +1,5 @@
+// Copyright (c) HashiCorp, Inc.
+
 //go:generate go tool oapi-codegen -config openapi.client.yaml https://raw.githubusercontent.com/ctrlplanedev/ctrlplane/refs/heads/main/apps/api/openapi/openapi.json
 
 package api

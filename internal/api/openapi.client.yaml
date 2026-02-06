@@ -1,3 +1,5 @@
+# Copyright (c) HashiCorp, Inc.
+
 # yaml-language-server: $schema=https://raw.githubusercontent.com/oapi-codegen/oapi-codegen/HEAD/configuration-schema.json
 package: api
 output: client.gen.go
