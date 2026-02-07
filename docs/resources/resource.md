@@ -14,11 +14,10 @@ Manages a resource in Ctrlplane. Resources represent infrastructure targets such
 
 ```terraform
 resource "ctrlplane_resource" "example" {
-  name        = "my-k8s-cluster"
-  identifier  = "k8s/my-cluster-prod"
-  kind        = "kubernetes/cluster"
-  version     = "1.28"
-  provider_id = "your-resource-provider-id"
+  name       = "my-k8s-cluster"
+  identifier = "k8s/my-cluster-prod"
+  kind       = "kubernetes/cluster"
+  version    = "1.28"
 
   config = {
     host        = "https://k8s.example.com"
@@ -42,13 +41,13 @@ resource "ctrlplane_resource" "example" {
 - `identifier` (String) The unique identifier for the resource. Changing this forces creation of a new resource.
 - `kind` (String) The kind/type of the resource (e.g., "kubernetes/pod")
 - `name` (String) The name of the resource
-- `provider_id` (String) The ID of the resource provider used to sync this resource
 - `version` (String) The version of the resource
 
 ### Optional
 
 - `config` (Dynamic) Configuration for the resource as a map of key-value pairs
 - `metadata` (Map of String) Metadata key-value pairs for the resource
+- `provider_id` (String) The ID of the resource provider used to sync this resource. If not set, a default "terraform" resource provider is created automatically.
 
 ### Read-Only
 

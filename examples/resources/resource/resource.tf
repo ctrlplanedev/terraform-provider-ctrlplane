@@ -1,9 +1,8 @@
 resource "ctrlplane_resource" "example" {
-  name        = "my-k8s-cluster"
-  identifier  = "k8s/my-cluster-prod"
-  kind        = "kubernetes/cluster"
-  version     = "1.28"
-  provider_id = "your-resource-provider-id"
+  name       = "my-k8s-cluster"
+  identifier = "k8s/my-cluster-prod"
+  kind       = "kubernetes/cluster"
+  version    = "1.28"
 
   config = {
     host        = "https://k8s.example.com"
