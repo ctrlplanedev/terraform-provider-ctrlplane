@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -186,9 +187,11 @@ func (r *SystemResource) Schema(ctx context.Context, req resource.SchemaRequest,
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				Computed:      true,
-				Description:   "The ID of the system",
-				PlanModifiers: []planmodifier.String{},
+				Computed:    true,
+				Description: "The ID of the system",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"name": schema.StringAttribute{
 				Required:    true,
@@ -210,10 +213,16 @@ func (r *SystemResource) Schema(ctx context.Context, req resource.SchemaRequest,
 // Update implements resource.Resource.
 func (r *SystemResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var data SystemResourceModel
+	var state SystemResourceModel
+
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	// Preserve the existing ID since it is computed and not known from the plan.
+	data.ID = state.ID
 
 	requestBody := api.RequestSystemUpdateJSONRequestBody{
 		Name:        data.Name.ValueString(),
@@ -232,7 +241,7 @@ func (r *SystemResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 
-	if system.StatusCode() != http.StatusOK {
+	if system.StatusCode() != http.StatusAccepted {
 		resp.Diagnostics.AddError("Failed to update system", formatResponseError(system.StatusCode(), system.Body))
 		return
 	}
