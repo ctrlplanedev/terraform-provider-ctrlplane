@@ -978,7 +978,7 @@ func policyDatadogProviderFromModel(model PolicyDatadogProvider) (api.MetricProv
 		if err != nil {
 			return api.MetricProvider{}, err
 		}
-		seconds := int64(intervalSeconds)
+		seconds := intervalSeconds
 		datadog.IntervalSeconds = &seconds
 	}
 	if selectorValueSet(model.Aggregator) {

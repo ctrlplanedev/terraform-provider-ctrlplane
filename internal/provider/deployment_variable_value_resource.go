@@ -414,7 +414,7 @@ func valueFromVariableValueModel(data DeploymentVariableValueResourceModel) (*ap
 }
 
 // setValueOnModel reads from the API Value union and sets the appropriate field on the model.
-func setValueOnModel(ctx context.Context, data *DeploymentVariableValueResourceModel, value api.Value) diag.Diagnostics {
+func setValueOnModel(_ context.Context, data *DeploymentVariableValueResourceModel, value api.Value) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	// Try reference value first
