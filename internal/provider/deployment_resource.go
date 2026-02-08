@@ -375,7 +375,7 @@ func (r *DeploymentResource) Update(ctx context.Context, req resource.UpdateRequ
 		jobAgentConfig = deploymentJobAgentConfigFromModel(ja)
 	}
 
-	requestBody := api.RequestDeploymentUpdateJSONRequestBody{
+	requestBody := api.UpsertDeploymentRequest{
 		Name:             data.Name.ValueString(),
 		Slug:             slug.Make(data.Name.ValueString()),
 		SystemId:         data.SystemId.ValueString(),
@@ -385,7 +385,7 @@ func (r *DeploymentResource) Update(ctx context.Context, req resource.UpdateRequ
 		JobAgentConfig:   jobAgentConfig,
 	}
 
-	deployResp, err := r.workspace.Client.RequestDeploymentUpdateWithResponse(ctx, r.workspace.ID.String(), data.ID.ValueString(), requestBody)
+	deployResp, err := r.workspace.Client.RequestDeploymentUpsertWithResponse(ctx, r.workspace.ID.String(), data.ID.ValueString(), requestBody)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to update deployment", fmt.Sprintf("Failed to update deployment with ID '%s': %s", data.ID.ValueString(), err.Error()))
 		return

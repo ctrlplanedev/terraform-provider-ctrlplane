@@ -93,35 +93,12 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				Description: "Whether the policy is enabled",
 				Default:     booldefault.StaticBool(true),
 			},
+			"selector": schema.StringAttribute{
+				Required:    true,
+				Description: "CEL expression for matching release targets. Use \"true\" to match all targets.",
+			},
 		},
 		Blocks: map[string]schema.Block{
-			"selector": schema.ListNestedBlock{
-				Description: "Selectors for policy targets",
-				NestedObject: schema.NestedBlockObject{
-					Attributes: map[string]schema.Attribute{
-						"id": schema.StringAttribute{
-							Optional:    true,
-							Computed:    true,
-							Description: "Selector ID",
-							PlanModifiers: []planmodifier.String{
-								stringplanmodifier.UseStateForUnknown(),
-							},
-						},
-						"deployment": schema.StringAttribute{
-							Optional:    true,
-							Description: "CEL selector for deployments",
-						},
-						"environment": schema.StringAttribute{
-							Optional:    true,
-							Description: "CEL selector for environments",
-						},
-						"resource": schema.StringAttribute{
-							Optional:    true,
-							Description: "CEL selector for resources",
-						},
-					},
-				},
-			},
 			"version_cooldown": schema.ListNestedBlock{
 				Description: "Version cooldown rules",
 				NestedObject: schema.NestedBlockObject{
@@ -313,30 +290,15 @@ func (r *PolicyResource) ValidateConfig(ctx context.Context, req resource.Valida
 		return
 	}
 
-	if len(data.Selector) == 0 {
-		resp.Diagnostics.AddError("Invalid policy configuration", "At least one selector block must be set.")
+	if data.Selector.IsNull() || data.Selector.IsUnknown() || data.Selector.ValueString() == "" {
+		resp.Diagnostics.AddError("Invalid policy configuration", "The selector attribute must be set to a CEL expression.")
 		return
-	}
-
-	for _, selector := range data.Selector {
-		if !selectorValueSet(selector.Deployment) &&
-			!selectorValueSet(selector.Environment) &&
-			!selectorValueSet(selector.Resource) {
-			resp.Diagnostics.AddError("Invalid selector configuration", "Each selector block must set at least one of deployment, environment, or resource.")
-			return
-		}
 	}
 }
 
 func (r *PolicyResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var data PolicyResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	selectors, diags := policySelectorsFromModel(data.Selector)
-	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -349,6 +311,7 @@ func (r *PolicyResource) Create(ctx context.Context, req resource.CreateRequest,
 
 	priority := int(defaultInt64(data.Priority, 0))
 	enabled := defaultBool(data.Enabled, true)
+	selector := data.Selector.ValueString()
 
 	policyID := uuid.NewString()
 	data.ID = types.StringValue(policyID)
@@ -362,7 +325,7 @@ func (r *PolicyResource) Create(ctx context.Context, req resource.CreateRequest,
 		Priority:    &priority,
 		Enabled:     &enabled,
 		Rules:       &rules,
-		Selectors:   &selectors,
+		Selector:    &selector,
 	}
 
 	setPolicyIDOnRules(&requestBody, policyID)
@@ -405,7 +368,7 @@ func (r *PolicyResource) Create(ctx context.Context, req resource.CreateRequest,
 			Priority:    &priority,
 			Enabled:     &enabled,
 			Rules:       &rules,
-			Selectors:   &selectors,
+			Selector:    &selector,
 		}
 		setPolicyIDOnRules(&updateBody, createdID)
 		updatePayload, err := json.Marshal(updateBody)
@@ -413,7 +376,7 @@ func (r *PolicyResource) Create(ctx context.Context, req resource.CreateRequest,
 			resp.Diagnostics.AddError("Failed to update policy", err.Error())
 			return
 		}
-		updateResp, err := r.workspace.Client.RequestPolicyUpdateWithBodyWithResponse(
+		updateResp, err := r.workspace.Client.RequestPolicyUpsertWithBodyWithResponse(
 			ctx,
 			r.workspace.ID.String(),
 			createdID,
@@ -467,12 +430,7 @@ func (r *PolicyResource) Read(ctx context.Context, req resource.ReadRequest, res
 	data.Priority = types.Int64Value(int64(policy.Priority))
 	data.Enabled = types.BoolValue(policy.Enabled)
 
-	selectors, diags := policySelectorsToModel(policy.Selectors)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	data.Selector = selectors
+	data.Selector = types.StringValue(policy.Selector)
 
 	rules, diags := policyRulesToModel(policy.Rules)
 	resp.Diagnostics.Append(diags...)
@@ -500,12 +458,6 @@ func (r *PolicyResource) Update(ctx context.Context, req resource.UpdateRequest,
 	ensurePolicyIDs(&data, &state)
 	ensurePolicyRuleCreatedAt(&data, &state)
 
-	selectors, diags := policySelectorsFromModel(data.Selector)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
 	rules, diags := policyRulesFromModel(data)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -514,6 +466,7 @@ func (r *PolicyResource) Update(ctx context.Context, req resource.UpdateRequest,
 
 	priority := int(defaultInt64(data.Priority, 0))
 	enabled := defaultBool(data.Enabled, true)
+	selector := data.Selector.ValueString()
 
 	requestBody := policyRequestPayload{
 		Name:        data.Name.ValueString(),
@@ -522,7 +475,7 @@ func (r *PolicyResource) Update(ctx context.Context, req resource.UpdateRequest,
 		Priority:    &priority,
 		Enabled:     &enabled,
 		Rules:       &rules,
-		Selectors:   &selectors,
+		Selector:    &selector,
 	}
 
 	setPolicyIDOnRules(&requestBody, data.ID.ValueString())
@@ -533,7 +486,7 @@ func (r *PolicyResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 
-	policyResp, err := r.workspace.Client.RequestPolicyUpdateWithBodyWithResponse(
+	policyResp, err := r.workspace.Client.RequestPolicyUpsertWithBodyWithResponse(
 		ctx,
 		r.workspace.ID.String(),
 		data.ID.ValueString(),
@@ -590,17 +543,10 @@ type PolicyResourceModel struct {
 	Metadata         types.Map                `tfsdk:"metadata"`
 	Priority         types.Int64              `tfsdk:"priority"`
 	Enabled          types.Bool               `tfsdk:"enabled"`
-	Selector         []PolicySelectorModel    `tfsdk:"selector"`
+	Selector         types.String             `tfsdk:"selector"`
 	VersionCooldown  []PolicyVersionCooldown  `tfsdk:"version_cooldown"`
 	DeploymentWindow []PolicyDeploymentWindow `tfsdk:"deployment_window"`
 	Verification     []PolicyVerificationRule `tfsdk:"verification"`
-}
-
-type PolicySelectorModel struct {
-	ID          types.String `tfsdk:"id"`
-	Deployment  types.String `tfsdk:"deployment"`
-	Environment types.String `tfsdk:"environment"`
-	Resource    types.String `tfsdk:"resource"`
 }
 
 type PolicyVersionCooldown struct {
@@ -656,13 +602,13 @@ type policyRulesModel struct {
 }
 
 type policyRequestPayload struct {
-	Description *string                `json:"description,omitempty"`
-	Enabled     *bool                  `json:"enabled,omitempty"`
-	Metadata    *map[string]string     `json:"metadata,omitempty"`
-	Name        string                 `json:"name"`
-	Priority    *int                   `json:"priority,omitempty"`
-	Rules       *[]policyRequestRule   `json:"rules,omitempty"`
-	Selectors   *[]policyRequestTarget `json:"selectors,omitempty"`
+	Description *string              `json:"description,omitempty"`
+	Enabled     *bool                `json:"enabled,omitempty"`
+	Metadata    *map[string]string   `json:"metadata,omitempty"`
+	Name        string               `json:"name"`
+	Priority    *int                 `json:"priority,omitempty"`
+	Rules       *[]policyRequestRule `json:"rules,omitempty"`
+	Selector    *string              `json:"selector,omitempty"`
 }
 
 type policyRequestRule struct {
@@ -672,13 +618,6 @@ type policyRequestRule struct {
 	Verification     *api.VerificationRule     `json:"verification,omitempty"`
 	VersionCooldown  *api.VersionCooldownRule  `json:"versionCooldown,omitempty"`
 	PolicyId         *string                   `json:"policyId,omitempty"`
-}
-
-type policyRequestTarget struct {
-	Id                  string        `json:"id"`
-	DeploymentSelector  *api.Selector `json:"deploymentSelector,omitempty"`
-	EnvironmentSelector *api.Selector `json:"environmentSelector,omitempty"`
-	ResourceSelector    *api.Selector `json:"resourceSelector,omitempty"`
 }
 
 func selectorValueSet(value types.String) bool {
@@ -728,93 +667,6 @@ func defaultBool(value types.Bool, fallback bool) bool {
 		return fallback
 	}
 	return value.ValueBool()
-}
-
-func policySelectorsFromModel(selectors []PolicySelectorModel) ([]policyRequestTarget, diag.Diagnostics) {
-	var diags diag.Diagnostics
-	result := make([]policyRequestTarget, 0, len(selectors))
-
-	for _, selector := range selectors {
-		if !selectorValueSet(selector.Deployment) &&
-			!selectorValueSet(selector.Environment) &&
-			!selectorValueSet(selector.Resource) {
-			diags.AddError("Invalid selector configuration", "Each selector block must set at least one of deployment, environment, or resource.")
-			continue
-		}
-
-		target := policyRequestTarget{Id: selectorIDValue(selector.ID)}
-		if selectorValueSet(selector.Deployment) {
-			deploymentSelector, err := selectorPointerFromString(selector.Deployment)
-			if err != nil {
-				diags.AddError("Invalid deployment selector", err.Error())
-				continue
-			}
-			target.DeploymentSelector = deploymentSelector
-		}
-		if selectorValueSet(selector.Environment) {
-			environmentSelector, err := selectorPointerFromString(selector.Environment)
-			if err != nil {
-				diags.AddError("Invalid environment selector", err.Error())
-				continue
-			}
-			target.EnvironmentSelector = environmentSelector
-		}
-		if selectorValueSet(selector.Resource) {
-			resourceSelector, err := selectorPointerFromString(selector.Resource)
-			if err != nil {
-				diags.AddError("Invalid resource selector", err.Error())
-				continue
-			}
-			target.ResourceSelector = resourceSelector
-		}
-		result = append(result, target)
-	}
-
-	return result, diags
-}
-
-func policySelectorsToModel(selectors []api.PolicyTargetSelector) ([]PolicySelectorModel, diag.Diagnostics) {
-	var diags diag.Diagnostics
-	result := make([]PolicySelectorModel, 0, len(selectors))
-
-	for _, selector := range selectors {
-		model := PolicySelectorModel{
-			ID:          types.StringNull(),
-			Deployment:  types.StringNull(),
-			Environment: types.StringNull(),
-			Resource:    types.StringNull(),
-		}
-		if selector.Id != "" {
-			model.ID = types.StringValue(selector.Id)
-		}
-		if selector.DeploymentSelector != nil {
-			value, err := selectorStringValue(selector.DeploymentSelector)
-			if err != nil {
-				diags.AddError("Invalid deployment selector", err.Error())
-				continue
-			}
-			model.Deployment = value
-		}
-		if selector.EnvironmentSelector != nil {
-			value, err := selectorStringValue(selector.EnvironmentSelector)
-			if err != nil {
-				diags.AddError("Invalid environment selector", err.Error())
-				continue
-			}
-			model.Environment = value
-		}
-		if selector.ResourceSelector != nil {
-			value, err := selectorStringValue(selector.ResourceSelector)
-			if err != nil {
-				diags.AddError("Invalid resource selector", err.Error())
-				continue
-			}
-			model.Resource = value
-		}
-		result = append(result, model)
-	}
-
-	return result, diags
 }
 
 func policyRulesFromModel(data PolicyResourceModel) ([]policyRequestRule, diag.Diagnostics) {
@@ -1042,7 +894,6 @@ func policyRulesToModel(rules []api.PolicyRule) (policyRulesModel, diag.Diagnost
 }
 
 func ensurePolicyIDs(plan *PolicyResourceModel, state *PolicyResourceModel) {
-	mergeSelectorIDs(plan.Selector, selectorListFromState(state))
 	mergeCooldownIDs(plan.VersionCooldown, cooldownListFromState(state))
 	mergeWindowIDs(plan.DeploymentWindow, windowListFromState(state))
 	mergeVerificationIDs(plan.Verification, verificationListFromState(state))
@@ -1067,13 +918,6 @@ func setPolicyIDOnRules(request *policyRequestPayload, policyID string) {
 	}
 }
 
-func selectorListFromState(state *PolicyResourceModel) []PolicySelectorModel {
-	if state == nil {
-		return nil
-	}
-	return state.Selector
-}
-
 func cooldownListFromState(state *PolicyResourceModel) []PolicyVersionCooldown {
 	if state == nil {
 		return nil
@@ -1093,19 +937,6 @@ func verificationListFromState(state *PolicyResourceModel) []PolicyVerificationR
 		return nil
 	}
 	return state.Verification
-}
-
-func mergeSelectorIDs(plan []PolicySelectorModel, state []PolicySelectorModel) {
-	for i := range plan {
-		if selectorValueSet(plan[i].ID) {
-			continue
-		}
-		if i < len(state) && selectorValueSet(state[i].ID) {
-			plan[i].ID = state[i].ID
-			continue
-		}
-		plan[i].ID = types.StringValue(uuid.NewString())
-	}
 }
 
 func mergeCooldownIDs(plan []PolicyVersionCooldown, state []PolicyVersionCooldown) {

@@ -240,14 +240,14 @@ func (r *JobAgentResource) Create(ctx context.Context, req resource.CreateReques
 		data.ID = types.StringValue(jobAgentId)
 	}
 
-	requestBody := api.RequestJobAgentUpdateJSONRequestBody{
+	requestBody := api.RequestJobAgentUpsertJSONRequestBody{
 		Config:   *config,
 		Metadata: stringMapPointer(data.Metadata),
 		Name:     data.Name.ValueString(),
 		Type:     jobAgentType,
 	}
 
-	jobAgentResp, err := r.workspace.Client.RequestJobAgentUpdateWithResponse(
+	jobAgentResp, err := r.workspace.Client.RequestJobAgentUpsertWithResponse(
 		ctx, r.workspace.ID.String(), jobAgentId, requestBody,
 	)
 	if err != nil {
@@ -336,14 +336,14 @@ func (r *JobAgentResource) Update(ctx context.Context, req resource.UpdateReques
 		return
 	}
 
-	requestBody := api.RequestJobAgentUpdateJSONRequestBody{
+	requestBody := api.RequestJobAgentUpsertJSONRequestBody{
 		Config:   *config,
 		Metadata: stringMapPointer(data.Metadata),
 		Name:     data.Name.ValueString(),
 		Type:     jobAgentType,
 	}
 
-	jobAgentResp, err := r.workspace.Client.RequestJobAgentUpdateWithResponse(
+	jobAgentResp, err := r.workspace.Client.RequestJobAgentUpsertWithResponse(
 		ctx, r.workspace.ID.String(), data.ID.ValueString(), requestBody,
 	)
 	if err != nil {

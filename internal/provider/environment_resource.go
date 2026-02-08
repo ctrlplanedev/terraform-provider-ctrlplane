@@ -238,14 +238,14 @@ func (r *EnvironmentResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	requestBody := api.RequestEnvironmentUpdateJSONRequestBody{
+	requestBody := api.RequestEnvironmentUpsertJSONRequestBody{
 		ResourceSelector: selector,
 		Name:             data.Name.ValueString(),
 		Description:      data.Description.ValueStringPointer(),
 		SystemId:         data.SystemId.ValueString(),
 		Metadata:         stringMapPointer(data.Metadata),
 	}
-	envResp, err := r.workspace.Client.RequestEnvironmentUpdateWithResponse(
+	envResp, err := r.workspace.Client.RequestEnvironmentUpsertWithResponse(
 		ctx, r.workspace.ID.String(), data.ID.ValueString(), requestBody,
 	)
 

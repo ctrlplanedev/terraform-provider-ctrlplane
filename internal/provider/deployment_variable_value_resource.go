@@ -180,13 +180,13 @@ func (r *DeploymentVariableValueResource) Create(ctx context.Context, req resour
 		return
 	}
 
-	requestBody := api.UpsertDeploymentVariableValueRequest{
+	requestBody := api.RequestDeploymentVariableValueUpsertJSONRequestBody{
 		Priority:         data.Priority.ValueInt64(),
 		ResourceSelector: selector,
 		Value:            *apiValue,
 	}
 
-	valueResp, err := r.workspace.Client.RequestDeploymentVariableValueUpdateWithResponse(
+	valueResp, err := r.workspace.Client.RequestDeploymentVariableValueUpsertWithResponse(
 		ctx, r.workspace.ID.String(), data.DeploymentId.ValueString(), data.VariableId.ValueString(), valueID, requestBody,
 	)
 	if err != nil {
@@ -295,7 +295,7 @@ func (r *DeploymentVariableValueResource) Update(ctx context.Context, req resour
 		Value:            *apiValue,
 	}
 
-	valueResp, err := r.workspace.Client.RequestDeploymentVariableValueUpdateWithResponse(
+	valueResp, err := r.workspace.Client.RequestDeploymentVariableValueUpsertWithResponse(
 		ctx, r.workspace.ID.String(), data.DeploymentId.ValueString(), data.VariableId.ValueString(), data.ID.ValueString(), requestBody,
 	)
 	if err != nil {

@@ -224,12 +224,12 @@ func (r *SystemResource) Update(ctx context.Context, req resource.UpdateRequest,
 	// Preserve the existing ID since it is computed and not known from the plan.
 	data.ID = state.ID
 
-	requestBody := api.RequestSystemUpdateJSONRequestBody{
+	requestBody := api.RequestSystemUpsertJSONRequestBody{
 		Name:        data.Name.ValueString(),
 		Description: data.Description.ValueStringPointer(),
 		Metadata:    stringMapPointer(data.Metadata),
 	}
-	system, err := r.workspace.Client.RequestSystemUpdateWithResponse(
+	system, err := r.workspace.Client.RequestSystemUpsertWithResponse(
 		ctx, r.workspace.ID.String(), data.ID.ValueString(), requestBody,
 	)
 

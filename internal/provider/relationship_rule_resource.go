@@ -339,7 +339,7 @@ func (r *RelationshipRuleResource) Update(ctx context.Context, req resource.Upda
 		}
 	}
 
-	requestBody := api.UpsertRelationshipByIdJSONRequestBody{
+	requestBody := api.RequestRelationshipRuleUpsertJSONRequestBody{
 		Name:             data.Name.ValueString(),
 		Reference:        data.Reference.ValueString(),
 		Description:      data.Description.ValueStringPointer(),
@@ -368,7 +368,7 @@ func (r *RelationshipRuleResource) Update(ctx context.Context, req resource.Upda
 		requestBody.ToSelector = toSelector
 	}
 
-	upsertResp, err := r.workspace.Client.UpsertRelationshipByIdWithResponse(
+	upsertResp, err := r.workspace.Client.RequestRelationshipRuleUpsertWithResponse(
 		ctx,
 		r.workspace.ID.String(),
 		data.ID.ValueString(),

@@ -126,11 +126,11 @@ func (r *ResourceResource) Create(ctx context.Context, req resource.CreateReques
 		CreatedAt:  now,
 	}
 
-	requestBody := api.RequestResourceProvidersResourcesPatchJSONRequestBody{
+	requestBody := api.SetResourceProviderResourcesJSONRequestBody{
 		Resources: []api.ResourceProviderResource{resourceItem},
 	}
 
-	patchResp, err := r.workspace.Client.RequestResourceProvidersResourcesPatchWithResponse(
+	patchResp, err := r.workspace.Client.SetResourceProviderResourcesWithResponse(
 		ctx,
 		r.workspace.ID.String(),
 		data.ProviderID.ValueString(),
@@ -240,11 +240,11 @@ func (r *ResourceResource) Update(ctx context.Context, req resource.UpdateReques
 		UpdatedAt:  &now,
 	}
 
-	requestBody := api.RequestResourceProvidersResourcesPatchJSONRequestBody{
+	requestBody := api.SetResourceProviderResourcesJSONRequestBody{
 		Resources: []api.ResourceProviderResource{resourceItem},
 	}
 
-	patchResp, err := r.workspace.Client.RequestResourceProvidersResourcesPatchWithResponse(
+	patchResp, err := r.workspace.Client.SetResourceProviderResourcesWithResponse(
 		ctx,
 		r.workspace.ID.String(),
 		data.ProviderID.ValueString(),
