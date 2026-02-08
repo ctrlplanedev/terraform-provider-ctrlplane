@@ -18,6 +18,7 @@ description: |-
 ### Required
 
 - `name` (String) The name of the policy
+- `selector` (String) CEL expression for matching release targets. Use "true" to match all targets.
 
 ### Optional
 
@@ -26,7 +27,6 @@ description: |-
 - `enabled` (Boolean) Whether the policy is enabled
 - `metadata` (Map of String) The metadata of the policy
 - `priority` (Number) The priority of the policy (higher is evaluated first)
-- `selector` (Block List) Selectors for policy targets (see [below for nested schema](#nestedblock--selector))
 - `verification` (Block List) Verification rules (see [below for nested schema](#nestedblock--verification))
 - `version_cooldown` (Block List) Version cooldown rules (see [below for nested schema](#nestedblock--version_cooldown))
 
@@ -48,17 +48,6 @@ Optional:
 - `created_at` (String) Rule creation timestamp
 - `id` (String) Rule ID
 - `timezone` (String) IANA timezone for the recurrence rule
-
-
-<a id="nestedblock--selector"></a>
-### Nested Schema for `selector`
-
-Optional:
-
-- `deployment` (String) CEL selector for deployments
-- `environment` (String) CEL selector for environments
-- `id` (String) Selector ID
-- `resource` (String) CEL selector for resources
 
 
 <a id="nestedblock--verification"></a>
