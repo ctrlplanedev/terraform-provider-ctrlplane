@@ -146,7 +146,28 @@ func (r *ResourceResource) Create(ctx context.Context, req resource.CreateReques
 		return
 	}
 
-	data.ID = types.StringValue(data.Identifier.ValueString())
+	identifier := data.Identifier.ValueString()
+	data.ID = types.StringValue(identifier)
+
+	err = waitForResource(ctx, func() (bool, error) {
+		getResp, err := r.workspace.Client.GetResourceByIdentifierWithResponse(ctx, r.workspace.ID.String(), identifier)
+		if err != nil {
+			return false, err
+		}
+		switch getResp.StatusCode() {
+		case http.StatusOK:
+			return true, nil
+		case http.StatusNotFound:
+			return false, nil
+		default:
+			return false, fmt.Errorf("unexpected status %d", getResp.StatusCode())
+		}
+	})
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to create resource", fmt.Sprintf("Resource not available after creation: %s", err.Error()))
+		return
+	}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
 }
 

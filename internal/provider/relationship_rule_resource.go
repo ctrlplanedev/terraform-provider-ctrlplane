@@ -220,7 +220,28 @@ func (r *RelationshipRuleResource) Create(ctx context.Context, req resource.Crea
 		return
 	}
 
-	data.ID = types.StringValue(createResp.JSON201.Id)
+	ruleId := createResp.JSON201.Id
+	data.ID = types.StringValue(ruleId)
+
+	err = waitForResource(ctx, func() (bool, error) {
+		getResp, err := r.workspace.Client.GetRelationshipRuleWithResponse(ctx, r.workspace.ID.String(), ruleId)
+		if err != nil {
+			return false, err
+		}
+		switch getResp.StatusCode() {
+		case http.StatusOK:
+			return true, nil
+		case http.StatusNotFound:
+			return false, nil
+		default:
+			return false, fmt.Errorf("unexpected status %d", getResp.StatusCode())
+		}
+	})
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to create relationship rule", fmt.Sprintf("Resource not available after creation: %s", err.Error()))
+		return
+	}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
 }
 

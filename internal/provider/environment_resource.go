@@ -96,6 +96,25 @@ func (r *EnvironmentResource) Create(ctx context.Context, req resource.CreateReq
 
 	data.ID = types.StringValue(envId)
 
+	err = waitForResource(ctx, func() (bool, error) {
+		getResp, err := r.workspace.Client.GetEnvironmentWithResponse(ctx, r.workspace.ID.String(), envId)
+		if err != nil {
+			return false, err
+		}
+		switch getResp.StatusCode() {
+		case http.StatusOK:
+			return true, nil
+		case http.StatusNotFound:
+			return false, nil
+		default:
+			return false, fmt.Errorf("unexpected status %d", getResp.StatusCode())
+		}
+	})
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to create environment", fmt.Sprintf("Resource not available after creation: %s", err.Error()))
+		return
+	}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
 }
 

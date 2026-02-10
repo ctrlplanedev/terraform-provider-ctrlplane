@@ -392,6 +392,26 @@ func (r *PolicyResource) Create(ctx context.Context, req resource.CreateRequest,
 			return
 		}
 	}
+
+	err = waitForResource(ctx, func() (bool, error) {
+		getResp, err := r.workspace.Client.GetPolicyWithResponse(ctx, r.workspace.ID.String(), data.ID.ValueString())
+		if err != nil {
+			return false, err
+		}
+		switch getResp.StatusCode() {
+		case http.StatusOK:
+			return true, nil
+		case http.StatusNotFound:
+			return false, nil
+		default:
+			return false, fmt.Errorf("unexpected status %d", getResp.StatusCode())
+		}
+	})
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to create policy", fmt.Sprintf("Resource not available after creation: %s", err.Error()))
+		return
+	}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
 }
 

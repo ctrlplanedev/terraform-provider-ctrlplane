@@ -265,7 +265,28 @@ func (r *JobAgentResource) Create(ctx context.Context, req resource.CreateReques
 		return
 	}
 
-	data.ID = types.StringValue(jobAgentResp.JSON202.Id)
+	agentId := jobAgentResp.JSON202.Id
+	data.ID = types.StringValue(agentId)
+
+	err = waitForResource(ctx, func() (bool, error) {
+		getResp, err := r.workspace.Client.GetJobAgentWithResponse(ctx, r.workspace.ID.String(), agentId)
+		if err != nil {
+			return false, err
+		}
+		switch getResp.StatusCode() {
+		case http.StatusOK:
+			return true, nil
+		case http.StatusNotFound:
+			return false, nil
+		default:
+			return false, fmt.Errorf("unexpected status %d", getResp.StatusCode())
+		}
+	})
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to create job agent", fmt.Sprintf("Resource not available after creation: %s", err.Error()))
+		return
+	}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
 }
 

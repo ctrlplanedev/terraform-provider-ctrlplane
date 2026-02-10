@@ -204,7 +204,30 @@ func (r *DeploymentVariableValueResource) Create(ctx context.Context, req resour
 		return
 	}
 
-	data.ID = types.StringValue(valueResp.JSON202.Id)
+	valId := valueResp.JSON202.Id
+	data.ID = types.StringValue(valId)
+
+	err = waitForResource(ctx, func() (bool, error) {
+		getResp, err := r.workspace.Client.GetDeploymentVariableValueWithResponse(
+			ctx, r.workspace.ID.String(), data.DeploymentId.ValueString(), data.VariableId.ValueString(), valId,
+		)
+		if err != nil {
+			return false, err
+		}
+		switch getResp.StatusCode() {
+		case http.StatusOK:
+			return true, nil
+		case http.StatusNotFound:
+			return false, nil
+		default:
+			return false, fmt.Errorf("unexpected status %d", getResp.StatusCode())
+		}
+	})
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to create deployment variable value", fmt.Sprintf("Resource not available after creation: %s", err.Error()))
+		return
+	}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
 }
 
