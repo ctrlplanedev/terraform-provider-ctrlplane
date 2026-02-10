@@ -124,10 +124,6 @@ func (r *WorkflowTemplateResource) Schema(ctx context.Context, req resource.Sche
 	}
 }
 
-// ---------------------------------------------------------------------------
-// Models
-// ---------------------------------------------------------------------------
-
 type WorkflowTemplateResourceModel struct {
 	ID     types.String                       `tfsdk:"id"`
 	Name   types.String                       `tfsdk:"name"`
@@ -149,10 +145,6 @@ type WorkflowTemplateJobTemplateModel struct {
 	Ref    types.String `tfsdk:"ref"`
 	Config types.Map    `tfsdk:"config"`
 }
-
-// ---------------------------------------------------------------------------
-// Create
-// ---------------------------------------------------------------------------
 
 func (r *WorkflowTemplateResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var data WorkflowTemplateResourceModel
@@ -206,10 +198,6 @@ func (r *WorkflowTemplateResource) Create(ctx context.Context, req resource.Crea
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-// ---------------------------------------------------------------------------
-// Read
-// ---------------------------------------------------------------------------
-
 func (r *WorkflowTemplateResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var data WorkflowTemplateResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
@@ -243,10 +231,6 @@ func (r *WorkflowTemplateResource) Read(ctx context.Context, req resource.ReadRe
 	setWorkflowTemplateModelFromAPI(&data, getResp.JSON200)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
-
-// ---------------------------------------------------------------------------
-// Update
-// ---------------------------------------------------------------------------
 
 func (r *WorkflowTemplateResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var data WorkflowTemplateResourceModel
@@ -292,10 +276,6 @@ func (r *WorkflowTemplateResource) Update(ctx context.Context, req resource.Upda
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-// ---------------------------------------------------------------------------
-// Delete
-// ---------------------------------------------------------------------------
-
 func (r *WorkflowTemplateResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var data WorkflowTemplateResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
@@ -321,10 +301,6 @@ func (r *WorkflowTemplateResource) Delete(ctx context.Context, req resource.Dele
 		resp.Diagnostics.AddError("Failed to delete workflow template", formatResponseError(deleteResp.StatusCode(), deleteResp.Body))
 	}
 }
-
-// ---------------------------------------------------------------------------
-// Helpers: Model ↔ API conversion
-// ---------------------------------------------------------------------------
 
 func workflowInputsFromModel(inputs []WorkflowTemplateInputModel) ([]api.WorkflowInput, error) {
 	result := make([]api.WorkflowInput, 0, len(inputs))
@@ -401,7 +377,6 @@ func setWorkflowTemplateModelFromAPI(data *WorkflowTemplateResourceModel, wt *ap
 	data.ID = types.StringValue(wt.Id)
 	data.Name = types.StringValue(wt.Name)
 
-	// Map inputs
 	inputs := make([]WorkflowTemplateInputModel, 0, len(wt.Inputs))
 	for _, input := range wt.Inputs {
 		m := WorkflowTemplateInputModel{
@@ -442,7 +417,6 @@ func setWorkflowTemplateModelFromAPI(data *WorkflowTemplateResourceModel, wt *ap
 	}
 	data.Inputs = inputs
 
-	// Map jobs
 	jobs := make([]WorkflowTemplateJobTemplateModel, 0, len(wt.Jobs))
 	for _, job := range wt.Jobs {
 		configMap := make(map[string]string, len(job.Config))
