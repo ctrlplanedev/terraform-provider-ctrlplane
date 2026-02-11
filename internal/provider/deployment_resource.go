@@ -523,7 +523,7 @@ func countDeploymentJobAgentBlocks(ja DeploymentJobAgentModel) int {
 func deploymentJobAgentConfigFromModel(ja DeploymentJobAgentModel) *map[string]interface{} {
 	switch {
 	case ja.ArgoCD != nil:
-		cfg := map[string]interface{}{}
+		cfg := map[string]any{}
 		if !ja.ArgoCD.ApiKey.IsNull() && !ja.ArgoCD.ApiKey.IsUnknown() && ja.ArgoCD.ApiKey.ValueString() != "" {
 			cfg["apiKey"] = ja.ArgoCD.ApiKey.ValueString()
 		}
@@ -538,7 +538,7 @@ func deploymentJobAgentConfigFromModel(ja DeploymentJobAgentModel) *map[string]i
 		}
 		return &cfg
 	case ja.GitHub != nil:
-		cfg := map[string]interface{}{}
+		cfg := map[string]any{}
 		if !ja.GitHub.InstallationId.IsNull() && !ja.GitHub.InstallationId.IsUnknown() {
 			cfg["installationId"] = ja.GitHub.InstallationId.ValueInt64()
 		}
@@ -559,7 +559,7 @@ func deploymentJobAgentConfigFromModel(ja DeploymentJobAgentModel) *map[string]i
 		}
 		return &cfg
 	case ja.TerraformCloud != nil:
-		cfg := map[string]interface{}{}
+		cfg := map[string]any{}
 		if !ja.TerraformCloud.Address.IsNull() && !ja.TerraformCloud.Address.IsUnknown() && ja.TerraformCloud.Address.ValueString() != "" {
 			cfg["address"] = ja.TerraformCloud.Address.ValueString()
 		}
@@ -577,7 +577,7 @@ func deploymentJobAgentConfigFromModel(ja DeploymentJobAgentModel) *map[string]i
 		}
 		return &cfg
 	case ja.TestRunner != nil:
-		cfg := map[string]interface{}{}
+		cfg := map[string]any{}
 		if !ja.TestRunner.DelaySeconds.IsNull() && !ja.TestRunner.DelaySeconds.IsUnknown() {
 			cfg["delaySeconds"] = ja.TestRunner.DelaySeconds.ValueInt64()
 		}
