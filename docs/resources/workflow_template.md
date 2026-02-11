@@ -71,7 +71,7 @@ Optional:
 
 Required:
 
-- `name` (String) The name of the job
+- `key` (String) The key of the job
 
 Optional:
 
@@ -87,7 +87,7 @@ Read-Only:
 
 Required:
 
-- `id` (String) The ID of the job agent
+- `ref` (String) Reference to the job agent
 
 Optional:
 

@@ -120,9 +120,9 @@ func (r *WorkflowTemplateResource) Schema(ctx context.Context, req resource.Sche
 								stringplanmodifier.UseStateForUnknown(),
 							},
 						},
-						"name": schema.StringAttribute{
+						"key": schema.StringAttribute{
 							Required:    true,
-							Description: "The name of the job",
+							Description: "The key of the job",
 						},
 						"if": schema.StringAttribute{
 							Optional:    true,
@@ -133,9 +133,9 @@ func (r *WorkflowTemplateResource) Schema(ctx context.Context, req resource.Sche
 						"agent": schema.SingleNestedBlock{
 							Description: "Job agent configuration. Specifies which agent runs the job and its configuration.",
 							Attributes: map[string]schema.Attribute{
-								"id": schema.StringAttribute{
+								"ref": schema.StringAttribute{
 									Required:    true,
-									Description: "The ID of the job agent",
+									Description: "Reference to the job agent",
 								},
 								"config": schema.MapAttribute{
 									Optional:    true,
@@ -262,14 +262,14 @@ type WorkflowTemplateInputBooleanModel struct {
 }
 
 type WorkflowTemplateJobTemplateModel struct {
-	ID    types.String           `tfsdk:"id"`
-	Name  types.String           `tfsdk:"name"`
-	If    types.String           `tfsdk:"if"`
-	Agent *WorkflowJobAgentModel `tfsdk:"agent"`
+	ID    types.String            `tfsdk:"id"`
+	Key   types.String            `tfsdk:"key"`
+	If    types.String            `tfsdk:"if"`
+	Agent *WorkflowJobAgentModel  `tfsdk:"agent"`
 }
 
 type WorkflowJobAgentModel struct {
-	Id             types.String                         `tfsdk:"id"`
+	Ref            types.String                         `tfsdk:"ref"`
 	Config         types.Map                            `tfsdk:"config"`
 	ArgoCD         *WorkflowJobAgentArgoCDModel         `tfsdk:"argocd"`
 	GitHub         *WorkflowJobAgentGitHubModel         `tfsdk:"github"`
@@ -656,11 +656,11 @@ func workflowJobsFromModel(ctx context.Context, jobs []WorkflowTemplateJobTempla
 
 		ref := ""
 		if job.Agent != nil {
-			ref = job.Agent.Id.ValueString()
+			ref = job.Agent.Ref.ValueString()
 		}
 
 		jt := api.CreateWorkflowJobTemplate{
-			Name:   job.Name.ValueString(),
+			Name:   job.Key.ValueString(),
 			Ref:    ref,
 			Config: config,
 		}
@@ -736,14 +736,14 @@ func setWorkflowTemplateModelFromAPI(ctx context.Context, data *WorkflowTemplate
 		}
 
 		agent := &WorkflowJobAgentModel{
-			Id:     types.StringValue(job.Ref),
+			Ref:    types.StringValue(job.Ref),
 			Config: types.MapNull(types.StringType),
 		}
 		setWorkflowJobAgentBlocksFromConfig(agent, job.Config)
 
 		jm := WorkflowTemplateJobTemplateModel{
 			ID:    types.StringValue(job.Id),
-			Name:  types.StringValue(job.Name),
+			Key:   types.StringValue(job.Name),
 			If:    ifVal,
 			Agent: agent,
 		}

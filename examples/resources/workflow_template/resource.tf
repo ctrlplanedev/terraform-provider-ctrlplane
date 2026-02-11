@@ -17,10 +17,10 @@ resource "ctrlplane_workflow_template" "deploy" {
   }
 
   job {
-    name = "deploy"
+    key = "deploy"
 
     agent {
-      id = ctrlplane_job_agent.github.id
+      ref = ctrlplane_job_agent.github.id
 
       github {
         owner       = "my-org"
@@ -51,10 +51,10 @@ resource "ctrlplane_workflow_template" "deploy_and_verify" {
   }
 
   job {
-    name = "deploy"
+    key = "deploy"
 
     agent {
-      id = ctrlplane_job_agent.github.id
+      ref = ctrlplane_job_agent.github.id
 
       github {
         owner       = "my-org"
@@ -65,11 +65,11 @@ resource "ctrlplane_workflow_template" "deploy_and_verify" {
   }
 
   job {
-    name = "run-smoke-tests"
-    if   = "job.deploy.status == 'successful'"
+    key = "run-smoke-tests"
+    if  = "job.deploy.status == 'successful'"
 
     agent {
-      id = ctrlplane_job_agent.github.id
+      ref = ctrlplane_job_agent.github.id
 
       github {
         owner       = "my-org"
@@ -85,10 +85,10 @@ resource "ctrlplane_workflow_template" "custom" {
   name = "custom-workflow"
 
   job {
-    name = "run"
+    key = "run"
 
     agent {
-      id = ctrlplane_job_agent.custom.id
+      ref = ctrlplane_job_agent.custom.id
 
       config = {
         image = "deploy:latest"

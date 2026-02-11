@@ -90,11 +90,11 @@ resource "ctrlplane_workflow_template" "test" {
   }
 
   job {
-    name = "deploy"
-    if   = %q
+    key = "deploy"
+    if  = %q
 
     agent {
-      id = ctrlplane_job_agent.test.id
+      ref = ctrlplane_job_agent.test.id
 
       test_runner {
         delay_seconds = %d
