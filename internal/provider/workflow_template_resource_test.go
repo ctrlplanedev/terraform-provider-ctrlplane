@@ -23,7 +23,7 @@ func TestAccWorkflowTemplateResource(t *testing.T) {
 		Steps: []resource.TestStep{
 			// Create and verify
 			{
-				Config: testAccWorkflowTemplateResourceConfig(name, "default-val", 5, "successful"),
+				Config: testAccWorkflowTemplateResourceConfig(name, "default-val", 5, "successful", `resource.name == "test"`),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"ctrlplane_workflow_template.test",
@@ -49,7 +49,7 @@ func TestAccWorkflowTemplateResource(t *testing.T) {
 			},
 			// Update and verify
 			{
-				Config: testAccWorkflowTemplateResourceConfig(updatedName, "updated-val", 10, "failure"),
+				Config: testAccWorkflowTemplateResourceConfig(updatedName, "updated-val", 10, "failure", `resource.name == "updated"`),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"ctrlplane_workflow_template.test",
@@ -67,7 +67,7 @@ func TestAccWorkflowTemplateResource(t *testing.T) {
 	})
 }
 
-func testAccWorkflowTemplateResourceConfig(name string, defaultInput string, delaySeconds int, status string) string {
+func testAccWorkflowTemplateResourceConfig(name string, defaultInput string, delaySeconds int, status string, ifExpr string) string {
 	return fmt.Sprintf(`
 %s
 resource "ctrlplane_job_agent" "test" {
@@ -91,10 +91,11 @@ resource "ctrlplane_workflow_template" "test" {
   job {
     name = "deploy"
     ref  = ctrlplane_job_agent.test.id
+    if   = %q
     config = {
       image = "deploy:latest"
     }
   }
 }
-`, testAccProviderConfig(), name+"-ja", delaySeconds, status, name, defaultInput)
+`, testAccProviderConfig(), name+"-ja", delaySeconds, status, name, defaultInput, ifExpr)
 }
