@@ -1,26 +1,33 @@
-# Simple workflow template
+# Simple workflow template using GitHub job agent
 resource "ctrlplane_workflow_template" "deploy" {
   name = "deploy-service"
 
   input {
-    name           = "environment"
-    type           = "string"
-    default_string = "staging"
+    key = "environment"
+    string {
+      default = "staging"
+    }
   }
 
   input {
-    name            = "dry_run"
-    type            = "boolean"
-    default_boolean = false
+    key = "dry_run"
+    boolean {
+      default = false
+    }
   }
 
   job {
     name = "deploy"
-    ref  = "github-deployer"
 
-    config = {
-      workflow = "deploy.yml"
-      ref      = "main"
+    agent {
+      id = ctrlplane_job_agent.github.id
+
+      github {
+        owner       = "my-org"
+        repo        = "my-repo"
+        workflow_id = 12345
+        ref         = "main"
+      }
     }
   }
 }
@@ -30,33 +37,62 @@ resource "ctrlplane_workflow_template" "deploy_and_verify" {
   name = "deploy-and-verify"
 
   input {
-    name           = "image_tag"
-    type           = "string"
-    default_string = "latest"
+    key = "image_tag"
+    string {
+      default = "latest"
+    }
   }
 
   input {
-    name           = "replicas"
-    type           = "number"
-    default_number = 3
+    key = "replicas"
+    number {
+      default = 3
+    }
   }
 
   job {
     name = "deploy"
-    ref  = "github-deployer"
 
-    config = {
-      workflow = "deploy.yml"
+    agent {
+      id = ctrlplane_job_agent.github.id
+
+      github {
+        owner       = "my-org"
+        repo        = "my-repo"
+        workflow_id = 12345
+      }
     }
   }
 
   job {
     name = "run-smoke-tests"
-    ref  = "github-deployer"
     if   = "job.deploy.status == 'successful'"
 
-    config = {
-      workflow = "smoke-tests.yml"
+    agent {
+      id = ctrlplane_job_agent.github.id
+
+      github {
+        owner       = "my-org"
+        repo        = "my-repo"
+        workflow_id = 67890
+      }
+    }
+  }
+}
+
+# Workflow using generic config for custom job agents
+resource "ctrlplane_workflow_template" "custom" {
+  name = "custom-workflow"
+
+  job {
+    name = "run"
+
+    agent {
+      id = ctrlplane_job_agent.custom.id
+
+      config = {
+        image = "deploy:latest"
+      }
     }
   }
 }

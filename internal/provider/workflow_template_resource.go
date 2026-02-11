@@ -70,28 +70,41 @@ func (r *WorkflowTemplateResource) Schema(ctx context.Context, req resource.Sche
 		},
 		Blocks: map[string]schema.Block{
 			"input": schema.ListNestedBlock{
-				Description: "Input definitions for the workflow template",
+				Description: "Input definitions for the workflow template. Each input must define exactly one type block: string, number, or boolean.",
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
-						"name": schema.StringAttribute{
+						"key": schema.StringAttribute{
 							Required:    true,
-							Description: "The name of the input",
+							Description: "The key of the input",
 						},
-						"type": schema.StringAttribute{
-							Required:    true,
-							Description: "The type of the input (string, number, or boolean)",
+					},
+					Blocks: map[string]schema.Block{
+						"string": schema.SingleNestedBlock{
+							Description: "Defines a string type input. Mutually exclusive with number and boolean.",
+							Attributes: map[string]schema.Attribute{
+								"default": schema.StringAttribute{
+									Optional:    true,
+									Description: "Default value for the string input",
+								},
+							},
 						},
-						"default_string": schema.StringAttribute{
-							Optional:    true,
-							Description: "Default value for a string input",
+						"number": schema.SingleNestedBlock{
+							Description: "Defines a number type input. Mutually exclusive with string and boolean.",
+							Attributes: map[string]schema.Attribute{
+								"default": schema.Float64Attribute{
+									Optional:    true,
+									Description: "Default value for the number input",
+								},
+							},
 						},
-						"default_number": schema.Float64Attribute{
-							Optional:    true,
-							Description: "Default value for a number input",
-						},
-						"default_boolean": schema.BoolAttribute{
-							Optional:    true,
-							Description: "Default value for a boolean input",
+						"boolean": schema.SingleNestedBlock{
+							Description: "Defines a boolean type input. Mutually exclusive with string and number.",
+							Attributes: map[string]schema.Attribute{
+								"default": schema.BoolAttribute{
+									Optional:    true,
+									Description: "Default value for the boolean input",
+								},
+							},
 						},
 					},
 				},
@@ -111,18 +124,109 @@ func (r *WorkflowTemplateResource) Schema(ctx context.Context, req resource.Sche
 							Required:    true,
 							Description: "The name of the job",
 						},
-						"ref": schema.StringAttribute{
-							Required:    true,
-							Description: "Reference to the job agent",
-						},
-						"config": schema.MapAttribute{
-							Required:    true,
-							Description: "Configuration for the job agent",
-							ElementType: types.StringType,
-						},
 						"if": schema.StringAttribute{
 							Optional:    true,
 							Description: "CEL expression to determine if the job should run",
+						},
+					},
+					Blocks: map[string]schema.Block{
+						"agent": schema.SingleNestedBlock{
+							Description: "Job agent configuration. Specifies which agent runs the job and its configuration.",
+							Attributes: map[string]schema.Attribute{
+								"id": schema.StringAttribute{
+									Required:    true,
+									Description: "The ID of the job agent",
+								},
+								"config": schema.MapAttribute{
+									Optional:    true,
+									Description: "Generic configuration map for the job agent. Mutually exclusive with typed blocks (argocd, github, terraform_cloud, test_runner).",
+									ElementType: types.StringType,
+								},
+							},
+							Blocks: map[string]schema.Block{
+								"argocd": schema.SingleNestedBlock{
+									Description: "ArgoCD job agent configuration.",
+									Attributes: map[string]schema.Attribute{
+										"api_key": schema.StringAttribute{
+											Optional:    true,
+											Description: "ArgoCD API token",
+											Sensitive:   true,
+										},
+										"server_url": schema.StringAttribute{
+											Optional:    true,
+											Description: "ArgoCD server address (host[:port] or URL)",
+										},
+										"template": schema.StringAttribute{
+											Optional:    true,
+											Description: "ArgoCD application template",
+										},
+									},
+								},
+								"github": schema.SingleNestedBlock{
+									Description: "GitHub job agent configuration.",
+									Attributes: map[string]schema.Attribute{
+										"installation_id": schema.Int64Attribute{
+											Optional:    true,
+											Description: "GitHub app installation ID",
+										},
+										"owner": schema.StringAttribute{
+											Optional:    true,
+											Description: "GitHub repository owner",
+										},
+										"ref": schema.StringAttribute{
+											Optional:    true,
+											Description: "Git ref to run the workflow on",
+										},
+										"repo": schema.StringAttribute{
+											Optional:    true,
+											Description: "GitHub repository name",
+										},
+										"workflow_id": schema.Int64Attribute{
+											Optional:    true,
+											Description: "GitHub Actions workflow ID",
+										},
+									},
+								},
+								"terraform_cloud": schema.SingleNestedBlock{
+									Description: "Terraform Cloud job agent configuration.",
+									Attributes: map[string]schema.Attribute{
+										"address": schema.StringAttribute{
+											Optional:    true,
+											Description: "Terraform Cloud address (e.g. https://app.terraform.io)",
+										},
+										"organization": schema.StringAttribute{
+											Optional:    true,
+											Description: "Terraform Cloud organization name",
+										},
+										"template": schema.StringAttribute{
+											Optional:    true,
+											Description: "Terraform Cloud workspace template",
+										},
+										"token": schema.StringAttribute{
+											Optional:    true,
+											Description: "Terraform Cloud API token",
+											Sensitive:   true,
+										},
+									},
+								},
+								"test_runner": schema.SingleNestedBlock{
+									Description: "Test runner job agent configuration.",
+									Attributes: map[string]schema.Attribute{
+										"delay_seconds": schema.Int64Attribute{
+											Optional:    true,
+											Description: "Delay in seconds before resolving the job",
+										},
+										"message": schema.StringAttribute{
+											Optional:    true,
+											Description: "Optional message to include in the job output",
+										},
+										"status": schema.StringAttribute{
+											Optional:    true,
+											Description: "Final status to set (e.g. \"successful\", \"failure\")",
+										},
+									},
+								},
+							},
 						},
 					},
 				},
@@ -139,19 +243,65 @@ type WorkflowTemplateResourceModel struct {
 }
 
 type WorkflowTemplateInputModel struct {
-	Name           types.String  `tfsdk:"name"`
-	Type           types.String  `tfsdk:"type"`
-	DefaultString  types.String  `tfsdk:"default_string"`
-	DefaultNumber  types.Float64 `tfsdk:"default_number"`
-	DefaultBoolean types.Bool    `tfsdk:"default_boolean"`
+	Key     types.String                       `tfsdk:"key"`
+	String  *WorkflowTemplateInputStringModel  `tfsdk:"string"`
+	Number  *WorkflowTemplateInputNumberModel  `tfsdk:"number"`
+	Boolean *WorkflowTemplateInputBooleanModel `tfsdk:"boolean"`
+}
+
+type WorkflowTemplateInputStringModel struct {
+	Default types.String `tfsdk:"default"`
+}
+
+type WorkflowTemplateInputNumberModel struct {
+	Default types.Float64 `tfsdk:"default"`
+}
+
+type WorkflowTemplateInputBooleanModel struct {
+	Default types.Bool `tfsdk:"default"`
 }
 
 type WorkflowTemplateJobTemplateModel struct {
-	ID     types.String `tfsdk:"id"`
-	Name   types.String `tfsdk:"name"`
-	Ref    types.String `tfsdk:"ref"`
-	Config types.Map    `tfsdk:"config"`
-	If     types.String `tfsdk:"if"`
+	ID    types.String           `tfsdk:"id"`
+	Name  types.String           `tfsdk:"name"`
+	If    types.String           `tfsdk:"if"`
+	Agent *WorkflowJobAgentModel `tfsdk:"agent"`
+}
+
+type WorkflowJobAgentModel struct {
+	Id             types.String                         `tfsdk:"id"`
+	Config         types.Map                            `tfsdk:"config"`
+	ArgoCD         *WorkflowJobAgentArgoCDModel         `tfsdk:"argocd"`
+	GitHub         *WorkflowJobAgentGitHubModel         `tfsdk:"github"`
+	TerraformCloud *WorkflowJobAgentTerraformCloudModel `tfsdk:"terraform_cloud"`
+	TestRunner     *WorkflowJobAgentTestRunnerModel     `tfsdk:"test_runner"`
+}
+
+type WorkflowJobAgentArgoCDModel struct {
+	ApiKey    types.String `tfsdk:"api_key"`
+	ServerUrl types.String `tfsdk:"server_url"`
+	Template  types.String `tfsdk:"template"`
+}
+
+type WorkflowJobAgentGitHubModel struct {
+	InstallationId types.Int64  `tfsdk:"installation_id"`
+	Owner          types.String `tfsdk:"owner"`
+	Ref            types.String `tfsdk:"ref"`
+	Repo           types.String `tfsdk:"repo"`
+	WorkflowId     types.Int64  `tfsdk:"workflow_id"`
+}
+
+type WorkflowJobAgentTerraformCloudModel struct {
+	Address      types.String `tfsdk:"address"`
+	Organization types.String `tfsdk:"organization"`
+	Template     types.String `tfsdk:"template"`
+	Token        types.String `tfsdk:"token"`
+}
+
+type WorkflowJobAgentTestRunnerModel struct {
+	DelaySeconds types.Int64  `tfsdk:"delay_seconds"`
+	Message      types.String `tfsdk:"message"`
+	Status       types.String `tfsdk:"status"`
 }
 
 func (r *WorkflowTemplateResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -331,58 +481,159 @@ func workflowInputsFromModel(inputs []WorkflowTemplateInputModel) ([]api.Workflo
 	result := make([]api.WorkflowInput, 0, len(inputs))
 	for _, input := range inputs {
 		var wi api.WorkflowInput
-		switch input.Type.ValueString() {
-		case "string":
+		key := input.Key.ValueString()
+
+		count := 0
+		if input.String != nil {
+			count++
+		}
+		if input.Number != nil {
+			count++
+		}
+		if input.Boolean != nil {
+			count++
+		}
+
+		if count == 0 {
+			return nil, fmt.Errorf("input '%s' must define exactly one of: string, number, or boolean block", key)
+		}
+		if count > 1 {
+			return nil, fmt.Errorf("input '%s' must define exactly one of: string, number, or boolean block, but %d were defined", key, count)
+		}
+
+		switch {
+		case input.String != nil:
 			si := api.WorkflowStringInput{
-				Name: input.Name.ValueString(),
+				Name: key,
 				Type: api.String,
 			}
-			if !input.DefaultString.IsNull() && !input.DefaultString.IsUnknown() {
-				v := input.DefaultString.ValueString()
+			if !input.String.Default.IsNull() && !input.String.Default.IsUnknown() {
+				v := input.String.Default.ValueString()
 				si.Default = &v
 			}
 			if err := wi.FromWorkflowStringInput(si); err != nil {
-				return nil, fmt.Errorf("failed to build string input '%s': %w", input.Name.ValueString(), err)
+				return nil, fmt.Errorf("failed to build string input '%s': %w", key, err)
 			}
-		case "number":
+		case input.Number != nil:
 			ni := api.WorkflowNumberInput{
-				Name: input.Name.ValueString(),
+				Name: key,
 				Type: api.Number,
 			}
-			if !input.DefaultNumber.IsNull() && !input.DefaultNumber.IsUnknown() {
-				v := float32(input.DefaultNumber.ValueFloat64())
+			if !input.Number.Default.IsNull() && !input.Number.Default.IsUnknown() {
+				v := float32(input.Number.Default.ValueFloat64())
 				ni.Default = &v
 			}
 			if err := wi.FromWorkflowNumberInput(ni); err != nil {
-				return nil, fmt.Errorf("failed to build number input '%s': %w", input.Name.ValueString(), err)
+				return nil, fmt.Errorf("failed to build number input '%s': %w", key, err)
 			}
-		case "boolean":
+		case input.Boolean != nil:
 			bi := api.WorkflowBooleanInput{
-				Name: input.Name.ValueString(),
+				Name: key,
 				Type: api.Boolean,
 			}
-			if !input.DefaultBoolean.IsNull() && !input.DefaultBoolean.IsUnknown() {
-				v := input.DefaultBoolean.ValueBool()
+			if !input.Boolean.Default.IsNull() && !input.Boolean.Default.IsUnknown() {
+				v := input.Boolean.Default.ValueBool()
 				bi.Default = &v
 			}
 			if err := wi.FromWorkflowBooleanInput(bi); err != nil {
-				return nil, fmt.Errorf("failed to build boolean input '%s': %w", input.Name.ValueString(), err)
+				return nil, fmt.Errorf("failed to build boolean input '%s': %w", key, err)
 			}
-		default:
-			return nil, fmt.Errorf("unsupported input type '%s' for input '%s'", input.Type.ValueString(), input.Name.ValueString())
 		}
+
 		result = append(result, wi)
 	}
 	return result, nil
 }
 
-func workflowJobsFromModel(ctx context.Context, jobs []WorkflowTemplateJobTemplateModel) ([]api.CreateWorkflowJobTemplate, diag.Diagnostics) {
-	result := make([]api.CreateWorkflowJobTemplate, 0, len(jobs))
-	for _, job := range jobs {
-		config := make(map[string]interface{})
-		if !job.Config.IsNull() && !job.Config.IsUnknown() {
+func workflowJobAgentConfigFromModel(ctx context.Context, agent *WorkflowJobAgentModel) (map[string]interface{}, diag.Diagnostics) {
+	if agent == nil {
+		return make(map[string]interface{}), nil
+	}
+
+	// Count how many config sources are set
+	count := 0
+	if !agent.Config.IsNull() && !agent.Config.IsUnknown() {
+		count++
+	}
+	if agent.ArgoCD != nil {
+		count++
+	}
+	if agent.GitHub != nil {
+		count++
+	}
+	if agent.TerraformCloud != nil {
+		count++
+	}
+	if agent.TestRunner != nil {
+		count++
+	}
+
+	if count > 1 {
+		return nil, diag.Diagnostics{
+			diag.NewErrorDiagnostic(
+				"Invalid agent configuration",
+				"Agent must use at most one of: config, argocd, github, terraform_cloud, or test_runner.",
+			),
+		}
+	}
+
+	config := make(map[string]interface{})
+
+	switch {
+	case agent.ArgoCD != nil:
+		if !agent.ArgoCD.ApiKey.IsNull() && !agent.ArgoCD.ApiKey.IsUnknown() {
+			config["apiKey"] = agent.ArgoCD.ApiKey.ValueString()
+		}
+		if !agent.ArgoCD.ServerUrl.IsNull() && !agent.ArgoCD.ServerUrl.IsUnknown() {
+			config["serverUrl"] = agent.ArgoCD.ServerUrl.ValueString()
+		}
+		if !agent.ArgoCD.Template.IsNull() && !agent.ArgoCD.Template.IsUnknown() {
+			config["template"] = agent.ArgoCD.Template.ValueString()
+		}
+	case agent.GitHub != nil:
+		if !agent.GitHub.InstallationId.IsNull() && !agent.GitHub.InstallationId.IsUnknown() {
+			config["installationId"] = agent.GitHub.InstallationId.ValueInt64()
+		}
+		if !agent.GitHub.Owner.IsNull() && !agent.GitHub.Owner.IsUnknown() {
+			config["owner"] = agent.GitHub.Owner.ValueString()
+		}
+		if !agent.GitHub.Repo.IsNull() && !agent.GitHub.Repo.IsUnknown() {
+			config["repo"] = agent.GitHub.Repo.ValueString()
+		}
+		if !agent.GitHub.WorkflowId.IsNull() && !agent.GitHub.WorkflowId.IsUnknown() {
+			config["workflowId"] = agent.GitHub.WorkflowId.ValueInt64()
+		}
+		if !agent.GitHub.Ref.IsNull() && !agent.GitHub.Ref.IsUnknown() {
+			config["ref"] = agent.GitHub.Ref.ValueString()
+		}
+	case agent.TerraformCloud != nil:
+		if !agent.TerraformCloud.Address.IsNull() && !agent.TerraformCloud.Address.IsUnknown() {
+			config["address"] = agent.TerraformCloud.Address.ValueString()
+		}
+		if !agent.TerraformCloud.Organization.IsNull() && !agent.TerraformCloud.Organization.IsUnknown() {
+			config["organization"] = agent.TerraformCloud.Organization.ValueString()
+		}
+		if !agent.TerraformCloud.Template.IsNull() && !agent.TerraformCloud.Template.IsUnknown() {
+			config["template"] = agent.TerraformCloud.Template.ValueString()
+		}
+		if !agent.TerraformCloud.Token.IsNull() && !agent.TerraformCloud.Token.IsUnknown() {
+			config["token"] = agent.TerraformCloud.Token.ValueString()
+		}
+	case agent.TestRunner != nil:
+		if !agent.TestRunner.DelaySeconds.IsNull() && !agent.TestRunner.DelaySeconds.IsUnknown() {
+			config["delaySeconds"] = agent.TestRunner.DelaySeconds.ValueInt64()
+		}
+		if !agent.TestRunner.Message.IsNull() && !agent.TestRunner.Message.IsUnknown() {
+			config["message"] = agent.TestRunner.Message.ValueString()
+		}
+		if !agent.TestRunner.Status.IsNull() && !agent.TestRunner.Status.IsUnknown() {
+			config["status"] = agent.TestRunner.Status.ValueString()
+		}
+	default:
+		// Generic config map fallback
+		if !agent.Config.IsNull() && !agent.Config.IsUnknown() {
 			var decoded map[string]string
-			diags := job.Config.ElementsAs(ctx, &decoded, false)
+			diags := agent.Config.ElementsAs(ctx, &decoded, false)
 			if diags.HasError() {
 				return nil, diags
 			}
@@ -390,9 +641,27 @@ func workflowJobsFromModel(ctx context.Context, jobs []WorkflowTemplateJobTempla
 				config[k] = v
 			}
 		}
+	}
+
+	return config, nil
+}
+
+func workflowJobsFromModel(ctx context.Context, jobs []WorkflowTemplateJobTemplateModel) ([]api.CreateWorkflowJobTemplate, diag.Diagnostics) {
+	result := make([]api.CreateWorkflowJobTemplate, 0, len(jobs))
+	for _, job := range jobs {
+		config, diags := workflowJobAgentConfigFromModel(ctx, job.Agent)
+		if diags.HasError() {
+			return nil, diags
+		}
+
+		ref := ""
+		if job.Agent != nil {
+			ref = job.Agent.Id.ValueString()
+		}
+
 		jt := api.CreateWorkflowJobTemplate{
 			Name:   job.Name.ValueString(),
-			Ref:    job.Ref.ValueString(),
+			Ref:    ref,
 			Config: config,
 		}
 		if !job.If.IsNull() && !job.If.IsUnknown() {
@@ -410,37 +679,37 @@ func setWorkflowTemplateModelFromAPI(ctx context.Context, data *WorkflowTemplate
 
 	inputs := make([]WorkflowTemplateInputModel, 0, len(wt.Inputs))
 	for _, input := range wt.Inputs {
-		m := WorkflowTemplateInputModel{
-			DefaultString:  types.StringNull(),
-			DefaultNumber:  types.Float64Null(),
-			DefaultBoolean: types.BoolNull(),
-		}
-
 		if si, err := input.AsWorkflowStringInput(); err == nil && si.Type == api.String {
-			m.Name = types.StringValue(si.Name)
-			m.Type = types.StringValue("string")
+			m := WorkflowTemplateInputModel{
+				Key:    types.StringValue(si.Name),
+				String: &WorkflowTemplateInputStringModel{Default: types.StringNull()},
+			}
 			if si.Default != nil {
-				m.DefaultString = types.StringValue(*si.Default)
+				m.String.Default = types.StringValue(*si.Default)
 			}
 			inputs = append(inputs, m)
 			continue
 		}
 
 		if ni, err := input.AsWorkflowNumberInput(); err == nil && ni.Type == api.Number {
-			m.Name = types.StringValue(ni.Name)
-			m.Type = types.StringValue("number")
+			m := WorkflowTemplateInputModel{
+				Key:    types.StringValue(ni.Name),
+				Number: &WorkflowTemplateInputNumberModel{Default: types.Float64Null()},
+			}
 			if ni.Default != nil {
-				m.DefaultNumber = types.Float64Value(float64(*ni.Default))
+				m.Number.Default = types.Float64Value(float64(*ni.Default))
 			}
 			inputs = append(inputs, m)
 			continue
 		}
 
 		if bi, err := input.AsWorkflowBooleanInput(); err == nil && bi.Type == api.Boolean {
-			m.Name = types.StringValue(bi.Name)
-			m.Type = types.StringValue("boolean")
+			m := WorkflowTemplateInputModel{
+				Key:     types.StringValue(bi.Name),
+				Boolean: &WorkflowTemplateInputBooleanModel{Default: types.BoolNull()},
+			}
 			if bi.Default != nil {
-				m.DefaultBoolean = types.BoolValue(*bi.Default)
+				m.Boolean.Default = types.BoolValue(*bi.Default)
 			}
 			inputs = append(inputs, m)
 			continue
@@ -461,43 +730,120 @@ func setWorkflowTemplateModelFromAPI(ctx context.Context, data *WorkflowTemplate
 
 	jobs := make([]WorkflowTemplateJobTemplateModel, 0, len(wt.Jobs))
 	for _, job := range wt.Jobs {
-		configMap := make(map[string]string, len(job.Config))
-		for k, v := range job.Config {
-			if s, ok := v.(string); ok {
-				configMap[k] = s
-				continue
-			}
-
-			b, err := json.Marshal(v)
-			if err != nil {
-				return diag.Diagnostics{
-					diag.NewErrorDiagnostic(
-						"Failed to marshal job config value",
-						fmt.Sprintf("Could not marshal config key %q for job %q: %s", k, job.Name, err.Error()),
-					),
-				}
-			}
-			configMap[k] = string(b)
-		}
-		tfConfig, configDiags := types.MapValueFrom(ctx, types.StringType, configMap)
-		if configDiags.HasError() {
-			return configDiags
-		}
-
 		ifVal := types.StringNull()
 		if job.If != nil {
 			ifVal = types.StringValue(*job.If)
 		}
 
-		jobs = append(jobs, WorkflowTemplateJobTemplateModel{
-			ID:     types.StringValue(job.Id),
-			Name:   types.StringValue(job.Name),
-			Ref:    types.StringValue(job.Ref),
-			Config: tfConfig,
-			If:     ifVal,
-		})
+		agent := &WorkflowJobAgentModel{
+			Id:     types.StringValue(job.Ref),
+			Config: types.MapNull(types.StringType),
+		}
+		setWorkflowJobAgentBlocksFromConfig(agent, job.Config)
+
+		jm := WorkflowTemplateJobTemplateModel{
+			ID:    types.StringValue(job.Id),
+			Name:  types.StringValue(job.Name),
+			If:    ifVal,
+			Agent: agent,
+		}
+
+		jobs = append(jobs, jm)
 	}
 	data.Jobs = jobs
 
 	return nil
+}
+
+func setWorkflowJobAgentBlocksFromConfig(agent *WorkflowJobAgentModel, config map[string]interface{}) {
+	agent.ArgoCD = nil
+	agent.GitHub = nil
+	agent.TerraformCloud = nil
+	agent.TestRunner = nil
+
+	if len(config) == 0 {
+		return
+	}
+
+	// Detect GitHub by known keys
+	if configHasAny(config, "installationId", "workflowId", "owner", "repo") {
+		gh := WorkflowJobAgentGitHubModel{
+			InstallationId: types.Int64Null(),
+			Owner:          types.StringNull(),
+			Ref:            types.StringNull(),
+			Repo:           types.StringNull(),
+			WorkflowId:     types.Int64Null(),
+		}
+		if v, ok := config["installationId"]; ok && v != nil {
+			gh.InstallationId = types.Int64Value(toInt64(v))
+		}
+		if v, ok := config["owner"]; ok && v != nil && fmt.Sprint(v) != "" {
+			gh.Owner = types.StringValue(fmt.Sprint(v))
+		}
+		if v, ok := config["repo"]; ok && v != nil && fmt.Sprint(v) != "" {
+			gh.Repo = types.StringValue(fmt.Sprint(v))
+		}
+		if v, ok := config["workflowId"]; ok && v != nil {
+			gh.WorkflowId = types.Int64Value(toInt64(v))
+		}
+		if v, ok := config["ref"]; ok && v != nil && fmt.Sprint(v) != "" {
+			gh.Ref = types.StringValue(fmt.Sprint(v))
+		}
+		agent.GitHub = &gh
+		return
+	}
+
+	// Detect ArgoCD by known keys
+	if configHasAny(config, "apiKey", "serverUrl") {
+		agent.ArgoCD = &WorkflowJobAgentArgoCDModel{
+			ApiKey:    stringValueOrNull(config["apiKey"]),
+			ServerUrl: stringValueOrNull(config["serverUrl"]),
+			Template:  stringValueOrNull(config["template"]),
+		}
+		return
+	}
+
+	// Detect Terraform Cloud by known keys
+	if configHasAny(config, "address", "organization", "token") {
+		agent.TerraformCloud = &WorkflowJobAgentTerraformCloudModel{
+			Address:      stringValueOrNull(config["address"]),
+			Organization: stringValueOrNull(config["organization"]),
+			Template:     stringValueOrNull(config["template"]),
+			Token:        stringValueOrNull(config["token"]),
+		}
+		return
+	}
+
+	// Detect Test Runner by known keys
+	if configHasAny(config, "delaySeconds", "message", "status") {
+		tr := WorkflowJobAgentTestRunnerModel{
+			DelaySeconds: types.Int64Null(),
+			Message:      types.StringNull(),
+			Status:       types.StringNull(),
+		}
+		if v, ok := config["delaySeconds"]; ok && v != nil {
+			tr.DelaySeconds = types.Int64Value(toInt64(v))
+		}
+		if v, ok := config["message"]; ok && v != nil && fmt.Sprint(v) != "" {
+			tr.Message = types.StringValue(fmt.Sprint(v))
+		}
+		if v, ok := config["status"]; ok && v != nil && fmt.Sprint(v) != "" {
+			tr.Status = types.StringValue(fmt.Sprint(v))
+		}
+		agent.TestRunner = &tr
+		return
+	}
+
+	// Fallback: generic config map
+	configMap := make(map[string]string, len(config))
+	for k, v := range config {
+		if s, ok := v.(string); ok {
+			configMap[k] = s
+			continue
+		}
+		b, _ := json.Marshal(v)
+		configMap[k] = string(b)
+	}
+	tfConfig, _ := types.MapValueFrom(context.Background(), types.StringType, configMap)
+	agent.Config = tfConfig
 }

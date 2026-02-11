@@ -21,7 +21,7 @@ Manages a workflow template in Ctrlplane.
 
 ### Optional
 
-- `input` (Block List) Input definitions for the workflow template (see [below for nested schema](#nestedblock--input))
+- `input` (Block List) Input definitions for the workflow template. Each input must define exactly one type block: string, number, or boolean. (see [below for nested schema](#nestedblock--input))
 - `job` (Block List) Job definitions for the workflow template (see [below for nested schema](#nestedblock--job))
 
 ### Read-Only
@@ -33,14 +33,37 @@ Manages a workflow template in Ctrlplane.
 
 Required:
 
-- `name` (String) The name of the input
-- `type` (String) The type of the input (string, number, or boolean)
+- `key` (String) The key of the input
 
 Optional:
 
-- `default_boolean` (Boolean) Default value for a boolean input
-- `default_number` (Number) Default value for a number input
-- `default_string` (String) Default value for a string input
+- `boolean` (Block, Optional) Defines a boolean type input. Mutually exclusive with string and number. (see [below for nested schema](#nestedblock--input--boolean))
+- `number` (Block, Optional) Defines a number type input. Mutually exclusive with string and boolean. (see [below for nested schema](#nestedblock--input--number))
+- `string` (Block, Optional) Defines a string type input. Mutually exclusive with number and boolean. (see [below for nested schema](#nestedblock--input--string))
+
+<a id="nestedblock--input--boolean"></a>
+### Nested Schema for `input.boolean`
+
+Optional:
+
+- `default` (Boolean) Default value for the boolean input
+
+
+<a id="nestedblock--input--number"></a>
+### Nested Schema for `input.number`
+
+Optional:
+
+- `default` (Number) Default value for the number input
+
+
+<a id="nestedblock--input--string"></a>
+### Nested Schema for `input.string`
+
+Optional:
+
+- `default` (String) Default value for the string input
+
 
 
 <a id="nestedblock--job"></a>
@@ -48,14 +71,70 @@ Optional:
 
 Required:
 
-- `config` (Map of String) Configuration for the job agent
 - `name` (String) The name of the job
-- `ref` (String) Reference to the job agent
 
 Optional:
 
+- `agent` (Block, Optional) Job agent configuration. Specifies which agent runs the job and its configuration. (see [below for nested schema](#nestedblock--job--agent))
 - `if` (String) CEL expression to determine if the job should run
 
 Read-Only:
 
 - `id` (String) The ID of the job template (assigned by the server)
+
+<a id="nestedblock--job--agent"></a>
+### Nested Schema for `job.agent`
+
+Required:
+
+- `id` (String) The ID of the job agent
+
+Optional:
+
+- `argocd` (Block, Optional) ArgoCD job agent configuration. (see [below for nested schema](#nestedblock--job--agent--argocd))
+- `config` (Map of String) Generic configuration map for the job agent. Mutually exclusive with typed blocks (argocd, github, terraform_cloud, test_runner).
+- `github` (Block, Optional) GitHub job agent configuration. (see [below for nested schema](#nestedblock--job--agent--github))
+- `terraform_cloud` (Block, Optional) Terraform Cloud job agent configuration. (see [below for nested schema](#nestedblock--job--agent--terraform_cloud))
+- `test_runner` (Block, Optional) Test runner job agent configuration. (see [below for nested schema](#nestedblock--job--agent--test_runner))
+
+<a id="nestedblock--job--agent--argocd"></a>
+### Nested Schema for `job.agent.argocd`
+
+Optional:
+
+- `api_key` (String, Sensitive) ArgoCD API token
+- `server_url` (String) ArgoCD server address (host[:port] or URL)
+- `template` (String) ArgoCD application template
+
+
+<a id="nestedblock--job--agent--github"></a>
+### Nested Schema for `job.agent.github`
+
+Optional:
+
+- `installation_id` (Number) GitHub app installation ID
+- `owner` (String) GitHub repository owner
+- `ref` (String) Git ref to run the workflow on
+- `repo` (String) GitHub repository name
+- `workflow_id` (Number) GitHub Actions workflow ID
+
+
+<a id="nestedblock--job--agent--terraform_cloud"></a>
+### Nested Schema for `job.agent.terraform_cloud`
+
+Optional:
+
+- `address` (String) Terraform Cloud address (e.g. https://app.terraform.io)
+- `organization` (String) Terraform Cloud organization name
+- `template` (String) Terraform Cloud workspace template
+- `token` (String, Sensitive) Terraform Cloud API token
+
+
+<a id="nestedblock--job--agent--test_runner"></a>
+### Nested Schema for `job.agent.test_runner`
+
+Optional:
+
+- `delay_seconds` (Number) Delay in seconds before resolving the job
+- `message` (String) Optional message to include in the job output
+- `status` (String) Final status to set (e.g. "successful", "failure")

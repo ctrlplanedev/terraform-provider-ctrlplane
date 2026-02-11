@@ -83,19 +83,25 @@ resource "ctrlplane_workflow_template" "test" {
   name = %q
 
   input {
-    name           = "env"
-    type           = "string"
-    default_string = %q
+    key = "env"
+    string {
+      default = %q
+    }
   }
 
   job {
     name = "deploy"
-    ref  = ctrlplane_job_agent.test.id
     if   = %q
-    config = {
-      image = "deploy:latest"
+
+    agent {
+      id = ctrlplane_job_agent.test.id
+
+      test_runner {
+        delay_seconds = %d
+        status        = %q
+      }
     }
   }
 }
-`, testAccProviderConfig(), name+"-ja", delaySeconds, status, name, defaultInput, ifExpr)
+`, testAccProviderConfig(), name+"-ja", delaySeconds, status, name, defaultInput, ifExpr, delaySeconds, status)
 }
