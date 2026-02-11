@@ -1,5 +1,4 @@
-// Copyright IBM Corp. 2021, 2026
-// SPDX-License-Identifier: MPL-2.0
+// Copyright (c) HashiCorp, Inc.
 
 package provider
 
@@ -10,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/ctrlplanedev/terraform-provider-ctrlplane/internal/api"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -162,7 +162,11 @@ func (r *WorkflowTemplateResource) Create(ctx context.Context, req resource.Crea
 		return
 	}
 
-	jobs := workflowJobsFromModel(data.Jobs)
+	jobs, jobDiags := workflowJobsFromModel(ctx, data.Jobs)
+	resp.Diagnostics.Append(jobDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	body := api.CreateWorkflowTemplateJSONRequestBody{
 		Name:   data.Name.ValueString(),
@@ -197,7 +201,10 @@ func (r *WorkflowTemplateResource) Create(ctx context.Context, req resource.Crea
 		wt = &parsed
 	}
 
-	setWorkflowTemplateModelFromAPI(&data, wt)
+	resp.Diagnostics.Append(setWorkflowTemplateModelFromAPI(ctx, &data, wt)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -231,7 +238,10 @@ func (r *WorkflowTemplateResource) Read(ctx context.Context, req resource.ReadRe
 		return
 	}
 
-	setWorkflowTemplateModelFromAPI(&data, getResp.JSON200)
+	resp.Diagnostics.Append(setWorkflowTemplateModelFromAPI(ctx, &data, getResp.JSON200)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -248,7 +258,11 @@ func (r *WorkflowTemplateResource) Update(ctx context.Context, req resource.Upda
 		return
 	}
 
-	jobs := workflowJobsFromModel(data.Jobs)
+	jobs, jobDiags := workflowJobsFromModel(ctx, data.Jobs)
+	resp.Diagnostics.Append(jobDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	body := api.UpdateWorkflowTemplateJSONRequestBody{
 		Name:   data.Name.ValueString(),
@@ -275,7 +289,10 @@ func (r *WorkflowTemplateResource) Update(ctx context.Context, req resource.Upda
 		return
 	}
 
-	setWorkflowTemplateModelFromAPI(&data, updateResp.JSON202)
+	resp.Diagnostics.Append(setWorkflowTemplateModelFromAPI(ctx, &data, updateResp.JSON202)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -354,17 +371,18 @@ func workflowInputsFromModel(inputs []WorkflowTemplateInputModel) ([]api.Workflo
 	return result, nil
 }
 
-func workflowJobsFromModel(jobs []WorkflowTemplateJobTemplateModel) []api.CreateWorkflowJobTemplate {
+func workflowJobsFromModel(ctx context.Context, jobs []WorkflowTemplateJobTemplateModel) ([]api.CreateWorkflowJobTemplate, diag.Diagnostics) {
 	result := make([]api.CreateWorkflowJobTemplate, 0, len(jobs))
 	for _, job := range jobs {
 		config := make(map[string]interface{})
 		if !job.Config.IsNull() && !job.Config.IsUnknown() {
 			var decoded map[string]string
-			diags := job.Config.ElementsAs(context.Background(), &decoded, false)
-			if !diags.HasError() {
-				for k, v := range decoded {
-					config[k] = v
-				}
+			diags := job.Config.ElementsAs(ctx, &decoded, false)
+			if diags.HasError() {
+				return nil, diags
+			}
+			for k, v := range decoded {
+				config[k] = v
 			}
 		}
 		result = append(result, api.CreateWorkflowJobTemplate{
@@ -373,10 +391,10 @@ func workflowJobsFromModel(jobs []WorkflowTemplateJobTemplateModel) []api.Create
 			Config: config,
 		})
 	}
-	return result
+	return result, nil
 }
 
-func setWorkflowTemplateModelFromAPI(data *WorkflowTemplateResourceModel, wt *api.WorkflowTemplate) {
+func setWorkflowTemplateModelFromAPI(ctx context.Context, data *WorkflowTemplateResourceModel, wt *api.WorkflowTemplate) diag.Diagnostics {
 	data.ID = types.StringValue(wt.Id)
 	data.Name = types.StringValue(wt.Name)
 
@@ -417,6 +435,17 @@ func setWorkflowTemplateModelFromAPI(data *WorkflowTemplateResourceModel, wt *ap
 			inputs = append(inputs, m)
 			continue
 		}
+
+		// Unrecognized input type — surface as a warning so the caller
+		// knows data was skipped rather than silently losing it.
+		inputJSON, _ := input.MarshalJSON()
+		return diag.Diagnostics{
+			diag.NewWarningDiagnostic(
+				"Unknown workflow input type",
+				fmt.Sprintf("Could not determine the type for input at index %d; raw value: %s. "+
+					"This input will be omitted from state.", len(inputs), string(inputJSON)),
+			),
+		}
 	}
 	data.Inputs = inputs
 
@@ -424,9 +453,26 @@ func setWorkflowTemplateModelFromAPI(data *WorkflowTemplateResourceModel, wt *ap
 	for _, job := range wt.Jobs {
 		configMap := make(map[string]string, len(job.Config))
 		for k, v := range job.Config {
-			configMap[k] = fmt.Sprint(v)
+			if s, ok := v.(string); ok {
+				configMap[k] = s
+				continue
+			}
+
+			b, err := json.Marshal(v)
+			if err != nil {
+				return diag.Diagnostics{
+					diag.NewErrorDiagnostic(
+						"Failed to marshal job config value",
+						fmt.Sprintf("Could not marshal config key %q for job %q: %s", k, job.Name, err.Error()),
+					),
+				}
+			}
+			configMap[k] = string(b)
 		}
-		tfConfig, _ := types.MapValueFrom(context.Background(), types.StringType, configMap)
+		tfConfig, configDiags := types.MapValueFrom(ctx, types.StringType, configMap)
+		if configDiags.HasError() {
+			return configDiags
+		}
 
 		jobs = append(jobs, WorkflowTemplateJobTemplateModel{
 			ID:     types.StringValue(job.Id),
@@ -436,4 +482,6 @@ func setWorkflowTemplateModelFromAPI(data *WorkflowTemplateResourceModel, wt *ap
 		})
 	}
 	data.Jobs = jobs
+
+	return nil
 }
