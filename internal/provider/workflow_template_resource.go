@@ -120,6 +120,10 @@ func (r *WorkflowTemplateResource) Schema(ctx context.Context, req resource.Sche
 							Description: "Configuration for the job agent",
 							ElementType: types.StringType,
 						},
+						"if": schema.StringAttribute{
+							Optional:    true,
+							Description: "CEL expression to determine if the job should run",
+						},
 					},
 				},
 			},
@@ -147,6 +151,7 @@ type WorkflowTemplateJobTemplateModel struct {
 	Name   types.String `tfsdk:"name"`
 	Ref    types.String `tfsdk:"ref"`
 	Config types.Map    `tfsdk:"config"`
+	If     types.String `tfsdk:"if"`
 }
 
 func (r *WorkflowTemplateResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -385,11 +390,16 @@ func workflowJobsFromModel(ctx context.Context, jobs []WorkflowTemplateJobTempla
 				config[k] = v
 			}
 		}
-		result = append(result, api.CreateWorkflowJobTemplate{
+		jt := api.CreateWorkflowJobTemplate{
 			Name:   job.Name.ValueString(),
 			Ref:    job.Ref.ValueString(),
 			Config: config,
-		})
+		}
+		if !job.If.IsNull() && !job.If.IsUnknown() {
+			v := job.If.ValueString()
+			jt.If = &v
+		}
+		result = append(result, jt)
 	}
 	return result, nil
 }
@@ -474,11 +484,17 @@ func setWorkflowTemplateModelFromAPI(ctx context.Context, data *WorkflowTemplate
 			return configDiags
 		}
 
+		ifVal := types.StringNull()
+		if job.If != nil {
+			ifVal = types.StringValue(*job.If)
+		}
+
 		jobs = append(jobs, WorkflowTemplateJobTemplateModel{
 			ID:     types.StringValue(job.Id),
 			Name:   types.StringValue(job.Name),
 			Ref:    types.StringValue(job.Ref),
 			Config: tfConfig,
+			If:     ifVal,
 		})
 	}
 	data.Jobs = jobs
