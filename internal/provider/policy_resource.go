@@ -146,9 +146,9 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 								stringplanmodifier.UseStateForUnknown(),
 							},
 						},
-						"duration": schema.StringAttribute{
+						"duration_minutes": schema.Int64Attribute{
 							Required:    true,
-							Description: "Duration of each window (e.g., \"8h\")",
+							Description: "Duration of each window in minutes",
 						},
 						"rrule": schema.StringAttribute{
 							Required:    true,
@@ -163,6 +163,33 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 							Computed:    true,
 							Description: "Allow deployments during the window (deny when false)",
 							Default:     booldefault.StaticBool(true),
+						},
+					},
+				},
+			},
+			"deployment_dependency": schema.ListNestedBlock{
+				Description: "Deployment dependency rules",
+				NestedObject: schema.NestedBlockObject{
+					Attributes: map[string]schema.Attribute{
+						"created_at": schema.StringAttribute{
+							Optional:    true,
+							Computed:    true,
+							Description: "Rule creation timestamp",
+							PlanModifiers: []planmodifier.String{
+								stringplanmodifier.UseStateForUnknown(),
+							},
+						},
+						"id": schema.StringAttribute{
+							Optional:    true,
+							Computed:    true,
+							Description: "Rule ID",
+							PlanModifiers: []planmodifier.String{
+								stringplanmodifier.UseStateForUnknown(),
+							},
+						},
+						"depends_on_selector": schema.StringAttribute{
+							Required:    true,
+							Description: "CEL expression to match upstream deployment(s) that must have a successful release before this deployment can proceed",
 						},
 					},
 				},
@@ -459,6 +486,7 @@ func (r *PolicyResource) Read(ctx context.Context, req resource.ReadRequest, res
 	}
 	data.VersionCooldown = rules.VersionCooldown
 	data.DeploymentWindow = rules.DeploymentWindow
+	data.DeploymentDependency = rules.DeploymentDependency
 	data.Verification = rules.Verification
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -557,16 +585,17 @@ func (r *PolicyResource) Delete(ctx context.Context, req resource.DeleteRequest,
 }
 
 type PolicyResourceModel struct {
-	ID               types.String             `tfsdk:"id"`
-	Name             types.String             `tfsdk:"name"`
-	Description      types.String             `tfsdk:"description"`
-	Metadata         types.Map                `tfsdk:"metadata"`
-	Priority         types.Int64              `tfsdk:"priority"`
-	Enabled          types.Bool               `tfsdk:"enabled"`
-	Selector         types.String             `tfsdk:"selector"`
-	VersionCooldown  []PolicyVersionCooldown  `tfsdk:"version_cooldown"`
-	DeploymentWindow []PolicyDeploymentWindow `tfsdk:"deployment_window"`
-	Verification     []PolicyVerificationRule `tfsdk:"verification"`
+	ID                   types.String                 `tfsdk:"id"`
+	Name                 types.String                 `tfsdk:"name"`
+	Description          types.String                 `tfsdk:"description"`
+	Metadata             types.Map                    `tfsdk:"metadata"`
+	Priority             types.Int64                  `tfsdk:"priority"`
+	Enabled              types.Bool                   `tfsdk:"enabled"`
+	Selector             types.String                 `tfsdk:"selector"`
+	VersionCooldown      []PolicyVersionCooldown      `tfsdk:"version_cooldown"`
+	DeploymentWindow     []PolicyDeploymentWindow     `tfsdk:"deployment_window"`
+	DeploymentDependency []PolicyDeploymentDependency `tfsdk:"deployment_dependency"`
+	Verification         []PolicyVerificationRule     `tfsdk:"verification"`
 }
 
 type PolicyVersionCooldown struct {
@@ -576,12 +605,18 @@ type PolicyVersionCooldown struct {
 }
 
 type PolicyDeploymentWindow struct {
-	CreatedAt   types.String `tfsdk:"created_at"`
-	ID          types.String `tfsdk:"id"`
-	Duration    types.String `tfsdk:"duration"`
-	Rrule       types.String `tfsdk:"rrule"`
-	Timezone    types.String `tfsdk:"timezone"`
-	AllowWindow types.Bool   `tfsdk:"allow_window"`
+	CreatedAt       types.String `tfsdk:"created_at"`
+	ID              types.String `tfsdk:"id"`
+	DurationMinutes types.Int64  `tfsdk:"duration_minutes"`
+	Rrule           types.String `tfsdk:"rrule"`
+	Timezone        types.String `tfsdk:"timezone"`
+	AllowWindow     types.Bool   `tfsdk:"allow_window"`
+}
+
+type PolicyDeploymentDependency struct {
+	CreatedAt         types.String `tfsdk:"created_at"`
+	ID                types.String `tfsdk:"id"`
+	DependsOnSelector types.String `tfsdk:"depends_on_selector"`
 }
 
 type PolicyVerificationRule struct {
@@ -616,9 +651,10 @@ type PolicyDatadogProvider struct {
 }
 
 type policyRulesModel struct {
-	VersionCooldown  []PolicyVersionCooldown
-	DeploymentWindow []PolicyDeploymentWindow
-	Verification     []PolicyVerificationRule
+	VersionCooldown      []PolicyVersionCooldown
+	DeploymentWindow     []PolicyDeploymentWindow
+	DeploymentDependency []PolicyDeploymentDependency
+	Verification         []PolicyVerificationRule
 }
 
 type policyRequestPayload struct {
@@ -632,12 +668,13 @@ type policyRequestPayload struct {
 }
 
 type policyRequestRule struct {
-	CreatedAt        string                    `json:"createdAt"`
-	Id               string                    `json:"id"`
-	DeploymentWindow *api.DeploymentWindowRule `json:"deploymentWindow,omitempty"`
-	Verification     *api.VerificationRule     `json:"verification,omitempty"`
-	VersionCooldown  *api.VersionCooldownRule  `json:"versionCooldown,omitempty"`
-	PolicyId         *string                   `json:"policyId,omitempty"`
+	CreatedAt            string                        `json:"createdAt"`
+	Id                   string                        `json:"id"`
+	DeploymentDependency *api.DeploymentDependencyRule `json:"deploymentDependency,omitempty"`
+	DeploymentWindow     *api.DeploymentWindowRule     `json:"deploymentWindow,omitempty"`
+	Verification         *api.VerificationRule         `json:"verification,omitempty"`
+	VersionCooldown      *api.VersionCooldownRule      `json:"versionCooldown,omitempty"`
+	PolicyId             *string                       `json:"policyId,omitempty"`
 }
 
 func selectorValueSet(value types.String) bool {
@@ -711,15 +748,10 @@ func policyRulesFromModel(data PolicyResourceModel) ([]policyRequestRule, diag.D
 
 	for _, window := range data.DeploymentWindow {
 		id := selectorIDValue(window.ID)
-		minutes, err := parseDurationMinutes(window.Duration)
-		if err != nil {
-			diags.AddError("Invalid deployment window duration", err.Error())
-			continue
-		}
 		allowWindow := defaultBool(window.AllowWindow, true)
 		rule := api.DeploymentWindowRule{
 			AllowWindow:     allowWindow,
-			DurationMinutes: int32(minutes),
+			DurationMinutes: int32(window.DurationMinutes.ValueInt64()),
 			Rrule:           window.Rrule.ValueString(),
 		}
 		if selectorValueSet(window.Timezone) {
@@ -730,6 +762,17 @@ func policyRulesFromModel(data PolicyResourceModel) ([]policyRequestRule, diag.D
 			CreatedAt:        createdAtValue(window.CreatedAt),
 			Id:               id,
 			DeploymentWindow: &rule,
+		})
+	}
+
+	for _, dep := range data.DeploymentDependency {
+		id := selectorIDValue(dep.ID)
+		rules = append(rules, policyRequestRule{
+			CreatedAt: createdAtValue(dep.CreatedAt),
+			Id:        id,
+			DeploymentDependency: &api.DeploymentDependencyRule{
+				DependsOn: dep.DependsOnSelector.ValueString(),
+			},
 		})
 	}
 
@@ -884,19 +927,25 @@ func policyRulesToModel(rules []api.PolicyRule) (policyRulesModel, diag.Diagnost
 			})
 		}
 		if rule.DeploymentWindow != nil {
-			duration := time.Duration(rule.DeploymentWindow.DurationMinutes) * time.Minute
 			model := PolicyDeploymentWindow{
-				CreatedAt:   types.StringValue(rule.CreatedAt),
-				ID:          types.StringValue(rule.Id),
-				Duration:    types.StringValue(formatDuration(duration)),
-				Rrule:       types.StringValue(rule.DeploymentWindow.Rrule),
-				Timezone:    types.StringNull(),
-				AllowWindow: types.BoolValue(rule.DeploymentWindow.AllowWindow),
+				CreatedAt:       types.StringValue(rule.CreatedAt),
+				ID:              types.StringValue(rule.Id),
+				DurationMinutes: types.Int64Value(int64(rule.DeploymentWindow.DurationMinutes)),
+				Rrule:           types.StringValue(rule.DeploymentWindow.Rrule),
+				Timezone:        types.StringNull(),
+				AllowWindow:     types.BoolValue(rule.DeploymentWindow.AllowWindow),
 			}
 			if rule.DeploymentWindow.Timezone != nil {
 				model.Timezone = types.StringValue(*rule.DeploymentWindow.Timezone)
 			}
 			result.DeploymentWindow = append(result.DeploymentWindow, model)
+		}
+		if rule.DeploymentDependency != nil {
+			result.DeploymentDependency = append(result.DeploymentDependency, PolicyDeploymentDependency{
+				CreatedAt:         types.StringValue(rule.CreatedAt),
+				ID:                types.StringValue(rule.Id),
+				DependsOnSelector: types.StringValue(rule.DeploymentDependency.DependsOn),
+			})
 		}
 		if rule.Verification != nil {
 			verification, err := policyVerificationRuleToModel(rule.Verification)
@@ -916,12 +965,14 @@ func policyRulesToModel(rules []api.PolicyRule) (policyRulesModel, diag.Diagnost
 func ensurePolicyIDs(plan *PolicyResourceModel, state *PolicyResourceModel) {
 	mergeCooldownIDs(plan.VersionCooldown, cooldownListFromState(state))
 	mergeWindowIDs(plan.DeploymentWindow, windowListFromState(state))
+	mergeDeploymentDependencyIDs(plan.DeploymentDependency, deploymentDependencyListFromState(state))
 	mergeVerificationIDs(plan.Verification, verificationListFromState(state))
 }
 
 func ensurePolicyRuleCreatedAt(plan *PolicyResourceModel, state *PolicyResourceModel) {
 	mergeCooldownCreatedAt(plan.VersionCooldown, cooldownListFromState(state))
 	mergeWindowCreatedAt(plan.DeploymentWindow, windowListFromState(state))
+	mergeDeploymentDependencyCreatedAt(plan.DeploymentDependency, deploymentDependencyListFromState(state))
 	mergeVerificationCreatedAt(plan.Verification, verificationListFromState(state))
 }
 
@@ -957,6 +1008,13 @@ func verificationListFromState(state *PolicyResourceModel) []PolicyVerificationR
 		return nil
 	}
 	return state.Verification
+}
+
+func deploymentDependencyListFromState(state *PolicyResourceModel) []PolicyDeploymentDependency {
+	if state == nil {
+		return nil
+	}
+	return state.DeploymentDependency
 }
 
 func mergeCooldownIDs(plan []PolicyVersionCooldown, state []PolicyVersionCooldown) {
@@ -999,6 +1057,32 @@ func mergeWindowIDs(plan []PolicyDeploymentWindow, state []PolicyDeploymentWindo
 }
 
 func mergeWindowCreatedAt(plan []PolicyDeploymentWindow, state []PolicyDeploymentWindow) {
+	for i := range plan {
+		if selectorValueSet(plan[i].CreatedAt) {
+			continue
+		}
+		if i < len(state) && selectorValueSet(state[i].CreatedAt) {
+			plan[i].CreatedAt = state[i].CreatedAt
+			continue
+		}
+		plan[i].CreatedAt = types.StringValue(time.Now().UTC().Format(time.RFC3339))
+	}
+}
+
+func mergeDeploymentDependencyIDs(plan []PolicyDeploymentDependency, state []PolicyDeploymentDependency) {
+	for i := range plan {
+		if selectorValueSet(plan[i].ID) {
+			continue
+		}
+		if i < len(state) && selectorValueSet(state[i].ID) {
+			plan[i].ID = state[i].ID
+			continue
+		}
+		plan[i].ID = types.StringValue(uuid.NewString())
+	}
+}
+
+func mergeDeploymentDependencyCreatedAt(plan []PolicyDeploymentDependency, state []PolicyDeploymentDependency) {
 	for i := range plan {
 		if selectorValueSet(plan[i].CreatedAt) {
 			continue
