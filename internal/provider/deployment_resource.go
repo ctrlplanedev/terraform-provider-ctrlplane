@@ -251,7 +251,6 @@ func (r *DeploymentResource) Create(ctx context.Context, req resource.CreateRequ
 	requestBody := api.RequestDeploymentCreationJSONRequestBody{
 		Name:             data.Name.ValueString(),
 		Slug:             slug.Make(data.Name.ValueString()),
-		SystemIds:        []string{data.SystemId.ValueString()},
 		Metadata:         stringMapPointer(data.Metadata),
 		ResourceSelector: selector,
 		JobAgentId:       jobAgentId,
@@ -293,6 +292,18 @@ func (r *DeploymentResource) Create(ctx context.Context, req resource.CreateRequ
 	})
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create deployment", fmt.Sprintf("Resource not available after creation: %s", err.Error()))
+		return
+	}
+
+	linkResp, err := r.workspace.Client.LinkDeploymentToSystemWithResponse(
+		ctx, r.workspace.ID.String(), data.SystemId.ValueString(), deploymentId,
+	)
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to link deployment to system", err.Error())
+		return
+	}
+	if linkResp.StatusCode() != http.StatusAccepted {
+		resp.Diagnostics.AddError("Failed to link deployment to system", formatResponseError(linkResp.StatusCode(), linkResp.Body))
 		return
 	}
 
@@ -338,7 +349,6 @@ func (r *DeploymentResource) Read(ctx context.Context, req resource.ReadRequest,
 	dep := deployResp.JSON200.Deployment
 	data.ID = types.StringValue(dep.Id)
 	data.Name = types.StringValue(dep.Name)
-	data.SystemId = types.StringValue(dep.SystemIds[0])
 	data.Metadata = stringMapValue(dep.Metadata)
 
 	if selectorValue, err := selectorStringValue(dep.ResourceSelector); err != nil {
@@ -399,7 +409,6 @@ func (r *DeploymentResource) Update(ctx context.Context, req resource.UpdateRequ
 	requestBody := api.UpsertDeploymentRequest{
 		Name:             data.Name.ValueString(),
 		Slug:             slug.Make(data.Name.ValueString()),
-		SystemIds:        []string{data.SystemId.ValueString()},
 		Metadata:         stringMapPointer(data.Metadata),
 		ResourceSelector: selector,
 		JobAgentId:       jobAgentId,

@@ -67,7 +67,6 @@ func (r *EnvironmentResource) Create(ctx context.Context, req resource.CreateReq
 		Name:             data.Name.ValueString(),
 		Description:      data.Description.ValueStringPointer(),
 		ResourceSelector: selector,
-		SystemIds:        []string{data.SystemId.ValueString()},
 		Metadata:         stringMapPointer(data.Metadata),
 	}
 	envResp, err := r.workspace.Client.RequestEnvironmentCreationWithResponse(
@@ -112,6 +111,18 @@ func (r *EnvironmentResource) Create(ctx context.Context, req resource.CreateReq
 	})
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create environment", fmt.Sprintf("Resource not available after creation: %s", err.Error()))
+		return
+	}
+
+	linkResp, err := r.workspace.Client.LinkEnvironmentToSystemWithResponse(
+		ctx, workspaceId.String(), data.SystemId.ValueString(), envId,
+	)
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to link environment to system", err.Error())
+		return
+	}
+	if linkResp.StatusCode() != http.StatusAccepted {
+		resp.Diagnostics.AddError("Failed to link environment to system", formatResponseError(linkResp.StatusCode(), linkResp.Body))
 		return
 	}
 
@@ -195,7 +206,6 @@ func (r *EnvironmentResource) Read(ctx context.Context, req resource.ReadRequest
 	data.ID = types.StringValue(envResp.JSON200.Id)
 	data.Name = types.StringValue(envResp.JSON200.Name)
 	data.Description = descriptionValue(envResp.JSON200.Description)
-	data.SystemId = types.StringValue(envResp.JSON200.SystemIds[0])
 	data.Metadata = stringMapValue(envResp.JSON200.Metadata)
 	if selectorValue, err := selectorStringValue(envResp.JSON200.ResourceSelector); err != nil {
 		resp.Diagnostics.AddError("Failed to read environment", fmt.Sprintf("Invalid resource_selector CEL: %s", err.Error()))
@@ -261,7 +271,6 @@ func (r *EnvironmentResource) Update(ctx context.Context, req resource.UpdateReq
 		ResourceSelector: selector,
 		Name:             data.Name.ValueString(),
 		Description:      data.Description.ValueStringPointer(),
-		SystemIds:        []string{data.SystemId.ValueString()},
 		Metadata:         stringMapPointer(data.Metadata),
 	}
 	envResp, err := r.workspace.Client.RequestEnvironmentUpsertWithResponse(

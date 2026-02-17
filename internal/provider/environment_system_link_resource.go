@@ -4,7 +4,6 @@ package provider
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -123,26 +122,6 @@ func (r *EnvironmentSystemLinkResource) Create(ctx context.Context, req resource
 
 	data.ID = types.StringValue(systemID + "/" + environmentID)
 
-	err = waitForResource(ctx, func() (bool, error) {
-		envResp, err := r.workspace.Client.GetEnvironmentWithResponse(ctx, workspaceID, environmentID)
-		if err != nil {
-			return false, err
-		}
-		if envResp.StatusCode() != http.StatusOK || envResp.JSON200 == nil {
-			return false, nil
-		}
-		for _, sid := range envResp.JSON200.SystemIds {
-			if sid == systemID {
-				return true, nil
-			}
-		}
-		return false, nil
-	})
-	if err != nil {
-		resp.Diagnostics.AddError("Failed to link environment to system", fmt.Sprintf("Link not confirmed after creation: %s", err.Error()))
-		return
-	}
-
 	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
 }
 
@@ -153,42 +132,8 @@ func (r *EnvironmentSystemLinkResource) Read(ctx context.Context, req resource.R
 		return
 	}
 
-	workspaceID := r.workspace.ID.String()
 	environmentID := data.EnvironmentID.ValueString()
 	systemID := data.SystemID.ValueString()
-
-	envResp, err := r.workspace.Client.GetEnvironmentWithResponse(ctx, workspaceID, environmentID)
-	if err != nil {
-		resp.Diagnostics.AddError("Failed to read environment system link", err.Error())
-		return
-	}
-
-	switch envResp.StatusCode() {
-	case http.StatusOK:
-		if envResp.JSON200 == nil {
-			resp.Diagnostics.AddError("Failed to read environment system link", "Empty response from server")
-			return
-		}
-	case http.StatusNotFound:
-		resp.State.RemoveResource(ctx)
-		return
-	default:
-		resp.Diagnostics.AddError("Failed to read environment system link", formatResponseError(envResp.StatusCode(), envResp.Body))
-		return
-	}
-
-	found := false
-	for _, sid := range envResp.JSON200.SystemIds {
-		if sid == systemID {
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		resp.State.RemoveResource(ctx)
-		return
-	}
 
 	data.ID = types.StringValue(systemID + "/" + environmentID)
 	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)

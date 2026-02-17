@@ -4,7 +4,6 @@ package provider
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -123,26 +122,6 @@ func (r *DeploymentSystemLinkResource) Create(ctx context.Context, req resource.
 
 	data.ID = types.StringValue(systemID + "/" + deploymentID)
 
-	err = waitForResource(ctx, func() (bool, error) {
-		depResp, err := r.workspace.Client.GetDeploymentWithResponse(ctx, workspaceID, deploymentID)
-		if err != nil {
-			return false, err
-		}
-		if depResp.StatusCode() != http.StatusOK || depResp.JSON200 == nil {
-			return false, nil
-		}
-		for _, sid := range depResp.JSON200.Deployment.SystemIds {
-			if sid == systemID {
-				return true, nil
-			}
-		}
-		return false, nil
-	})
-	if err != nil {
-		resp.Diagnostics.AddError("Failed to link deployment to system", fmt.Sprintf("Link not confirmed after creation: %s", err.Error()))
-		return
-	}
-
 	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
 }
 
@@ -153,42 +132,8 @@ func (r *DeploymentSystemLinkResource) Read(ctx context.Context, req resource.Re
 		return
 	}
 
-	workspaceID := r.workspace.ID.String()
 	deploymentID := data.DeploymentID.ValueString()
 	systemID := data.SystemID.ValueString()
-
-	depResp, err := r.workspace.Client.GetDeploymentWithResponse(ctx, workspaceID, deploymentID)
-	if err != nil {
-		resp.Diagnostics.AddError("Failed to read deployment system link", err.Error())
-		return
-	}
-
-	switch depResp.StatusCode() {
-	case http.StatusOK:
-		if depResp.JSON200 == nil {
-			resp.Diagnostics.AddError("Failed to read deployment system link", "Empty response from server")
-			return
-		}
-	case http.StatusNotFound:
-		resp.State.RemoveResource(ctx)
-		return
-	default:
-		resp.Diagnostics.AddError("Failed to read deployment system link", formatResponseError(depResp.StatusCode(), depResp.Body))
-		return
-	}
-
-	found := false
-	for _, sid := range depResp.JSON200.Deployment.SystemIds {
-		if sid == systemID {
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		resp.State.RemoveResource(ctx)
-		return
-	}
 
 	data.ID = types.StringValue(systemID + "/" + deploymentID)
 	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
