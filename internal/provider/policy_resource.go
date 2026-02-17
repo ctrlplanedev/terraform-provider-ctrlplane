@@ -1221,24 +1221,6 @@ func parseDurationSeconds(value types.String) (int64, error) {
 	return int64(duration.Seconds()), nil
 }
 
-func parseDurationMinutes(value types.String) (int64, error) {
-	if value.IsNull() || value.IsUnknown() {
-		return 0, fmt.Errorf("duration must be set")
-	}
-	raw := value.ValueString()
-	duration, err := time.ParseDuration(raw)
-	if err != nil {
-		return 0, fmt.Errorf("invalid duration %q", raw)
-	}
-	if duration < 0 {
-		return 0, fmt.Errorf("duration must be non-negative")
-	}
-	if duration%time.Minute != 0 {
-		return 0, fmt.Errorf("duration %q must be a whole number of minutes", raw)
-	}
-	return int64(duration.Minutes()), nil
-}
-
 func mapStringValue(value types.Map) (map[string]string, error) {
 	if value.IsNull() || value.IsUnknown() {
 		return nil, fmt.Errorf("map must be set")
