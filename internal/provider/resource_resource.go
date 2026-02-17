@@ -14,6 +14,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/defaults"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -93,8 +95,13 @@ func (r *ResourceResource) Schema(ctx context.Context, req resource.SchemaReques
 			},
 			"metadata": schema.MapAttribute{
 				Optional:    true,
+				Computed:    true,
 				Description: "Metadata key-value pairs for the resource",
 				ElementType: types.StringType,
+				Default: func() defaults.Map {
+					empty, _ := types.MapValueFrom(context.Background(), types.StringType, map[string]string{})
+					return mapdefault.StaticValue(empty)
+				}(),
 			},
 		},
 	}
