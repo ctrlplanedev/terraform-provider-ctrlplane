@@ -22,6 +22,7 @@ description: |-
 
 ### Optional
 
+- `deployment_dependency` (Block List) Deployment dependency rules (see [below for nested schema](#nestedblock--deployment_dependency))
 - `deployment_window` (Block List) Deployment window rules (see [below for nested schema](#nestedblock--deployment_window))
 - `description` (String) The description of the policy
 - `enabled` (Boolean) Whether the policy is enabled
@@ -34,12 +35,25 @@ description: |-
 
 - `id` (String) The ID of the policy
 
+<a id="nestedblock--deployment_dependency"></a>
+### Nested Schema for `deployment_dependency`
+
+Required:
+
+- `depends_on_selector` (String) CEL expression to match upstream deployment(s) that must have a successful release before this deployment can proceed
+
+Optional:
+
+- `created_at` (String) Rule creation timestamp
+- `id` (String) Rule ID
+
+
 <a id="nestedblock--deployment_window"></a>
 ### Nested Schema for `deployment_window`
 
 Required:
 
-- `duration` (String) Duration of each window (e.g., "8h")
+- `duration_minutes` (Number) Duration of each window in minutes
 - `rrule` (String) RFC 5545 recurrence rule for window starts
 
 Optional:

@@ -67,7 +67,7 @@ func (r *EnvironmentResource) Create(ctx context.Context, req resource.CreateReq
 		Name:             data.Name.ValueString(),
 		Description:      data.Description.ValueStringPointer(),
 		ResourceSelector: selector,
-		SystemId:         data.SystemId.ValueString(),
+		SystemIds:        []string{data.SystemId.ValueString()},
 		Metadata:         stringMapPointer(data.Metadata),
 	}
 	envResp, err := r.workspace.Client.RequestEnvironmentCreationWithResponse(
@@ -195,7 +195,7 @@ func (r *EnvironmentResource) Read(ctx context.Context, req resource.ReadRequest
 	data.ID = types.StringValue(envResp.JSON200.Id)
 	data.Name = types.StringValue(envResp.JSON200.Name)
 	data.Description = descriptionValue(envResp.JSON200.Description)
-	data.SystemId = types.StringValue(envResp.JSON200.SystemId)
+	data.SystemId = types.StringValue(envResp.JSON200.SystemIds[0])
 	data.Metadata = stringMapValue(envResp.JSON200.Metadata)
 	if selectorValue, err := selectorStringValue(envResp.JSON200.ResourceSelector); err != nil {
 		resp.Diagnostics.AddError("Failed to read environment", fmt.Sprintf("Invalid resource_selector CEL: %s", err.Error()))
@@ -261,7 +261,7 @@ func (r *EnvironmentResource) Update(ctx context.Context, req resource.UpdateReq
 		ResourceSelector: selector,
 		Name:             data.Name.ValueString(),
 		Description:      data.Description.ValueStringPointer(),
-		SystemId:         data.SystemId.ValueString(),
+		SystemIds:        []string{data.SystemId.ValueString()},
 		Metadata:         stringMapPointer(data.Metadata),
 	}
 	envResp, err := r.workspace.Client.RequestEnvironmentUpsertWithResponse(

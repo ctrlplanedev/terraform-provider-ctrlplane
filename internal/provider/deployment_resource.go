@@ -251,7 +251,7 @@ func (r *DeploymentResource) Create(ctx context.Context, req resource.CreateRequ
 	requestBody := api.RequestDeploymentCreationJSONRequestBody{
 		Name:             data.Name.ValueString(),
 		Slug:             slug.Make(data.Name.ValueString()),
-		SystemId:         data.SystemId.ValueString(),
+		SystemIds:        []string{data.SystemId.ValueString()},
 		Metadata:         stringMapPointer(data.Metadata),
 		ResourceSelector: selector,
 		JobAgentId:       jobAgentId,
@@ -338,7 +338,7 @@ func (r *DeploymentResource) Read(ctx context.Context, req resource.ReadRequest,
 	dep := deployResp.JSON200.Deployment
 	data.ID = types.StringValue(dep.Id)
 	data.Name = types.StringValue(dep.Name)
-	data.SystemId = types.StringValue(dep.SystemId)
+	data.SystemId = types.StringValue(dep.SystemIds[0])
 	data.Metadata = stringMapValue(dep.Metadata)
 
 	if selectorValue, err := selectorStringValue(dep.ResourceSelector); err != nil {
@@ -399,7 +399,7 @@ func (r *DeploymentResource) Update(ctx context.Context, req resource.UpdateRequ
 	requestBody := api.UpsertDeploymentRequest{
 		Name:             data.Name.ValueString(),
 		Slug:             slug.Make(data.Name.ValueString()),
-		SystemId:         data.SystemId.ValueString(),
+		SystemIds:        []string{data.SystemId.ValueString()},
 		Metadata:         stringMapPointer(data.Metadata),
 		ResourceSelector: selector,
 		JobAgentId:       jobAgentId,

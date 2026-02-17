@@ -126,6 +126,8 @@ func (p *CtrlplaneProvider) Resources(ctx context.Context) []func() resource.Res
 		NewPolicyResource,
 		NewResourceResource,
 		NewRelationshipRuleResource,
+		NewEnvironmentSystemLinkResource,
+		NewDeploymentSystemLinkResource,
 	}
 }
 
