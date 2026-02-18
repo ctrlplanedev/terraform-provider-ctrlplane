@@ -313,6 +313,103 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 					},
 				},
 			},
+			"gradual_rollout": schema.ListNestedBlock{
+				Description: "Gradual rollout rules",
+				NestedObject: schema.NestedBlockObject{
+					Attributes: map[string]schema.Attribute{
+						"created_at": schema.StringAttribute{
+							Optional:    true,
+							Computed:    true,
+							Description: "Rule creation timestamp",
+							PlanModifiers: []planmodifier.String{
+								stringplanmodifier.UseStateForUnknown(),
+							},
+						},
+						"id": schema.StringAttribute{
+							Optional:    true,
+							Computed:    true,
+							Description: "Rule ID",
+							PlanModifiers: []planmodifier.String{
+								stringplanmodifier.UseStateForUnknown(),
+							},
+						},
+						"rollout_type": schema.StringAttribute{
+							Required:    true,
+							Description: "Rollout strategy: \"linear\" or \"linear-normalized\"",
+						},
+						"time_scale_interval": schema.Int64Attribute{
+							Required:    true,
+							Description: "Base time interval in seconds used to compute delay between deployments",
+						},
+					},
+				},
+			},
+			"any_approval": schema.ListNestedBlock{
+				Description: "Any approval rules",
+				NestedObject: schema.NestedBlockObject{
+					Attributes: map[string]schema.Attribute{
+						"created_at": schema.StringAttribute{
+							Optional:    true,
+							Computed:    true,
+							Description: "Rule creation timestamp",
+							PlanModifiers: []planmodifier.String{
+								stringplanmodifier.UseStateForUnknown(),
+							},
+						},
+						"id": schema.StringAttribute{
+							Optional:    true,
+							Computed:    true,
+							Description: "Rule ID",
+							PlanModifiers: []planmodifier.String{
+								stringplanmodifier.UseStateForUnknown(),
+							},
+						},
+						"min_approvals": schema.Int64Attribute{
+							Required:    true,
+							Description: "Minimum number of approvals required",
+						},
+					},
+				},
+			},
+			"environment_progression": schema.ListNestedBlock{
+				Description: "Environment progression rules",
+				NestedObject: schema.NestedBlockObject{
+					Attributes: map[string]schema.Attribute{
+						"created_at": schema.StringAttribute{
+							Optional:    true,
+							Computed:    true,
+							Description: "Rule creation timestamp",
+							PlanModifiers: []planmodifier.String{
+								stringplanmodifier.UseStateForUnknown(),
+							},
+						},
+						"id": schema.StringAttribute{
+							Optional:    true,
+							Computed:    true,
+							Description: "Rule ID",
+							PlanModifiers: []planmodifier.String{
+								stringplanmodifier.UseStateForUnknown(),
+							},
+						},
+						"depends_on_environment_selector": schema.StringAttribute{
+							Required:    true,
+							Description: "CEL expression to match the environment that must have a successful release before this environment can proceed",
+						},
+						"minimum_success_percentage": schema.Float64Attribute{
+							Optional:    true,
+							Description: "Minimum percentage of successful deployments required",
+						},
+						"minimum_sock_time_minutes": schema.Int64Attribute{
+							Optional:    true,
+							Description: "Minimum time in minutes to wait after the dependency environment is in a success state",
+						},
+						"maximum_age_hours": schema.Int64Attribute{
+							Optional:    true,
+							Description: "Maximum age in hours of dependency deployment before blocking progression",
+						},
+					},
+				},
+			},
 		},
 	}
 }
@@ -495,6 +592,9 @@ func (r *PolicyResource) Read(ctx context.Context, req resource.ReadRequest, res
 	data.DeploymentWindow = rules.DeploymentWindow
 	data.DeploymentDependency = rules.DeploymentDependency
 	data.Verification = rules.Verification
+	data.GradualRollout = rules.GradualRollout
+	data.AnyApproval = rules.AnyApproval
+	data.EnvironmentProgression = rules.EnvironmentProgression
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -599,6 +699,9 @@ func (r *PolicyResource) Update(ctx context.Context, req resource.UpdateRequest,
 	data.DeploymentWindow = readRules.DeploymentWindow
 	data.DeploymentDependency = readRules.DeploymentDependency
 	data.Verification = readRules.Verification
+	data.GradualRollout = readRules.GradualRollout
+	data.AnyApproval = readRules.AnyApproval
+	data.EnvironmentProgression = readRules.EnvironmentProgression
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
 }
@@ -629,17 +732,20 @@ func (r *PolicyResource) Delete(ctx context.Context, req resource.DeleteRequest,
 }
 
 type PolicyResourceModel struct {
-	ID                   types.String                 `tfsdk:"id"`
-	Name                 types.String                 `tfsdk:"name"`
-	Description          types.String                 `tfsdk:"description"`
-	Metadata             types.Map                    `tfsdk:"metadata"`
-	Priority             types.Int64                  `tfsdk:"priority"`
-	Enabled              types.Bool                   `tfsdk:"enabled"`
-	Selector             types.String                 `tfsdk:"selector"`
-	VersionCooldown      []PolicyVersionCooldown      `tfsdk:"version_cooldown"`
-	DeploymentWindow     []PolicyDeploymentWindow     `tfsdk:"deployment_window"`
-	DeploymentDependency []PolicyDeploymentDependency `tfsdk:"deployment_dependency"`
-	Verification         []PolicyVerificationRule     `tfsdk:"verification"`
+	ID                     types.String                   `tfsdk:"id"`
+	Name                   types.String                   `tfsdk:"name"`
+	Description            types.String                   `tfsdk:"description"`
+	Metadata               types.Map                      `tfsdk:"metadata"`
+	Priority               types.Int64                    `tfsdk:"priority"`
+	Enabled                types.Bool                     `tfsdk:"enabled"`
+	Selector               types.String                   `tfsdk:"selector"`
+	VersionCooldown        []PolicyVersionCooldown        `tfsdk:"version_cooldown"`
+	DeploymentWindow       []PolicyDeploymentWindow       `tfsdk:"deployment_window"`
+	DeploymentDependency   []PolicyDeploymentDependency   `tfsdk:"deployment_dependency"`
+	Verification           []PolicyVerificationRule       `tfsdk:"verification"`
+	GradualRollout         []PolicyGradualRollout         `tfsdk:"gradual_rollout"`
+	AnyApproval            []PolicyAnyApproval            `tfsdk:"any_approval"`
+	EnvironmentProgression []PolicyEnvironmentProgression `tfsdk:"environment_progression"`
 }
 
 type PolicyVersionCooldown struct {
@@ -661,6 +767,28 @@ type PolicyDeploymentDependency struct {
 	CreatedAt         types.String `tfsdk:"created_at"`
 	ID                types.String `tfsdk:"id"`
 	DependsOnSelector types.String `tfsdk:"depends_on_selector"`
+}
+
+type PolicyGradualRollout struct {
+	CreatedAt         types.String `tfsdk:"created_at"`
+	ID                types.String `tfsdk:"id"`
+	RolloutType       types.String `tfsdk:"rollout_type"`
+	TimeScaleInterval types.Int64  `tfsdk:"time_scale_interval"`
+}
+
+type PolicyAnyApproval struct {
+	CreatedAt    types.String `tfsdk:"created_at"`
+	ID           types.String `tfsdk:"id"`
+	MinApprovals types.Int64  `tfsdk:"min_approvals"`
+}
+
+type PolicyEnvironmentProgression struct {
+	CreatedAt                    types.String  `tfsdk:"created_at"`
+	ID                           types.String  `tfsdk:"id"`
+	DependsOnEnvironmentSelector types.String  `tfsdk:"depends_on_environment_selector"`
+	MinimumSuccessPercentage     types.Float64 `tfsdk:"minimum_success_percentage"`
+	MinimumSockTimeMinutes       types.Int64   `tfsdk:"minimum_sock_time_minutes"`
+	MaximumAgeHours              types.Int64   `tfsdk:"maximum_age_hours"`
 }
 
 type PolicyVerificationRule struct {
@@ -695,10 +823,13 @@ type PolicyDatadogProvider struct {
 }
 
 type policyRulesModel struct {
-	VersionCooldown      []PolicyVersionCooldown
-	DeploymentWindow     []PolicyDeploymentWindow
-	DeploymentDependency []PolicyDeploymentDependency
-	Verification         []PolicyVerificationRule
+	VersionCooldown        []PolicyVersionCooldown
+	DeploymentWindow       []PolicyDeploymentWindow
+	DeploymentDependency   []PolicyDeploymentDependency
+	Verification           []PolicyVerificationRule
+	GradualRollout         []PolicyGradualRollout
+	AnyApproval            []PolicyAnyApproval
+	EnvironmentProgression []PolicyEnvironmentProgression
 }
 
 type policyRequestPayload struct {
@@ -712,13 +843,16 @@ type policyRequestPayload struct {
 }
 
 type policyRequestRule struct {
-	CreatedAt            string                        `json:"createdAt"`
-	Id                   string                        `json:"id"`
-	DeploymentDependency *api.DeploymentDependencyRule `json:"deploymentDependency,omitempty"`
-	DeploymentWindow     *api.DeploymentWindowRule     `json:"deploymentWindow,omitempty"`
-	Verification         *api.VerificationRule         `json:"verification,omitempty"`
-	VersionCooldown      *api.VersionCooldownRule      `json:"versionCooldown,omitempty"`
-	PolicyId             *string                       `json:"policyId,omitempty"`
+	CreatedAt              string                          `json:"createdAt"`
+	Id                     string                          `json:"id"`
+	DeploymentDependency   *api.DeploymentDependencyRule   `json:"deploymentDependency,omitempty"`
+	DeploymentWindow       *api.DeploymentWindowRule       `json:"deploymentWindow,omitempty"`
+	Verification           *api.VerificationRule           `json:"verification,omitempty"`
+	VersionCooldown        *api.VersionCooldownRule        `json:"versionCooldown,omitempty"`
+	GradualRollout         *api.GradualRolloutRule         `json:"gradualRollout,omitempty"`
+	AnyApproval            *api.AnyApprovalRule            `json:"anyApproval,omitempty"`
+	EnvironmentProgression *api.EnvironmentProgressionRule `json:"environmentProgression,omitempty"`
+	PolicyId               *string                         `json:"policyId,omitempty"`
 }
 
 func selectorValueSet(value types.String) bool {
@@ -753,6 +887,10 @@ func formatDuration(value time.Duration) string {
 }
 
 func int64ValueSet(value types.Int64) bool {
+	return !value.IsNull() && !value.IsUnknown()
+}
+
+func float64ValueSet(value types.Float64) bool {
 	return !value.IsNull() && !value.IsUnknown()
 }
 
@@ -831,6 +969,62 @@ func policyRulesFromModel(data PolicyResourceModel) ([]policyRequestRule, diag.D
 			CreatedAt:    createdAtValue(verification.CreatedAt),
 			Id:           id,
 			Verification: verificationRule,
+		})
+	}
+
+	for _, rollout := range data.GradualRollout {
+		id := selectorIDValue(rollout.ID)
+		rules = append(rules, policyRequestRule{
+			CreatedAt: createdAtValue(rollout.CreatedAt),
+			Id:        id,
+			GradualRollout: &api.GradualRolloutRule{
+				RolloutType:       api.GradualRolloutRuleRolloutType(rollout.RolloutType.ValueString()),
+				TimeScaleInterval: int32(rollout.TimeScaleInterval.ValueInt64()),
+			},
+		})
+	}
+
+	for _, approval := range data.AnyApproval {
+		id := selectorIDValue(approval.ID)
+		rules = append(rules, policyRequestRule{
+			CreatedAt: createdAtValue(approval.CreatedAt),
+			Id:        id,
+			AnyApproval: &api.AnyApprovalRule{
+				MinApprovals: int32(approval.MinApprovals.ValueInt64()),
+			},
+		})
+	}
+
+	for _, progression := range data.EnvironmentProgression {
+		id := selectorIDValue(progression.ID)
+		selectorPtr, err := selectorPointerFromString(progression.DependsOnEnvironmentSelector)
+		if err != nil {
+			diags.AddError("Invalid environment progression selector", err.Error())
+			continue
+		}
+		if selectorPtr == nil {
+			diags.AddError("Invalid environment progression selector", "depends_on_environment_selector must be set")
+			continue
+		}
+		rule := api.EnvironmentProgressionRule{
+			DependsOnEnvironmentSelector: *selectorPtr,
+		}
+		if float64ValueSet(progression.MinimumSuccessPercentage) {
+			val := float32(progression.MinimumSuccessPercentage.ValueFloat64())
+			rule.MinimumSuccessPercentage = &val
+		}
+		if int64ValueSet(progression.MinimumSockTimeMinutes) {
+			val := int32(progression.MinimumSockTimeMinutes.ValueInt64())
+			rule.MinimumSockTimeMinutes = &val
+		}
+		if int64ValueSet(progression.MaximumAgeHours) {
+			val := int32(progression.MaximumAgeHours.ValueInt64())
+			rule.MaximumAgeHours = &val
+		}
+		rules = append(rules, policyRequestRule{
+			CreatedAt:              createdAtValue(progression.CreatedAt),
+			Id:                     id,
+			EnvironmentProgression: &rule,
 		})
 	}
 
@@ -1001,6 +1195,47 @@ func policyRulesToModel(rules []api.PolicyRule) (policyRulesModel, diag.Diagnost
 			verification.ID = types.StringValue(rule.Id)
 			result.Verification = append(result.Verification, verification)
 		}
+		if rule.GradualRollout != nil {
+			result.GradualRollout = append(result.GradualRollout, PolicyGradualRollout{
+				CreatedAt:         types.StringValue(rule.CreatedAt),
+				ID:                types.StringValue(rule.Id),
+				RolloutType:       types.StringValue(string(rule.GradualRollout.RolloutType)),
+				TimeScaleInterval: types.Int64Value(int64(rule.GradualRollout.TimeScaleInterval)),
+			})
+		}
+		if rule.AnyApproval != nil {
+			result.AnyApproval = append(result.AnyApproval, PolicyAnyApproval{
+				CreatedAt:    types.StringValue(rule.CreatedAt),
+				ID:           types.StringValue(rule.Id),
+				MinApprovals: types.Int64Value(int64(rule.AnyApproval.MinApprovals)),
+			})
+		}
+		if rule.EnvironmentProgression != nil {
+			selector := &rule.EnvironmentProgression.DependsOnEnvironmentSelector
+			selectorStr, err := selectorStringValue(selector)
+			if err != nil {
+				diags.AddError("Invalid environment progression selector", err.Error())
+				continue
+			}
+			model := PolicyEnvironmentProgression{
+				CreatedAt:                    types.StringValue(rule.CreatedAt),
+				ID:                           types.StringValue(rule.Id),
+				DependsOnEnvironmentSelector: selectorStr,
+				MinimumSuccessPercentage:     types.Float64Null(),
+				MinimumSockTimeMinutes:       types.Int64Null(),
+				MaximumAgeHours:              types.Int64Null(),
+			}
+			if rule.EnvironmentProgression.MinimumSuccessPercentage != nil {
+				model.MinimumSuccessPercentage = types.Float64Value(float64(*rule.EnvironmentProgression.MinimumSuccessPercentage))
+			}
+			if rule.EnvironmentProgression.MinimumSockTimeMinutes != nil {
+				model.MinimumSockTimeMinutes = types.Int64Value(int64(*rule.EnvironmentProgression.MinimumSockTimeMinutes))
+			}
+			if rule.EnvironmentProgression.MaximumAgeHours != nil {
+				model.MaximumAgeHours = types.Int64Value(int64(*rule.EnvironmentProgression.MaximumAgeHours))
+			}
+			result.EnvironmentProgression = append(result.EnvironmentProgression, model)
+		}
 	}
 
 	return result, diags
@@ -1011,6 +1246,9 @@ func ensurePolicyIDs(plan *PolicyResourceModel, state *PolicyResourceModel) {
 	mergeWindowIDs(plan.DeploymentWindow, windowListFromState(state))
 	mergeDeploymentDependencyIDs(plan.DeploymentDependency, deploymentDependencyListFromState(state))
 	mergeVerificationIDs(plan.Verification, verificationListFromState(state))
+	mergeGradualRolloutIDs(plan.GradualRollout, gradualRolloutListFromState(state))
+	mergeAnyApprovalIDs(plan.AnyApproval, anyApprovalListFromState(state))
+	mergeEnvironmentProgressionIDs(plan.EnvironmentProgression, environmentProgressionListFromState(state))
 }
 
 func ensurePolicyRuleCreatedAt(plan *PolicyResourceModel, state *PolicyResourceModel) {
@@ -1018,6 +1256,9 @@ func ensurePolicyRuleCreatedAt(plan *PolicyResourceModel, state *PolicyResourceM
 	mergeWindowCreatedAt(plan.DeploymentWindow, windowListFromState(state))
 	mergeDeploymentDependencyCreatedAt(plan.DeploymentDependency, deploymentDependencyListFromState(state))
 	mergeVerificationCreatedAt(plan.Verification, verificationListFromState(state))
+	mergeGradualRolloutCreatedAt(plan.GradualRollout, gradualRolloutListFromState(state))
+	mergeAnyApprovalCreatedAt(plan.AnyApproval, anyApprovalListFromState(state))
+	mergeEnvironmentProgressionCreatedAt(plan.EnvironmentProgression, environmentProgressionListFromState(state))
 }
 
 func setPolicyIDOnRules(request *policyRequestPayload, policyID string) {
@@ -1153,6 +1394,105 @@ func mergeVerificationIDs(plan []PolicyVerificationRule, state []PolicyVerificat
 }
 
 func mergeVerificationCreatedAt(plan []PolicyVerificationRule, state []PolicyVerificationRule) {
+	for i := range plan {
+		if selectorValueSet(plan[i].CreatedAt) {
+			continue
+		}
+		if i < len(state) && selectorValueSet(state[i].CreatedAt) {
+			plan[i].CreatedAt = state[i].CreatedAt
+			continue
+		}
+		plan[i].CreatedAt = types.StringValue(time.Now().UTC().Format(time.RFC3339))
+	}
+}
+
+func gradualRolloutListFromState(state *PolicyResourceModel) []PolicyGradualRollout {
+	if state == nil {
+		return nil
+	}
+	return state.GradualRollout
+}
+
+func anyApprovalListFromState(state *PolicyResourceModel) []PolicyAnyApproval {
+	if state == nil {
+		return nil
+	}
+	return state.AnyApproval
+}
+
+func environmentProgressionListFromState(state *PolicyResourceModel) []PolicyEnvironmentProgression {
+	if state == nil {
+		return nil
+	}
+	return state.EnvironmentProgression
+}
+
+func mergeGradualRolloutIDs(plan []PolicyGradualRollout, state []PolicyGradualRollout) {
+	for i := range plan {
+		if selectorValueSet(plan[i].ID) {
+			continue
+		}
+		if i < len(state) && selectorValueSet(state[i].ID) {
+			plan[i].ID = state[i].ID
+			continue
+		}
+		plan[i].ID = types.StringValue(uuid.NewString())
+	}
+}
+
+func mergeGradualRolloutCreatedAt(plan []PolicyGradualRollout, state []PolicyGradualRollout) {
+	for i := range plan {
+		if selectorValueSet(plan[i].CreatedAt) {
+			continue
+		}
+		if i < len(state) && selectorValueSet(state[i].CreatedAt) {
+			plan[i].CreatedAt = state[i].CreatedAt
+			continue
+		}
+		plan[i].CreatedAt = types.StringValue(time.Now().UTC().Format(time.RFC3339))
+	}
+}
+
+func mergeAnyApprovalIDs(plan []PolicyAnyApproval, state []PolicyAnyApproval) {
+	for i := range plan {
+		if selectorValueSet(plan[i].ID) {
+			continue
+		}
+		if i < len(state) && selectorValueSet(state[i].ID) {
+			plan[i].ID = state[i].ID
+			continue
+		}
+		plan[i].ID = types.StringValue(uuid.NewString())
+	}
+}
+
+func mergeAnyApprovalCreatedAt(plan []PolicyAnyApproval, state []PolicyAnyApproval) {
+	for i := range plan {
+		if selectorValueSet(plan[i].CreatedAt) {
+			continue
+		}
+		if i < len(state) && selectorValueSet(state[i].CreatedAt) {
+			plan[i].CreatedAt = state[i].CreatedAt
+			continue
+		}
+		plan[i].CreatedAt = types.StringValue(time.Now().UTC().Format(time.RFC3339))
+	}
+}
+
+func mergeEnvironmentProgressionIDs(plan []PolicyEnvironmentProgression, state []PolicyEnvironmentProgression) {
+	for i := range plan {
+		if selectorValueSet(plan[i].ID) {
+			continue
+		}
+		if i < len(state) && selectorValueSet(state[i].ID) {
+			plan[i].ID = state[i].ID
+			continue
+		}
+		plan[i].ID = types.StringValue(uuid.NewString())
+	}
+}
+
+func mergeEnvironmentProgressionCreatedAt(plan []PolicyEnvironmentProgression, state []PolicyEnvironmentProgression) {
 	for i := range plan {
 		if selectorValueSet(plan[i].CreatedAt) {
 			continue
