@@ -132,6 +132,20 @@ resource "ctrlplane_policy" "test" {
       }
     }
   }
+
+  gradual_rollout {
+    rollout_type        = "linear-normalized"
+    time_scale_interval = 14400
+  }
+
+  any_approval {
+    min_approvals = 1
+  }
+
+  environment_progression {
+    depends_on_environment_selector = "environment.name == 'qa'"
+    minimum_success_percentage      = 80
+  }
 }
 `, testAccProviderConfig(), name, description, priority, enabled, name)
 }
