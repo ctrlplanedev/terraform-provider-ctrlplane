@@ -132,11 +132,26 @@ func (r *EnvironmentSystemLinkResource) Read(ctx context.Context, req resource.R
 		return
 	}
 
-	environmentID := data.EnvironmentID.ValueString()
 	systemID := data.SystemID.ValueString()
+	environmentID := data.EnvironmentID.ValueString()
 
-	data.ID = types.StringValue(systemID + "/" + environmentID)
-	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
+	linkResp, err := r.workspace.Client.GetEnvironmentSystemLinkWithResponse(
+		ctx, r.workspace.ID.String(), systemID, environmentID,
+	)
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to read environment system link", err.Error())
+		return
+	}
+
+	switch linkResp.StatusCode() {
+	case http.StatusOK:
+		data.ID = types.StringValue(systemID + "/" + environmentID)
+		resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
+	case http.StatusNotFound:
+		resp.State.RemoveResource(ctx)
+	default:
+		resp.Diagnostics.AddError("Failed to read environment system link", formatResponseError(linkResp.StatusCode(), linkResp.Body))
+	}
 }
 
 func (r *EnvironmentSystemLinkResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
