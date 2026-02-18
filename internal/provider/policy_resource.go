@@ -663,25 +663,7 @@ func (r *PolicyResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 
-	err = waitForResource(ctx, func() (bool, error) {
-		getResp, getErr := r.workspace.Client.GetPolicyWithResponse(ctx, r.workspace.ID.String(), data.ID.ValueString())
-		if getErr != nil {
-			return false, getErr
-		}
-		return getResp.StatusCode() == http.StatusOK, nil
-	})
-	if err != nil {
-		resp.Diagnostics.AddError("Failed to update policy", fmt.Sprintf("Resource not available after update: %s", err.Error()))
-		return
-	}
-
-	readResp, err := r.workspace.Client.GetPolicyWithResponse(ctx, r.workspace.ID.String(), data.ID.ValueString())
-	if err != nil || readResp.StatusCode() != http.StatusOK || readResp.JSON200 == nil {
-		resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
-		return
-	}
-
-	policy := readResp.JSON200
+	policy := policyResp.JSON202
 	data.ID = types.StringValue(policy.Id)
 	data.Name = types.StringValue(policy.Name)
 	data.Description = descriptionValue(policy.Description)
