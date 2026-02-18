@@ -399,12 +399,12 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 							Optional:    true,
 							Description: "Minimum percentage of successful deployments required",
 						},
-					"minimum_sock_time_minutes": schema.Int64Attribute{
-						Optional:    true,
-						Computed:    true,
-						Description: "Minimum time in minutes to wait after the dependency environment is in a success state",
-						Default:     int64default.StaticInt64(0),
-					},
+						"minimum_sock_time_minutes": schema.Int64Attribute{
+							Optional:    true,
+							Computed:    true,
+							Description: "Minimum time in minutes to wait after the dependency environment is in a success state",
+							Default:     int64default.StaticInt64(0),
+						},
 						"maximum_age_hours": schema.Int64Attribute{
 							Optional:    true,
 							Description: "Maximum age in hours of dependency deployment before blocking progression",
