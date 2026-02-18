@@ -563,6 +563,43 @@ func (r *PolicyResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 
+	err = waitForResource(ctx, func() (bool, error) {
+		getResp, getErr := r.workspace.Client.GetPolicyWithResponse(ctx, r.workspace.ID.String(), data.ID.ValueString())
+		if getErr != nil {
+			return false, getErr
+		}
+		return getResp.StatusCode() == http.StatusOK, nil
+	})
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to update policy", fmt.Sprintf("Resource not available after update: %s", err.Error()))
+		return
+	}
+
+	readResp, err := r.workspace.Client.GetPolicyWithResponse(ctx, r.workspace.ID.String(), data.ID.ValueString())
+	if err != nil || readResp.StatusCode() != http.StatusOK || readResp.JSON200 == nil {
+		resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
+		return
+	}
+
+	policy := readResp.JSON200
+	data.ID = types.StringValue(policy.Id)
+	data.Name = types.StringValue(policy.Name)
+	data.Description = descriptionValue(policy.Description)
+	data.Metadata = stringMapValue(&policy.Metadata)
+	data.Priority = types.Int64Value(int64(policy.Priority))
+	data.Enabled = types.BoolValue(policy.Enabled)
+	data.Selector = types.StringValue(policy.Selector)
+
+	readRules, ruleDiags := policyRulesToModel(policy.Rules)
+	resp.Diagnostics.Append(ruleDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	data.VersionCooldown = readRules.VersionCooldown
+	data.DeploymentWindow = readRules.DeploymentWindow
+	data.DeploymentDependency = readRules.DeploymentDependency
+	data.Verification = readRules.Verification
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
 }
 
@@ -735,7 +772,7 @@ func defaultBool(value types.Bool, fallback bool) bool {
 
 func policyRulesFromModel(data PolicyResourceModel) ([]policyRequestRule, diag.Diagnostics) {
 	var diags diag.Diagnostics
-	var rules []policyRequestRule
+	rules := make([]policyRequestRule, 0)
 
 	for _, cooldown := range data.VersionCooldown {
 		id := selectorIDValue(cooldown.ID)
