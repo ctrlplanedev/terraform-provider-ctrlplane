@@ -41,11 +41,6 @@ func TestAccEnvironmentResource(t *testing.T) {
 						tfjsonpath.New("description"),
 						knownvalue.StringExact(description),
 					),
-					statecheck.ExpectKnownValue(
-						"ctrlplane_environment.test",
-						tfjsonpath.New("system_id"),
-						knownvalue.NotNull(),
-					),
 				},
 			},
 			{
@@ -80,7 +75,6 @@ resource "ctrlplane_system" "test" {
 }
 
 resource "ctrlplane_environment" "test" {
-  system_id = ctrlplane_system.test.id
   name      = %q
   description = %q
 

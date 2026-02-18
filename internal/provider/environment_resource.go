@@ -116,18 +116,6 @@ func (r *EnvironmentResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	linkResp, err := r.workspace.Client.LinkEnvironmentToSystemWithResponse(
-		ctx, workspaceId.String(), data.SystemId.ValueString(), envId,
-	)
-	if err != nil {
-		resp.Diagnostics.AddError("Failed to link environment to system", err.Error())
-		return
-	}
-	if linkResp.StatusCode() != http.StatusAccepted {
-		resp.Diagnostics.AddError("Failed to link environment to system", formatResponseError(linkResp.StatusCode(), linkResp.Body))
-		return
-	}
-
 	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
 }
 
@@ -238,10 +226,6 @@ func (r *EnvironmentResource) Schema(ctx context.Context, req resource.SchemaReq
 				Optional:    true,
 				Description: "The description of the environment",
 			},
-			"system_id": schema.StringAttribute{
-				Required:    true,
-				Description: "The system ID this environment belongs to",
-			},
 			"resource_selector": schema.StringAttribute{
 				Optional:    true,
 				Description: "CEL expression used to select resources",
@@ -320,7 +304,6 @@ func (r *EnvironmentResource) Metadata(ctx context.Context, req resource.Metadat
 type EnvironmentResourceModel struct {
 	ID               types.String `tfsdk:"id"`
 	Name             types.String `tfsdk:"name"`
-	SystemId         types.String `tfsdk:"system_id"`
 	ResourceSelector types.String `tfsdk:"resource_selector"`
 	Description      types.String `tfsdk:"description"`
 	Metadata         types.Map    `tfsdk:"metadata"`
