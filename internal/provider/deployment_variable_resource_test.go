@@ -63,8 +63,7 @@ resource "ctrlplane_system" "test" {
 }
 
 resource "ctrlplane_deployment" "test" {
-  system_id = ctrlplane_system.test.id
-  name      = %q
+  name              = %q
   resource_selector = "resource.name == '%s'"
 }
 
