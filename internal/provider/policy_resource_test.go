@@ -95,23 +95,17 @@ resource "ctrlplane_policy" "test" {
   description = %q
   priority    = %d
   enabled     = %t
-
-  selector {
-    deployment = "deployment.name == '%s'"
-  }
+  selector    = "deployment.name == '%s'"
 
   version_cooldown {
     duration = "1h"
   }
 
   deployment_window {
-    duration = "8h"
-    rrule = <<-EOT
-DTSTART:20000101T160000
-RRULE:FREQ=WEEKLY;WKST=MO;BYDAY=MO,TU,WE,TH,FR
-EOT
-    timezone = "America/New_York"
-    allow_window = true
+    duration_minutes = 480
+    rrule            = "DTSTART:20000101T160000\nRRULE:FREQ=WEEKLY;WKST=MO;BYDAY=MO,TU,WE,TH,FR"
+    timezone         = "America/New_York"
+    allow_window     = true
   }
 
   verification {
