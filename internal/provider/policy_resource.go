@@ -395,7 +395,7 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 							Required:    true,
 							Description: "CEL expression to match the environment that must have a successful release before this environment can proceed",
 						},
-						"minimum_success_percentage": schema.Int64Attribute{
+						"minimum_success_percentage": schema.Float64Attribute{
 							Optional:    true,
 							Description: "Minimum percentage of successful deployments required",
 						},
@@ -783,12 +783,12 @@ type PolicyAnyApproval struct {
 }
 
 type PolicyEnvironmentProgression struct {
-	CreatedAt                    types.String `tfsdk:"created_at"`
-	ID                           types.String `tfsdk:"id"`
-	DependsOnEnvironmentSelector types.String `tfsdk:"depends_on_environment_selector"`
-	MinimumSuccessPercentage     types.Int64  `tfsdk:"minimum_success_percentage"`
-	MinimumSockTimeMinutes       types.Int64  `tfsdk:"minimum_sock_time_minutes"`
-	MaximumAgeHours              types.Int64  `tfsdk:"maximum_age_hours"`
+	CreatedAt                    types.String  `tfsdk:"created_at"`
+	ID                           types.String  `tfsdk:"id"`
+	DependsOnEnvironmentSelector types.String  `tfsdk:"depends_on_environment_selector"`
+	MinimumSuccessPercentage     types.Float64 `tfsdk:"minimum_success_percentage"`
+	MinimumSockTimeMinutes       types.Int64   `tfsdk:"minimum_sock_time_minutes"`
+	MaximumAgeHours              types.Int64   `tfsdk:"maximum_age_hours"`
 }
 
 type PolicyVerificationRule struct {
@@ -887,6 +887,10 @@ func formatDuration(value time.Duration) string {
 }
 
 func int64ValueSet(value types.Int64) bool {
+	return !value.IsNull() && !value.IsUnknown()
+}
+
+func float64ValueSet(value types.Float64) bool {
 	return !value.IsNull() && !value.IsUnknown()
 }
 
@@ -1005,8 +1009,8 @@ func policyRulesFromModel(data PolicyResourceModel) ([]policyRequestRule, diag.D
 		rule := api.EnvironmentProgressionRule{
 			DependsOnEnvironmentSelector: *selectorPtr,
 		}
-		if int64ValueSet(progression.MinimumSuccessPercentage) {
-			val := float32(progression.MinimumSuccessPercentage.ValueInt64())
+		if float64ValueSet(progression.MinimumSuccessPercentage) {
+			val := float32(progression.MinimumSuccessPercentage.ValueFloat64())
 			rule.MinimumSuccessPercentage = &val
 		}
 		if int64ValueSet(progression.MinimumSockTimeMinutes) {
@@ -1217,12 +1221,12 @@ func policyRulesToModel(rules []api.PolicyRule) (policyRulesModel, diag.Diagnost
 				CreatedAt:                    types.StringValue(rule.CreatedAt),
 				ID:                           types.StringValue(rule.Id),
 				DependsOnEnvironmentSelector: selectorStr,
-				MinimumSuccessPercentage:     types.Int64Null(),
+				MinimumSuccessPercentage:     types.Float64Null(),
 				MinimumSockTimeMinutes:       types.Int64Null(),
 				MaximumAgeHours:              types.Int64Null(),
 			}
 			if rule.EnvironmentProgression.MinimumSuccessPercentage != nil {
-				model.MinimumSuccessPercentage = types.Int64Value(int64(*rule.EnvironmentProgression.MinimumSuccessPercentage))
+				model.MinimumSuccessPercentage = types.Float64Value(float64(*rule.EnvironmentProgression.MinimumSuccessPercentage))
 			}
 			if rule.EnvironmentProgression.MinimumSockTimeMinutes != nil {
 				model.MinimumSockTimeMinutes = types.Int64Value(int64(*rule.EnvironmentProgression.MinimumSockTimeMinutes))
