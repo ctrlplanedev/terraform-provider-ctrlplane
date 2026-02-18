@@ -18,7 +18,6 @@ description: |-
 ### Required
 
 - `name` (String) The name of the environment
-- `system_id` (String) The system ID this environment belongs to
 
 ### Optional
 

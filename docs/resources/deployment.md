@@ -18,7 +18,6 @@ description: |-
 ### Required
 
 - `name` (String) The name of the deployment
-- `system_id` (String) The system ID this deployment belongs to
 
 ### Optional
 
