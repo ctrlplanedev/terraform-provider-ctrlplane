@@ -423,9 +423,10 @@ type DeploymentWindowRule struct {
 	Timezone *string `json:"timezone,omitempty"`
 }
 
-// DeploymentWithVariables defines model for DeploymentWithVariables.
-type DeploymentWithVariables struct {
+// DeploymentWithVariablesAndSystems defines model for DeploymentWithVariablesAndSystems.
+type DeploymentWithVariablesAndSystems struct {
 	Deployment Deployment                     `json:"deployment"`
+	Systems    []System                       `json:"systems"`
 	Variables  []DeploymentVariableWithValues `json:"variables"`
 }
 
@@ -471,6 +472,17 @@ type EnvironmentProgressionRule struct {
 type EnvironmentRequestAccepted struct {
 	Id      string `json:"id"`
 	Message string `json:"message"`
+}
+
+// EnvironmentWithSystems defines model for EnvironmentWithSystems.
+type EnvironmentWithSystems struct {
+	CreatedAt        time.Time          `json:"createdAt"`
+	Description      *string            `json:"description,omitempty"`
+	Id               string             `json:"id"`
+	Metadata         *map[string]string `json:"metadata,omitempty"`
+	Name             string             `json:"name"`
+	ResourceSelector *Selector          `json:"resourceSelector,omitempty"`
+	Systems          []System           `json:"systems"`
 }
 
 // Error defines model for Error.
@@ -893,6 +905,18 @@ type System struct {
 	Name        string             `json:"name"`
 	Slug        string             `json:"slug"`
 	WorkspaceId string             `json:"workspaceId"`
+}
+
+// SystemDeploymentLink defines model for SystemDeploymentLink.
+type SystemDeploymentLink struct {
+	DeploymentId string `json:"deploymentId"`
+	SystemId     string `json:"systemId"`
+}
+
+// SystemEnvironmentLink defines model for SystemEnvironmentLink.
+type SystemEnvironmentLink struct {
+	EnvironmentId string `json:"environmentId"`
+	SystemId      string `json:"systemId"`
 }
 
 // SystemRequestAccepted defines model for SystemRequestAccepted.
@@ -2673,11 +2697,17 @@ type ClientInterface interface {
 	// UnlinkDeploymentFromSystem request
 	UnlinkDeploymentFromSystem(ctx context.Context, workspaceId string, systemId string, deploymentId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetDeploymentSystemLink request
+	GetDeploymentSystemLink(ctx context.Context, workspaceId string, systemId string, deploymentId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// LinkDeploymentToSystem request
 	LinkDeploymentToSystem(ctx context.Context, workspaceId string, systemId string, deploymentId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UnlinkEnvironmentFromSystem request
 	UnlinkEnvironmentFromSystem(ctx context.Context, workspaceId string, systemId string, environmentId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetEnvironmentSystemLink request
+	GetEnvironmentSystemLink(ctx context.Context, workspaceId string, systemId string, environmentId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// LinkEnvironmentToSystem request
 	LinkEnvironmentToSystem(ctx context.Context, workspaceId string, systemId string, environmentId string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -3770,6 +3800,18 @@ func (c *Client) UnlinkDeploymentFromSystem(ctx context.Context, workspaceId str
 	return c.Client.Do(req)
 }
 
+func (c *Client) GetDeploymentSystemLink(ctx context.Context, workspaceId string, systemId string, deploymentId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetDeploymentSystemLinkRequest(c.Server, workspaceId, systemId, deploymentId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) LinkDeploymentToSystem(ctx context.Context, workspaceId string, systemId string, deploymentId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewLinkDeploymentToSystemRequest(c.Server, workspaceId, systemId, deploymentId)
 	if err != nil {
@@ -3784,6 +3826,18 @@ func (c *Client) LinkDeploymentToSystem(ctx context.Context, workspaceId string,
 
 func (c *Client) UnlinkEnvironmentFromSystem(ctx context.Context, workspaceId string, systemId string, environmentId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUnlinkEnvironmentFromSystemRequest(c.Server, workspaceId, systemId, environmentId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetEnvironmentSystemLink(ctx context.Context, workspaceId string, systemId string, environmentId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetEnvironmentSystemLinkRequest(c.Server, workspaceId, systemId, environmentId)
 	if err != nil {
 		return nil, err
 	}
@@ -7411,6 +7465,54 @@ func NewUnlinkDeploymentFromSystemRequest(server string, workspaceId string, sys
 	return req, nil
 }
 
+// NewGetDeploymentSystemLinkRequest generates requests for GetDeploymentSystemLink
+func NewGetDeploymentSystemLinkRequest(server string, workspaceId string, systemId string, deploymentId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "workspaceId", runtime.ParamLocationPath, workspaceId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "systemId", runtime.ParamLocationPath, systemId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "deploymentId", runtime.ParamLocationPath, deploymentId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/systems/%s/deployments/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewLinkDeploymentToSystemRequest generates requests for LinkDeploymentToSystem
 func NewLinkDeploymentToSystemRequest(server string, workspaceId string, systemId string, deploymentId string) (*http.Request, error) {
 	var err error
@@ -7500,6 +7602,54 @@ func NewUnlinkEnvironmentFromSystemRequest(server string, workspaceId string, sy
 	}
 
 	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetEnvironmentSystemLinkRequest generates requests for GetEnvironmentSystemLink
+func NewGetEnvironmentSystemLinkRequest(server string, workspaceId string, systemId string, environmentId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "workspaceId", runtime.ParamLocationPath, workspaceId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "systemId", runtime.ParamLocationPath, systemId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "environmentId", runtime.ParamLocationPath, environmentId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/systems/%s/environments/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -8097,11 +8247,17 @@ type ClientWithResponsesInterface interface {
 	// UnlinkDeploymentFromSystemWithResponse request
 	UnlinkDeploymentFromSystemWithResponse(ctx context.Context, workspaceId string, systemId string, deploymentId string, reqEditors ...RequestEditorFn) (*UnlinkDeploymentFromSystemResponse, error)
 
+	// GetDeploymentSystemLinkWithResponse request
+	GetDeploymentSystemLinkWithResponse(ctx context.Context, workspaceId string, systemId string, deploymentId string, reqEditors ...RequestEditorFn) (*GetDeploymentSystemLinkResponse, error)
+
 	// LinkDeploymentToSystemWithResponse request
 	LinkDeploymentToSystemWithResponse(ctx context.Context, workspaceId string, systemId string, deploymentId string, reqEditors ...RequestEditorFn) (*LinkDeploymentToSystemResponse, error)
 
 	// UnlinkEnvironmentFromSystemWithResponse request
 	UnlinkEnvironmentFromSystemWithResponse(ctx context.Context, workspaceId string, systemId string, environmentId string, reqEditors ...RequestEditorFn) (*UnlinkEnvironmentFromSystemResponse, error)
+
+	// GetEnvironmentSystemLinkWithResponse request
+	GetEnvironmentSystemLinkWithResponse(ctx context.Context, workspaceId string, systemId string, environmentId string, reqEditors ...RequestEditorFn) (*GetEnvironmentSystemLinkResponse, error)
 
 	// LinkEnvironmentToSystemWithResponse request
 	LinkEnvironmentToSystemWithResponse(ctx context.Context, workspaceId string, systemId string, environmentId string, reqEditors ...RequestEditorFn) (*LinkEnvironmentToSystemResponse, error)
@@ -8383,7 +8539,7 @@ func (r RequestDeploymentDeletionResponse) StatusCode() int {
 type GetDeploymentResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *DeploymentWithVariables
+	JSON200      *DeploymentWithVariablesAndSystems
 	JSON400      *ErrorResponse
 	JSON404      *ErrorResponse
 }
@@ -8799,7 +8955,7 @@ func (r RequestEnvironmentDeletionResponse) StatusCode() int {
 type GetEnvironmentResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *Environment
+	JSON200      *EnvironmentWithSystems
 	JSON400      *ErrorResponse
 	JSON404      *ErrorResponse
 }
@@ -9835,6 +9991,30 @@ func (r UnlinkDeploymentFromSystemResponse) StatusCode() int {
 	return 0
 }
 
+type GetDeploymentSystemLinkResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *SystemDeploymentLink
+	JSON400      *ErrorResponse
+	JSON404      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetDeploymentSystemLinkResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetDeploymentSystemLinkResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type LinkDeploymentToSystemResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -9877,6 +10057,30 @@ func (r UnlinkEnvironmentFromSystemResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r UnlinkEnvironmentFromSystemResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetEnvironmentSystemLinkResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *SystemEnvironmentLink
+	JSON400      *ErrorResponse
+	JSON404      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetEnvironmentSystemLinkResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetEnvironmentSystemLinkResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -10814,6 +11018,15 @@ func (c *ClientWithResponses) UnlinkDeploymentFromSystemWithResponse(ctx context
 	return ParseUnlinkDeploymentFromSystemResponse(rsp)
 }
 
+// GetDeploymentSystemLinkWithResponse request returning *GetDeploymentSystemLinkResponse
+func (c *ClientWithResponses) GetDeploymentSystemLinkWithResponse(ctx context.Context, workspaceId string, systemId string, deploymentId string, reqEditors ...RequestEditorFn) (*GetDeploymentSystemLinkResponse, error) {
+	rsp, err := c.GetDeploymentSystemLink(ctx, workspaceId, systemId, deploymentId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetDeploymentSystemLinkResponse(rsp)
+}
+
 // LinkDeploymentToSystemWithResponse request returning *LinkDeploymentToSystemResponse
 func (c *ClientWithResponses) LinkDeploymentToSystemWithResponse(ctx context.Context, workspaceId string, systemId string, deploymentId string, reqEditors ...RequestEditorFn) (*LinkDeploymentToSystemResponse, error) {
 	rsp, err := c.LinkDeploymentToSystem(ctx, workspaceId, systemId, deploymentId, reqEditors...)
@@ -10830,6 +11043,15 @@ func (c *ClientWithResponses) UnlinkEnvironmentFromSystemWithResponse(ctx contex
 		return nil, err
 	}
 	return ParseUnlinkEnvironmentFromSystemResponse(rsp)
+}
+
+// GetEnvironmentSystemLinkWithResponse request returning *GetEnvironmentSystemLinkResponse
+func (c *ClientWithResponses) GetEnvironmentSystemLinkWithResponse(ctx context.Context, workspaceId string, systemId string, environmentId string, reqEditors ...RequestEditorFn) (*GetEnvironmentSystemLinkResponse, error) {
+	rsp, err := c.GetEnvironmentSystemLink(ctx, workspaceId, systemId, environmentId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetEnvironmentSystemLinkResponse(rsp)
 }
 
 // LinkEnvironmentToSystemWithResponse request returning *LinkEnvironmentToSystemResponse
@@ -11349,7 +11571,7 @@ func ParseGetDeploymentResponse(rsp *http.Response) (*GetDeploymentResponse, err
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest DeploymentWithVariables
+		var dest DeploymentWithVariablesAndSystems
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -11949,7 +12171,7 @@ func ParseGetEnvironmentResponse(rsp *http.Response) (*GetEnvironmentResponse, e
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Environment
+		var dest EnvironmentWithSystems
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -13481,6 +13703,46 @@ func ParseUnlinkDeploymentFromSystemResponse(rsp *http.Response) (*UnlinkDeploym
 	return response, nil
 }
 
+// ParseGetDeploymentSystemLinkResponse parses an HTTP response from a GetDeploymentSystemLinkWithResponse call
+func ParseGetDeploymentSystemLinkResponse(rsp *http.Response) (*GetDeploymentSystemLinkResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetDeploymentSystemLinkResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SystemDeploymentLink
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseLinkDeploymentToSystemResponse parses an HTTP response from a LinkDeploymentToSystemWithResponse call
 func ParseLinkDeploymentToSystemResponse(rsp *http.Response) (*LinkDeploymentToSystemResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -13541,6 +13803,46 @@ func ParseUnlinkEnvironmentFromSystemResponse(rsp *http.Response) (*UnlinkEnviro
 			return nil, err
 		}
 		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetEnvironmentSystemLinkResponse parses an HTTP response from a GetEnvironmentSystemLinkWithResponse call
+func ParseGetEnvironmentSystemLinkResponse(rsp *http.Response) (*GetEnvironmentSystemLinkResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetEnvironmentSystemLinkResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SystemEnvironmentLink
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest ErrorResponse

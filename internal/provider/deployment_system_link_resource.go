@@ -132,11 +132,26 @@ func (r *DeploymentSystemLinkResource) Read(ctx context.Context, req resource.Re
 		return
 	}
 
-	deploymentID := data.DeploymentID.ValueString()
 	systemID := data.SystemID.ValueString()
+	deploymentID := data.DeploymentID.ValueString()
 
-	data.ID = types.StringValue(systemID + "/" + deploymentID)
-	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
+	linkResp, err := r.workspace.Client.GetDeploymentSystemLinkWithResponse(
+		ctx, r.workspace.ID.String(), systemID, deploymentID,
+	)
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to read deployment system link", err.Error())
+		return
+	}
+
+	switch linkResp.StatusCode() {
+	case http.StatusOK:
+		data.ID = types.StringValue(systemID + "/" + deploymentID)
+		resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
+	case http.StatusNotFound:
+		resp.State.RemoveResource(ctx)
+	default:
+		resp.Diagnostics.AddError("Failed to read deployment system link", formatResponseError(linkResp.StatusCode(), linkResp.Body))
+	}
 }
 
 func (r *DeploymentSystemLinkResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
