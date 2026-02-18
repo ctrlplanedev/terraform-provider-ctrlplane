@@ -118,9 +118,8 @@ func (r *DeploymentVariableValueResource) Schema(ctx context.Context, req resour
 				Optional:            true,
 				MarkdownDescription: "A literal value (string, number, boolean, or object). Conflicts with `reference_value`.",
 			},
-		},
-		Blocks: map[string]schema.Block{
-			"reference_value": schema.SingleNestedBlock{
+			"reference_value": schema.SingleNestedAttribute{
+				Optional:            true,
 				MarkdownDescription: "A reference value pointing to a property on the matched resource. Conflicts with `literal_value`.",
 				Attributes: map[string]schema.Attribute{
 					"reference": schema.StringAttribute{
