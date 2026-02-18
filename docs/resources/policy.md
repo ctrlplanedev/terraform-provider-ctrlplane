@@ -22,10 +22,13 @@ description: |-
 
 ### Optional
 
+- `any_approval` (Block List) Any approval rules (see [below for nested schema](#nestedblock--any_approval))
 - `deployment_dependency` (Block List) Deployment dependency rules (see [below for nested schema](#nestedblock--deployment_dependency))
 - `deployment_window` (Block List) Deployment window rules (see [below for nested schema](#nestedblock--deployment_window))
 - `description` (String) The description of the policy
 - `enabled` (Boolean) Whether the policy is enabled
+- `environment_progression` (Block List) Environment progression rules (see [below for nested schema](#nestedblock--environment_progression))
+- `gradual_rollout` (Block List) Gradual rollout rules (see [below for nested schema](#nestedblock--gradual_rollout))
 - `metadata` (Map of String) The metadata of the policy
 - `priority` (Number) The priority of the policy (higher is evaluated first)
 - `verification` (Block List) Verification rules (see [below for nested schema](#nestedblock--verification))
@@ -34,6 +37,19 @@ description: |-
 ### Read-Only
 
 - `id` (String) The ID of the policy
+
+<a id="nestedblock--any_approval"></a>
+### Nested Schema for `any_approval`
+
+Required:
+
+- `min_approvals` (Number) Minimum number of approvals required
+
+Optional:
+
+- `created_at` (String) Rule creation timestamp
+- `id` (String) Rule ID
+
 
 <a id="nestedblock--deployment_dependency"></a>
 ### Nested Schema for `deployment_dependency`
@@ -62,6 +78,36 @@ Optional:
 - `created_at` (String) Rule creation timestamp
 - `id` (String) Rule ID
 - `timezone` (String) IANA timezone for the recurrence rule
+
+
+<a id="nestedblock--environment_progression"></a>
+### Nested Schema for `environment_progression`
+
+Required:
+
+- `depends_on_environment_selector` (String) CEL expression to match the environment that must have a successful release before this environment can proceed
+
+Optional:
+
+- `created_at` (String) Rule creation timestamp
+- `id` (String) Rule ID
+- `maximum_age_hours` (Number) Maximum age in hours of dependency deployment before blocking progression
+- `minimum_sock_time_minutes` (Number) Minimum time in minutes to wait after the dependency environment is in a success state
+- `minimum_success_percentage` (Number) Minimum percentage of successful deployments required
+
+
+<a id="nestedblock--gradual_rollout"></a>
+### Nested Schema for `gradual_rollout`
+
+Required:
+
+- `rollout_type` (String) Rollout strategy: "linear" or "linear-normalized"
+- `time_scale_interval` (Number) Base time interval in seconds used to compute delay between deployments
+
+Optional:
+
+- `created_at` (String) Rule creation timestamp
+- `id` (String) Rule ID
 
 
 <a id="nestedblock--verification"></a>
