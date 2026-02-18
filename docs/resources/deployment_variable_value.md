@@ -24,14 +24,14 @@ Manages a deployment variable value override in Ctrlplane. A variable value prov
 ### Optional
 
 - `literal_value` (Dynamic) A literal value (string, number, boolean, or object). Conflicts with `reference_value`.
-- `reference_value` (Block, Optional) A reference value pointing to a property on the matched resource. Conflicts with `literal_value`. (see [below for nested schema](#nestedblock--reference_value))
+- `reference_value` (Attributes) A reference value pointing to a property on the matched resource. Conflicts with `literal_value`. (see [below for nested schema](#nestedatt--reference_value))
 - `resource_selector` (String) A CEL expression to select which resources this value applies to.
 
 ### Read-Only
 
 - `id` (String) The ID of the deployment variable value.
 
-<a id="nestedblock--reference_value"></a>
+<a id="nestedatt--reference_value"></a>
 ### Nested Schema for `reference_value`
 
 Required:
