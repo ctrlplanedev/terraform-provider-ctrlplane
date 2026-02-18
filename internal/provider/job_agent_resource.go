@@ -503,7 +503,7 @@ func jobAgentConfigFromModel(data JobAgentResourceModel) (string, *map[string]in
 			"serverUrl": argocd.ServerUrl.ValueString(),
 			"template":  argocd.Template.ValueString(),
 		}
-		return "argocd", &cfg, nil
+		return "argo-cd", &cfg, nil
 	case len(data.GitHub) > 0:
 		github := data.GitHub[0]
 		cfg := map[string]interface{}{
@@ -515,7 +515,7 @@ func jobAgentConfigFromModel(data JobAgentResourceModel) (string, *map[string]in
 		if !github.Ref.IsNull() && !github.Ref.IsUnknown() && github.Ref.ValueString() != "" {
 			cfg["ref"] = github.Ref.ValueString()
 		}
-		return "github", &cfg, nil
+		return "github-app", &cfg, nil
 	case len(data.TerraformCloud) > 0:
 		tfc := data.TerraformCloud[0]
 		cfg := map[string]interface{}{
@@ -524,7 +524,7 @@ func jobAgentConfigFromModel(data JobAgentResourceModel) (string, *map[string]in
 			"template":     tfc.Template.ValueString(),
 			"token":        tfc.Token.ValueString(),
 		}
-		return "terraformcloud", &cfg, nil
+		return "tfe", &cfg, nil
 	case len(data.TestRunner) > 0:
 		testRunner := data.TestRunner[0]
 		cfg := map[string]interface{}{}
@@ -551,7 +551,7 @@ func setJobAgentBlocksFromAPI(data *JobAgentResourceModel, jobType string, confi
 	data.Custom = nil
 
 	switch jobType {
-	case "argocd":
+	case "argo-cd":
 		data.ArgoCD = []JobAgentArgoCDModel{
 			{
 				ApiKey:    types.StringValue(fmt.Sprint(config["apiKey"])),
@@ -559,7 +559,7 @@ func setJobAgentBlocksFromAPI(data *JobAgentResourceModel, jobType string, confi
 				Template:  types.StringValue(fmt.Sprint(config["template"])),
 			},
 		}
-	case "github":
+	case "github-app":
 		github := JobAgentGitHubModel{
 			InstallationId: types.Int64Value(toInt64(config["installationId"])),
 			Owner:          types.StringValue(fmt.Sprint(config["owner"])),
@@ -571,7 +571,7 @@ func setJobAgentBlocksFromAPI(data *JobAgentResourceModel, jobType string, confi
 			github.Ref = types.StringValue(fmt.Sprint(ref))
 		}
 		data.GitHub = []JobAgentGitHubModel{github}
-	case "terraformcloud":
+	case "tfe":
 		data.TerraformCloud = []JobAgentTFCModel{
 			{
 				Address:      types.StringValue(fmt.Sprint(config["address"])),
