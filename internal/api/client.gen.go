@@ -640,12 +640,6 @@ type Policy struct {
 	WorkspaceId string `json:"workspaceId"`
 }
 
-// PolicyRequestAccepted defines model for PolicyRequestAccepted.
-type PolicyRequestAccepted struct {
-	Id      string `json:"id"`
-	Message string `json:"message"`
-}
-
 // PolicyRule defines model for PolicyRule.
 type PolicyRule struct {
 	AnyApproval            *AnyApprovalRule            `json:"anyApproval,omitempty"`
@@ -923,6 +917,18 @@ type SystemEnvironmentLink struct {
 type SystemRequestAccepted struct {
 	Id      string `json:"id"`
 	Message string `json:"message"`
+}
+
+// SystemWithLinkedEntities defines model for SystemWithLinkedEntities.
+type SystemWithLinkedEntities struct {
+	Deployments  []Deployment       `json:"deployments"`
+	Description  *string            `json:"description,omitempty"`
+	Environments []Environment      `json:"environments"`
+	Id           string             `json:"id"`
+	Metadata     *map[string]string `json:"metadata,omitempty"`
+	Name         string             `json:"name"`
+	Slug         string             `json:"slug"`
+	WorkspaceId  string             `json:"workspaceId"`
 }
 
 // TerraformCloudRunMetricProvider defines model for TerraformCloudRunMetricProvider.
@@ -1353,6 +1359,15 @@ type ListPoliciesParams struct {
 
 	// Offset Number of items to skip
 	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
+// GetRelationshipRulesParams defines parameters for GetRelationshipRules.
+type GetRelationshipRulesParams struct {
+	// Offset Number of items to skip
+	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
+
+	// Limit Maximum number of items to return
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
 // PreviewReleaseTargetsForResourceParams defines parameters for PreviewReleaseTargetsForResource.
@@ -2606,6 +2621,9 @@ type ClientInterface interface {
 
 	RequestPolicyUpsert(ctx context.Context, workspaceId string, policyId string, body RequestPolicyUpsertJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetRelationshipRules request
+	GetRelationshipRules(ctx context.Context, workspaceId string, params *GetRelationshipRulesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateRelationshipRuleWithBody request with any body
 	CreateRelationshipRuleWithBody(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -3394,6 +3412,18 @@ func (c *Client) RequestPolicyUpsertWithBody(ctx context.Context, workspaceId st
 
 func (c *Client) RequestPolicyUpsert(ctx context.Context, workspaceId string, policyId string, body RequestPolicyUpsertJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRequestPolicyUpsertRequest(c.Server, workspaceId, policyId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetRelationshipRules(ctx context.Context, workspaceId string, params *GetRelationshipRulesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRelationshipRulesRequest(c.Server, workspaceId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -6082,6 +6112,78 @@ func NewRequestPolicyUpsertRequestWithBody(server string, workspaceId string, po
 	return req, nil
 }
 
+// NewGetRelationshipRulesRequest generates requests for GetRelationshipRules
+func NewGetRelationshipRulesRequest(server string, workspaceId string, params *GetRelationshipRulesParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "workspaceId", runtime.ParamLocationPath, workspaceId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/relationship-rules", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "offset", runtime.ParamLocationQuery, *params.Offset); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewCreateRelationshipRuleRequest calls the generic CreateRelationshipRule builder with application/json body
 func NewCreateRelationshipRuleRequest(server string, workspaceId string, body CreateRelationshipRuleJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -8156,6 +8258,9 @@ type ClientWithResponsesInterface interface {
 
 	RequestPolicyUpsertWithResponse(ctx context.Context, workspaceId string, policyId string, body RequestPolicyUpsertJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestPolicyUpsertResponse, error)
 
+	// GetRelationshipRulesWithResponse request
+	GetRelationshipRulesWithResponse(ctx context.Context, workspaceId string, params *GetRelationshipRulesParams, reqEditors ...RequestEditorFn) (*GetRelationshipRulesResponse, error)
+
 	// CreateRelationshipRuleWithBodyWithResponse request with any body
 	CreateRelationshipRuleWithBodyWithResponse(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateRelationshipRuleResponse, error)
 
@@ -9247,7 +9352,7 @@ func (r ListPoliciesResponse) StatusCode() int {
 type RequestPolicyCreationResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON202      *PolicyRequestAccepted
+	JSON202      *Policy
 	JSON400      *ErrorResponse
 }
 
@@ -9270,7 +9375,7 @@ func (r RequestPolicyCreationResponse) StatusCode() int {
 type RequestPolicyDeletionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON202      *PolicyRequestAccepted
+	JSON202      *Policy
 	JSON400      *ErrorResponse
 	JSON404      *ErrorResponse
 }
@@ -9318,7 +9423,7 @@ func (r GetPolicyResponse) StatusCode() int {
 type RequestPolicyUpsertResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON202      *PolicyRequestAccepted
+	JSON202      *Policy
 	JSON400      *ErrorResponse
 	JSON404      *ErrorResponse
 }
@@ -9333,6 +9438,41 @@ func (r RequestPolicyUpsertResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r RequestPolicyUpsertResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetRelationshipRulesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *struct {
+		Items []RelationshipRule `json:"items"`
+
+		// Limit Maximum number of items returned
+		Limit int `json:"limit"`
+
+		// Offset Number of items skipped
+		Offset int `json:"offset"`
+
+		// Total Total number of items available
+		Total int `json:"total"`
+	}
+	JSON400 *ErrorResponse
+	JSON404 *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRelationshipRulesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRelationshipRulesResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -9924,7 +10064,7 @@ func (r RequestSystemDeletionResponse) StatusCode() int {
 type GetSystemResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *System
+	JSON200      *SystemWithLinkedEntities
 	JSON400      *ErrorResponse
 	JSON404      *ErrorResponse
 }
@@ -10727,6 +10867,15 @@ func (c *ClientWithResponses) RequestPolicyUpsertWithResponse(ctx context.Contex
 		return nil, err
 	}
 	return ParseRequestPolicyUpsertResponse(rsp)
+}
+
+// GetRelationshipRulesWithResponse request returning *GetRelationshipRulesResponse
+func (c *ClientWithResponses) GetRelationshipRulesWithResponse(ctx context.Context, workspaceId string, params *GetRelationshipRulesParams, reqEditors ...RequestEditorFn) (*GetRelationshipRulesResponse, error) {
+	rsp, err := c.GetRelationshipRules(ctx, workspaceId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRelationshipRulesResponse(rsp)
 }
 
 // CreateRelationshipRuleWithBodyWithResponse request with arbitrary body returning *CreateRelationshipRuleResponse
@@ -12609,7 +12758,7 @@ func ParseRequestPolicyCreationResponse(rsp *http.Response) (*RequestPolicyCreat
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest PolicyRequestAccepted
+		var dest Policy
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -12642,7 +12791,7 @@ func ParseRequestPolicyDeletionResponse(rsp *http.Response) (*RequestPolicyDelet
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest PolicyRequestAccepted
+		var dest Policy
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -12722,11 +12871,62 @@ func ParseRequestPolicyUpsertResponse(rsp *http.Response) (*RequestPolicyUpsertR
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest PolicyRequestAccepted
+		var dest Policy
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetRelationshipRulesResponse parses an HTTP response from a GetRelationshipRulesWithResponse call
+func ParseGetRelationshipRulesResponse(rsp *http.Response) (*GetRelationshipRulesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRelationshipRulesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Items []RelationshipRule `json:"items"`
+
+			// Limit Maximum number of items returned
+			Limit int `json:"limit"`
+
+			// Offset Number of items skipped
+			Offset int `json:"offset"`
+
+			// Total Total number of items available
+			Total int `json:"total"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest ErrorResponse
@@ -13612,7 +13812,7 @@ func ParseGetSystemResponse(rsp *http.Response) (*GetSystemResponse, error) {
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest System
+		var dest SystemWithLinkedEntities
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
