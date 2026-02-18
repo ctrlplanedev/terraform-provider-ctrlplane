@@ -732,20 +732,20 @@ func (r *PolicyResource) Delete(ctx context.Context, req resource.DeleteRequest,
 }
 
 type PolicyResourceModel struct {
-	ID                   types.String                 `tfsdk:"id"`
-	Name                 types.String                 `tfsdk:"name"`
-	Description          types.String                 `tfsdk:"description"`
-	Metadata             types.Map                    `tfsdk:"metadata"`
-	Priority             types.Int64                  `tfsdk:"priority"`
-	Enabled              types.Bool                   `tfsdk:"enabled"`
-	Selector             types.String                 `tfsdk:"selector"`
-	VersionCooldown          []PolicyVersionCooldown          `tfsdk:"version_cooldown"`
-	DeploymentWindow         []PolicyDeploymentWindow         `tfsdk:"deployment_window"`
-	DeploymentDependency     []PolicyDeploymentDependency     `tfsdk:"deployment_dependency"`
-	Verification             []PolicyVerificationRule         `tfsdk:"verification"`
-	GradualRollout           []PolicyGradualRollout           `tfsdk:"gradual_rollout"`
-	AnyApproval              []PolicyAnyApproval              `tfsdk:"any_approval"`
-	EnvironmentProgression   []PolicyEnvironmentProgression   `tfsdk:"environment_progression"`
+	ID                     types.String                   `tfsdk:"id"`
+	Name                   types.String                   `tfsdk:"name"`
+	Description            types.String                   `tfsdk:"description"`
+	Metadata               types.Map                      `tfsdk:"metadata"`
+	Priority               types.Int64                    `tfsdk:"priority"`
+	Enabled                types.Bool                     `tfsdk:"enabled"`
+	Selector               types.String                   `tfsdk:"selector"`
+	VersionCooldown        []PolicyVersionCooldown        `tfsdk:"version_cooldown"`
+	DeploymentWindow       []PolicyDeploymentWindow       `tfsdk:"deployment_window"`
+	DeploymentDependency   []PolicyDeploymentDependency   `tfsdk:"deployment_dependency"`
+	Verification           []PolicyVerificationRule       `tfsdk:"verification"`
+	GradualRollout         []PolicyGradualRollout         `tfsdk:"gradual_rollout"`
+	AnyApproval            []PolicyAnyApproval            `tfsdk:"any_approval"`
+	EnvironmentProgression []PolicyEnvironmentProgression `tfsdk:"environment_progression"`
 }
 
 type PolicyVersionCooldown struct {
@@ -783,12 +783,12 @@ type PolicyAnyApproval struct {
 }
 
 type PolicyEnvironmentProgression struct {
-	CreatedAt                      types.String `tfsdk:"created_at"`
-	ID                             types.String `tfsdk:"id"`
-	DependsOnEnvironmentSelector   types.String `tfsdk:"depends_on_environment_selector"`
-	MinimumSuccessPercentage       types.Int64  `tfsdk:"minimum_success_percentage"`
-	MinimumSockTimeMinutes         types.Int64  `tfsdk:"minimum_sock_time_minutes"`
-	MaximumAgeHours                types.Int64  `tfsdk:"maximum_age_hours"`
+	CreatedAt                    types.String `tfsdk:"created_at"`
+	ID                           types.String `tfsdk:"id"`
+	DependsOnEnvironmentSelector types.String `tfsdk:"depends_on_environment_selector"`
+	MinimumSuccessPercentage     types.Int64  `tfsdk:"minimum_success_percentage"`
+	MinimumSockTimeMinutes       types.Int64  `tfsdk:"minimum_sock_time_minutes"`
+	MaximumAgeHours              types.Int64  `tfsdk:"maximum_age_hours"`
 }
 
 type PolicyVerificationRule struct {
