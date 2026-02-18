@@ -72,7 +72,6 @@ resource "ctrlplane_job_agent" "test" {
 }
 
 resource "ctrlplane_deployment" "test" {
-  system_id = ctrlplane_system.test.id
   name      = %q
   metadata = {
     key = %q

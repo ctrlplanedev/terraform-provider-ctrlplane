@@ -64,10 +64,6 @@ func (r *DeploymentResource) Schema(ctx context.Context, req resource.SchemaRequ
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"system_id": schema.StringAttribute{
-				Required:    true,
-				Description: "The system ID this deployment belongs to",
-			},
 			"name": schema.StringAttribute{
 				Required:    true,
 				Description: "The name of the deployment",
@@ -302,18 +298,6 @@ func (r *DeploymentResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 
-	linkResp, err := r.workspace.Client.LinkDeploymentToSystemWithResponse(
-		ctx, r.workspace.ID.String(), data.SystemId.ValueString(), deploymentId,
-	)
-	if err != nil {
-		resp.Diagnostics.AddError("Failed to link deployment to system", err.Error())
-		return
-	}
-	if linkResp.StatusCode() != http.StatusAccepted {
-		resp.Diagnostics.AddError("Failed to link deployment to system", formatResponseError(linkResp.StatusCode(), linkResp.Body))
-		return
-	}
-
 	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
 }
 
@@ -475,7 +459,6 @@ func (r *DeploymentResource) Delete(ctx context.Context, req resource.DeleteRequ
 
 type DeploymentResourceModel struct {
 	ID               types.String              `tfsdk:"id"`
-	SystemId         types.String              `tfsdk:"system_id"`
 	Name             types.String              `tfsdk:"name"`
 	Metadata         types.Map                 `tfsdk:"metadata"`
 	ResourceSelector types.String              `tfsdk:"resource_selector"`
