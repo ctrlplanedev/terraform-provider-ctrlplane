@@ -17,7 +17,6 @@ Manages a deployment variable value override in Ctrlplane. A variable value prov
 
 ### Required
 
-- `deployment_id` (String) The deployment ID this variable value belongs to.
 - `priority` (Number) The priority of the variable value. Higher priority values take precedence when multiple values match.
 - `variable_id` (String) The deployment variable ID this value belongs to.
 
