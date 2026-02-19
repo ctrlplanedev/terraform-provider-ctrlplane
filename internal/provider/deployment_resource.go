@@ -462,9 +462,9 @@ func (r *DeploymentResource) Delete(ctx context.Context, req resource.DeleteRequ
 type DeploymentResourceModel struct {
 	ID               types.String `tfsdk:"id"`
 	Name             types.String `tfsdk:"name"`
-	Metadata         types.Map   `tfsdk:"metadata"`
+	Metadata         types.Map    `tfsdk:"metadata"`
 	ResourceSelector types.String `tfsdk:"resource_selector"`
-	JobAgent         types.List  `tfsdk:"job_agent"`
+	JobAgent         types.List   `tfsdk:"job_agent"`
 }
 
 var deploymentJobAgentArgoCDAttrTypes = map[string]attr.Type{
@@ -496,13 +496,13 @@ var deploymentJobAgentTestRunnerAttrTypes = map[string]attr.Type{
 
 var deploymentJobAgentObjectType = types.ObjectType{
 	AttrTypes: map[string]attr.Type{
-		"id":               types.StringType,
-		"priority":         types.Int64Type,
-		"selector":         types.StringType,
-		"argocd":           types.ObjectType{AttrTypes: deploymentJobAgentArgoCDAttrTypes},
-		"github":           types.ObjectType{AttrTypes: deploymentJobAgentGitHubAttrTypes},
-		"terraform_cloud":  types.ObjectType{AttrTypes: deploymentJobAgentTFCAttrTypes},
-		"test_runner":      types.ObjectType{AttrTypes: deploymentJobAgentTestRunnerAttrTypes},
+		"id":              types.StringType,
+		"priority":        types.Int64Type,
+		"selector":        types.StringType,
+		"argocd":          types.ObjectType{AttrTypes: deploymentJobAgentArgoCDAttrTypes},
+		"github":          types.ObjectType{AttrTypes: deploymentJobAgentGitHubAttrTypes},
+		"terraform_cloud": types.ObjectType{AttrTypes: deploymentJobAgentTFCAttrTypes},
+		"test_runner":     types.ObjectType{AttrTypes: deploymentJobAgentTestRunnerAttrTypes},
 	},
 }
 
