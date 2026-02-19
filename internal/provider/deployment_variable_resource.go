@@ -8,7 +8,6 @@ import (
 	"math"
 	"math/big"
 	"net/http"
-	"strings"
 
 	"github.com/ctrlplanedev/terraform-provider-ctrlplane/internal/api"
 	"github.com/google/uuid"
@@ -39,17 +38,7 @@ func (r *DeploymentVariableResource) Metadata(ctx context.Context, req resource.
 }
 
 func (r *DeploymentVariableResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	parts := strings.SplitN(req.ID, "/", 2)
-	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-		resp.Diagnostics.AddError(
-			"Invalid import ID",
-			"Import ID must be in the format: deployment_id/variable_id",
-		)
-		return
-	}
-
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("deployment_id"), parts[0])...)
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), parts[1])...)
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
 func (r *DeploymentVariableResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
@@ -116,13 +105,14 @@ func (r *DeploymentVariableResource) Create(ctx context.Context, req resource.Cr
 	}
 
 	requestBody := api.RequestDeploymentVariableUpdateJSONRequestBody{
+		DeploymentId: data.DeploymentId.ValueString(),
 		Key:          data.Key.ValueString(),
 		Description:  data.Description.ValueStringPointer(),
 		DefaultValue: defaultValue,
 	}
 
 	variableResp, err := r.workspace.Client.RequestDeploymentVariableUpdateWithResponse(
-		ctx, r.workspace.ID.String(), data.DeploymentId.ValueString(), variableID, requestBody,
+		ctx, r.workspace.ID.String(), variableID, requestBody,
 	)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create deployment variable", err.Error())
@@ -144,7 +134,7 @@ func (r *DeploymentVariableResource) Create(ctx context.Context, req resource.Cr
 
 	err = waitForResource(ctx, func() (bool, error) {
 		getResp, err := r.workspace.Client.GetDeploymentVariableWithResponse(
-			ctx, r.workspace.ID.String(), data.DeploymentId.ValueString(), varId,
+			ctx, r.workspace.ID.String(), varId,
 		)
 		if err != nil {
 			return false, err
@@ -174,7 +164,7 @@ func (r *DeploymentVariableResource) Read(ctx context.Context, req resource.Read
 	}
 
 	variableResp, err := r.workspace.Client.GetDeploymentVariableWithResponse(
-		ctx, r.workspace.ID.String(), data.DeploymentId.ValueString(), data.ID.ValueString(),
+		ctx, r.workspace.ID.String(), data.ID.ValueString(),
 	)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -231,13 +221,14 @@ func (r *DeploymentVariableResource) Update(ctx context.Context, req resource.Up
 	}
 
 	requestBody := api.RequestDeploymentVariableUpdateJSONRequestBody{
+		DeploymentId: data.DeploymentId.ValueString(),
 		Key:          data.Key.ValueString(),
 		Description:  data.Description.ValueStringPointer(),
 		DefaultValue: defaultValue,
 	}
 
 	variableResp, err := r.workspace.Client.RequestDeploymentVariableUpdateWithResponse(
-		ctx, r.workspace.ID.String(), data.DeploymentId.ValueString(), data.ID.ValueString(), requestBody,
+		ctx, r.workspace.ID.String(), data.ID.ValueString(), requestBody,
 	)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -269,7 +260,7 @@ func (r *DeploymentVariableResource) Delete(ctx context.Context, req resource.De
 	}
 
 	variableResp, err := r.workspace.Client.RequestDeploymentVariableDeletionWithResponse(
-		ctx, r.workspace.ID.String(), data.DeploymentId.ValueString(), data.ID.ValueString(),
+		ctx, r.workspace.ID.String(), data.ID.ValueString(),
 	)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to delete deployment variable", fmt.Sprintf("Failed to delete deployment variable: %s", err.Error()))
