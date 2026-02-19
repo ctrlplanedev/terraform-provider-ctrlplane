@@ -198,32 +198,21 @@ func (r *DeploymentResource) ValidateConfig(ctx context.Context, req resource.Va
 		return
 	}
 
-	if len(data.JobAgent) > 1 {
-		resp.Diagnostics.AddError(
-			"Invalid deployment configuration",
-			"Only one job_agent block can be set.",
-		)
-		return
-	}
+	for i, ja := range data.JobAgent {
+		if ja.Id.IsNull() || (!ja.Id.IsUnknown() && ja.Id.ValueString() == "") {
+			resp.Diagnostics.AddError(
+				"Invalid job agent configuration",
+				fmt.Sprintf("job_agent[%d].id is required.", i),
+			)
+			return
+		}
 
-	if len(data.JobAgent) == 0 {
-		return
-	}
-
-	ja := data.JobAgent[0]
-	if ja.Id.IsNull() || (!ja.Id.IsUnknown() && ja.Id.ValueString() == "") {
-		resp.Diagnostics.AddError(
-			"Invalid job agent configuration",
-			"job_agent.id is required when job_agent is set.",
-		)
-		return
-	}
-
-	if countDeploymentJobAgentBlocks(ja) > 1 {
-		resp.Diagnostics.AddError(
-			"Invalid job agent configuration",
-			"Only one of argocd, github, terraform_cloud, or test_runner can be set.",
-		)
+		if countDeploymentJobAgentBlocks(ja) > 1 {
+			resp.Diagnostics.AddError(
+				"Invalid job agent configuration",
+				fmt.Sprintf("job_agent[%d]: only one of argocd, github, terraform_cloud, or test_runner can be set.", i),
+			)
+		}
 	}
 }
 
@@ -240,24 +229,12 @@ func (r *DeploymentResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 
-	var jobAgentId *string
-	var jobAgentConfig *map[string]interface{}
-	if len(data.JobAgent) > 0 {
-		ja := data.JobAgent[0]
-		if !ja.Id.IsNull() && !ja.Id.IsUnknown() {
-			id := ja.Id.ValueString()
-			jobAgentId = &id
-		}
-		jobAgentConfig = deploymentJobAgentConfigFromModel(ja)
-	}
-
 	requestBody := api.RequestDeploymentCreationJSONRequestBody{
 		Name:             data.Name.ValueString(),
 		Slug:             slug.Make(data.Name.ValueString()),
 		Metadata:         stringMapPointer(data.Metadata),
 		ResourceSelector: selector,
-		JobAgentId:       jobAgentId,
-		JobAgentConfig:   jobAgentConfig,
+		JobAgents:        deploymentJobAgentsFromModel(data.JobAgent),
 	}
 
 	deployResp, err := r.workspace.Client.RequestDeploymentCreationWithResponse(ctx, r.workspace.ID.String(), requestBody)
@@ -349,18 +326,17 @@ func (r *DeploymentResource) Read(ctx context.Context, req resource.ReadRequest,
 		data.ResourceSelector = selectorValue
 	}
 
-	if dep.JobAgentId != nil || len(dep.JobAgentConfig) > 0 {
+	if dep.JobAgents != nil && len(*dep.JobAgents) > 0 {
+		data.JobAgent = deploymentJobAgentModelsFromAPI(*dep.JobAgents)
+	} else if dep.JobAgentId != nil {
 		jobAgent := DeploymentJobAgentModel{
-			Id:             types.StringNull(),
+			Id:             types.StringValue(*dep.JobAgentId),
 			Priority:       types.Int64Null(),
 			Selector:       types.StringNull(),
 			ArgoCD:         nil,
 			GitHub:         nil,
 			TerraformCloud: nil,
 			TestRunner:     nil,
-		}
-		if dep.JobAgentId != nil {
-			jobAgent.Id = types.StringValue(*dep.JobAgentId)
 		}
 		if len(dep.JobAgentConfig) > 0 {
 			setDeploymentJobAgentBlocksFromConfig(&jobAgent, dep.JobAgentConfig)
@@ -386,24 +362,12 @@ func (r *DeploymentResource) Update(ctx context.Context, req resource.UpdateRequ
 		return
 	}
 
-	var jobAgentId *string
-	var jobAgentConfig *map[string]interface{}
-	if len(data.JobAgent) > 0 {
-		ja := data.JobAgent[0]
-		if !ja.Id.IsNull() && !ja.Id.IsUnknown() {
-			id := ja.Id.ValueString()
-			jobAgentId = &id
-		}
-		jobAgentConfig = deploymentJobAgentConfigFromModel(ja)
-	}
-
 	requestBody := api.UpsertDeploymentRequest{
 		Name:             data.Name.ValueString(),
 		Slug:             slug.Make(data.Name.ValueString()),
 		Metadata:         stringMapPointer(data.Metadata),
 		ResourceSelector: selector,
-		JobAgentId:       jobAgentId,
-		JobAgentConfig:   jobAgentConfig,
+		JobAgents:        deploymentJobAgentsFromModel(data.JobAgent),
 	}
 
 	deployResp, err := r.workspace.Client.RequestDeploymentUpsertWithResponse(ctx, r.workspace.ID.String(), data.ID.ValueString(), requestBody)
@@ -500,6 +464,57 @@ type DeploymentJobAgentTestRunnerModel struct {
 	DelaySeconds types.Int64  `tfsdk:"delay_seconds"`
 	Message      types.String `tfsdk:"message"`
 	Status       types.String `tfsdk:"status"`
+}
+
+func deploymentJobAgentsFromModel(agents []DeploymentJobAgentModel) *[]api.DeploymentJobAgent {
+	if len(agents) == 0 {
+		return nil
+	}
+	result := make([]api.DeploymentJobAgent, 0, len(agents))
+	for _, ja := range agents {
+		config := api.JobAgentConfig{}
+		if cfgPtr := deploymentJobAgentConfigFromModel(ja); cfgPtr != nil {
+			config = api.JobAgentConfig(*cfgPtr)
+		}
+
+		selector := ""
+		if !ja.Selector.IsNull() && !ja.Selector.IsUnknown() {
+			selector = ja.Selector.ValueString()
+		}
+
+		result = append(result, api.DeploymentJobAgent{
+			Ref:      ja.Id.ValueString(),
+			Config:   config,
+			Selector: selector,
+		})
+	}
+	return &result
+}
+
+func deploymentJobAgentModelsFromAPI(agents []api.DeploymentJobAgent) []DeploymentJobAgentModel {
+	if len(agents) == 0 {
+		return nil
+	}
+	result := make([]DeploymentJobAgentModel, 0, len(agents))
+	for _, agent := range agents {
+		model := DeploymentJobAgentModel{
+			Id:             types.StringValue(agent.Ref),
+			Priority:       types.Int64Null(),
+			Selector:       types.StringNull(),
+			ArgoCD:         nil,
+			GitHub:         nil,
+			TerraformCloud: nil,
+			TestRunner:     nil,
+		}
+		if agent.Selector != "" {
+			model.Selector = types.StringValue(agent.Selector)
+		}
+		if len(agent.Config) > 0 {
+			setDeploymentJobAgentBlocksFromConfig(&model, agent.Config)
+		}
+		result = append(result, model)
+	}
+	return result
 }
 
 func countDeploymentJobAgentBlocks(ja DeploymentJobAgentModel) int {

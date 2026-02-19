@@ -197,6 +197,7 @@ type CreateDeploymentRequest struct {
 	Description      *string                 `json:"description,omitempty"`
 	JobAgentConfig   *map[string]interface{} `json:"jobAgentConfig,omitempty"`
 	JobAgentId       *string                 `json:"jobAgentId,omitempty"`
+	JobAgents        *[]DeploymentJobAgent   `json:"jobAgents,omitempty"`
 	Metadata         *map[string]string      `json:"metadata,omitempty"`
 	Name             string                  `json:"name"`
 	ResourceSelector *Selector               `json:"resourceSelector,omitempty"`
@@ -331,6 +332,7 @@ type Deployment struct {
 	Id               string                 `json:"id"`
 	JobAgentConfig   map[string]interface{} `json:"jobAgentConfig"`
 	JobAgentId       *string                `json:"jobAgentId,omitempty"`
+	JobAgents        *[]DeploymentJobAgent  `json:"jobAgents,omitempty"`
 	Metadata         *map[string]string     `json:"metadata,omitempty"`
 	Name             string                 `json:"name"`
 	ResourceSelector *Selector              `json:"resourceSelector,omitempty"`
@@ -347,6 +349,15 @@ type DeploymentAndSystems struct {
 type DeploymentDependencyRule struct {
 	// DependsOn CEL expression to match upstream deployment(s) that must have a successful release before this deployment can proceed.
 	DependsOn string `json:"dependsOn"`
+}
+
+// DeploymentJobAgent defines model for DeploymentJobAgent.
+type DeploymentJobAgent struct {
+	Config JobAgentConfig `json:"config"`
+	Ref    string         `json:"ref"`
+
+	// Selector CEL expression to determine if the job agent should be used
+	Selector string `json:"selector"`
 }
 
 // DeploymentRequestAccepted defines model for DeploymentRequestAccepted.
@@ -981,6 +992,7 @@ type UpsertDeploymentRequest struct {
 	Description      *string                 `json:"description,omitempty"`
 	JobAgentConfig   *map[string]interface{} `json:"jobAgentConfig,omitempty"`
 	JobAgentId       *string                 `json:"jobAgentId,omitempty"`
+	JobAgents        *[]DeploymentJobAgent   `json:"jobAgents,omitempty"`
 	Metadata         *map[string]string      `json:"metadata,omitempty"`
 	Name             string                  `json:"name"`
 	ResourceSelector *Selector               `json:"resourceSelector,omitempty"`
