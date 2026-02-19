@@ -537,7 +537,7 @@ func jobAgentConfigFromModel(data JobAgentResourceModel) (string, *map[string]in
 		if !testRunner.Status.IsNull() && !testRunner.Status.IsUnknown() && testRunner.Status.ValueString() != "" {
 			cfg["status"] = testRunner.Status.ValueString()
 		}
-		return "testrunner", &cfg, nil
+		return "test-runner", &cfg, nil
 	default:
 		return "", nil, nil
 	}
@@ -580,7 +580,7 @@ func setJobAgentBlocksFromAPI(data *JobAgentResourceModel, jobType string, confi
 				Token:        types.StringValue(fmt.Sprint(config["token"])),
 			},
 		}
-	case "testrunner":
+	case "test-runner":
 		testRunner := JobAgentTestRunnerModel{
 			DelaySeconds: types.Int64Null(),
 			Message:      types.StringNull(),
