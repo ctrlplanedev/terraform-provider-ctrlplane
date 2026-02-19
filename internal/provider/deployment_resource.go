@@ -9,6 +9,7 @@ import (
 
 	"github.com/ctrlplanedev/terraform-provider-ctrlplane/internal/api"
 	"github.com/gosimple/slug"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -198,7 +199,17 @@ func (r *DeploymentResource) ValidateConfig(ctx context.Context, req resource.Va
 		return
 	}
 
-	for i, ja := range data.JobAgent {
+	if data.JobAgent.IsUnknown() || data.JobAgent.IsNull() {
+		return
+	}
+
+	var agents []DeploymentJobAgentModel
+	resp.Diagnostics.Append(data.JobAgent.ElementsAs(ctx, &agents, false)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	for i, ja := range agents {
 		if ja.Id.IsNull() || (!ja.Id.IsUnknown() && ja.Id.ValueString() == "") {
 			resp.Diagnostics.AddError(
 				"Invalid job agent configuration",
@@ -223,6 +234,14 @@ func (r *DeploymentResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 
+	var agents []DeploymentJobAgentModel
+	if !data.JobAgent.IsNull() && !data.JobAgent.IsUnknown() {
+		resp.Diagnostics.Append(data.JobAgent.ElementsAs(ctx, &agents, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
 	selector, err := selectorPointerFromString(data.ResourceSelector)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create deployment", fmt.Sprintf("Invalid resource_selector CEL: %s", err.Error()))
@@ -234,7 +253,7 @@ func (r *DeploymentResource) Create(ctx context.Context, req resource.CreateRequ
 		Slug:             slug.Make(data.Name.ValueString()),
 		Metadata:         stringMapPointer(data.Metadata),
 		ResourceSelector: selector,
-		JobAgents:        deploymentJobAgentsFromModel(data.JobAgent),
+		JobAgents:        deploymentJobAgentsFromModel(agents),
 	}
 
 	deployResp, err := r.workspace.Client.RequestDeploymentCreationWithResponse(ctx, r.workspace.ID.String(), requestBody)
@@ -327,7 +346,13 @@ func (r *DeploymentResource) Read(ctx context.Context, req resource.ReadRequest,
 	}
 
 	if dep.JobAgents != nil && len(*dep.JobAgents) > 0 {
-		data.JobAgent = deploymentJobAgentModelsFromAPI(*dep.JobAgents)
+		agentModels := deploymentJobAgentModelsFromAPI(*dep.JobAgents)
+		agentList, diags := types.ListValueFrom(ctx, deploymentJobAgentObjectType, agentModels)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		data.JobAgent = agentList
 	} else if dep.JobAgentId != nil {
 		jobAgent := DeploymentJobAgentModel{
 			Id:             types.StringValue(*dep.JobAgentId),
@@ -341,9 +366,14 @@ func (r *DeploymentResource) Read(ctx context.Context, req resource.ReadRequest,
 		if len(dep.JobAgentConfig) > 0 {
 			setDeploymentJobAgentBlocksFromConfig(&jobAgent, dep.JobAgentConfig)
 		}
-		data.JobAgent = []DeploymentJobAgentModel{jobAgent}
+		agentList, diags := types.ListValueFrom(ctx, deploymentJobAgentObjectType, []DeploymentJobAgentModel{jobAgent})
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		data.JobAgent = agentList
 	} else {
-		data.JobAgent = nil
+		data.JobAgent = types.ListNull(deploymentJobAgentObjectType)
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
@@ -354,6 +384,14 @@ func (r *DeploymentResource) Update(ctx context.Context, req resource.UpdateRequ
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
 		return
+	}
+
+	var agents []DeploymentJobAgentModel
+	if !data.JobAgent.IsNull() && !data.JobAgent.IsUnknown() {
+		resp.Diagnostics.Append(data.JobAgent.ElementsAs(ctx, &agents, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
 
 	selector, err := selectorPointerFromString(data.ResourceSelector)
@@ -367,7 +405,7 @@ func (r *DeploymentResource) Update(ctx context.Context, req resource.UpdateRequ
 		Slug:             slug.Make(data.Name.ValueString()),
 		Metadata:         stringMapPointer(data.Metadata),
 		ResourceSelector: selector,
-		JobAgents:        deploymentJobAgentsFromModel(data.JobAgent),
+		JobAgents:        deploymentJobAgentsFromModel(agents),
 	}
 
 	deployResp, err := r.workspace.Client.RequestDeploymentUpsertWithResponse(ctx, r.workspace.ID.String(), data.ID.ValueString(), requestBody)
@@ -422,11 +460,50 @@ func (r *DeploymentResource) Delete(ctx context.Context, req resource.DeleteRequ
 }
 
 type DeploymentResourceModel struct {
-	ID               types.String              `tfsdk:"id"`
-	Name             types.String              `tfsdk:"name"`
-	Metadata         types.Map                 `tfsdk:"metadata"`
-	ResourceSelector types.String              `tfsdk:"resource_selector"`
-	JobAgent         []DeploymentJobAgentModel `tfsdk:"job_agent"`
+	ID               types.String `tfsdk:"id"`
+	Name             types.String `tfsdk:"name"`
+	Metadata         types.Map    `tfsdk:"metadata"`
+	ResourceSelector types.String `tfsdk:"resource_selector"`
+	JobAgent         types.List   `tfsdk:"job_agent"`
+}
+
+var deploymentJobAgentArgoCDAttrTypes = map[string]attr.Type{
+	"api_key":    types.StringType,
+	"server_url": types.StringType,
+	"template":   types.StringType,
+}
+
+var deploymentJobAgentGitHubAttrTypes = map[string]attr.Type{
+	"installation_id": types.Int64Type,
+	"owner":           types.StringType,
+	"ref":             types.StringType,
+	"repo":            types.StringType,
+	"workflow_id":     types.Int64Type,
+}
+
+var deploymentJobAgentTFCAttrTypes = map[string]attr.Type{
+	"address":      types.StringType,
+	"organization": types.StringType,
+	"template":     types.StringType,
+	"token":        types.StringType,
+}
+
+var deploymentJobAgentTestRunnerAttrTypes = map[string]attr.Type{
+	"delay_seconds": types.Int64Type,
+	"message":       types.StringType,
+	"status":        types.StringType,
+}
+
+var deploymentJobAgentObjectType = types.ObjectType{
+	AttrTypes: map[string]attr.Type{
+		"id":              types.StringType,
+		"priority":        types.Int64Type,
+		"selector":        types.StringType,
+		"argocd":          types.ObjectType{AttrTypes: deploymentJobAgentArgoCDAttrTypes},
+		"github":          types.ObjectType{AttrTypes: deploymentJobAgentGitHubAttrTypes},
+		"terraform_cloud": types.ObjectType{AttrTypes: deploymentJobAgentTFCAttrTypes},
+		"test_runner":     types.ObjectType{AttrTypes: deploymentJobAgentTestRunnerAttrTypes},
+	},
 }
 
 type DeploymentJobAgentModel struct {
