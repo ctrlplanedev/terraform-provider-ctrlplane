@@ -33,6 +33,7 @@ description: |-
 - `priority` (Number) The priority of the policy (higher is evaluated first)
 - `verification` (Block List) Verification rules (see [below for nested schema](#nestedblock--verification))
 - `version_cooldown` (Block List) Version cooldown rules (see [below for nested schema](#nestedblock--version_cooldown))
+- `version_selector` (Block List) Version selector rules to filter which deployment versions are allowed (see [below for nested schema](#nestedblock--version_selector))
 
 ### Read-Only
 
@@ -185,4 +186,18 @@ Required:
 Optional:
 
 - `created_at` (String) Rule creation timestamp
+- `id` (String) Rule ID
+
+
+<a id="nestedblock--version_selector"></a>
+### Nested Schema for `version_selector`
+
+Required:
+
+- `selector` (String) CEL expression to match allowed versions (has access to version, environment, resource, and deployment variables)
+
+Optional:
+
+- `created_at` (String) Rule creation timestamp
+- `description` (String) Human-readable explanation of the rule, shown when a version is blocked
 - `id` (String) Rule ID
