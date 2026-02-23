@@ -229,13 +229,26 @@ type CreatePolicyRequest struct {
 	Enabled     *bool   `json:"enabled,omitempty"`
 
 	// Metadata Arbitrary metadata for the policy (record<string, string>)
-	Metadata *map[string]string `json:"metadata,omitempty"`
-	Name     string             `json:"name"`
-	Priority *int               `json:"priority,omitempty"`
-	Rules    *[]PolicyRule      `json:"rules,omitempty"`
+	Metadata *map[string]string  `json:"metadata,omitempty"`
+	Name     string              `json:"name"`
+	Priority *int                `json:"priority,omitempty"`
+	Rules    *[]CreatePolicyRule `json:"rules,omitempty"`
 
 	// Selector CEL expression for matching release targets. Use "true" to match all targets.
 	Selector *string `json:"selector,omitempty"`
+}
+
+// CreatePolicyRule defines model for CreatePolicyRule.
+type CreatePolicyRule struct {
+	AnyApproval            *AnyApprovalRule            `json:"anyApproval,omitempty"`
+	DeploymentDependency   *DeploymentDependencyRule   `json:"deploymentDependency,omitempty"`
+	DeploymentWindow       *DeploymentWindowRule       `json:"deploymentWindow,omitempty"`
+	EnvironmentProgression *EnvironmentProgressionRule `json:"environmentProgression,omitempty"`
+	GradualRollout         *GradualRolloutRule         `json:"gradualRollout,omitempty"`
+	Retry                  *RetryRule                  `json:"retry,omitempty"`
+	Verification           *VerificationRule           `json:"verification,omitempty"`
+	VersionCooldown        *VersionCooldownRule        `json:"versionCooldown,omitempty"`
+	VersionSelector        *VersionSelectorRule        `json:"versionSelector,omitempty"`
 }
 
 // CreateRelationshipRuleRequest defines model for CreateRelationshipRuleRequest.
@@ -664,6 +677,7 @@ type PolicyRule struct {
 	Retry                  *RetryRule                  `json:"retry,omitempty"`
 	Verification           *VerificationRule           `json:"verification,omitempty"`
 	VersionCooldown        *VersionCooldownRule        `json:"versionCooldown,omitempty"`
+	VersionSelector        *VersionSelectorRule        `json:"versionSelector,omitempty"`
 }
 
 // PrometheusMetricProvider defines model for PrometheusMetricProvider.
@@ -1037,10 +1051,10 @@ type UpsertPolicyRequest struct {
 	Enabled     bool    `json:"enabled"`
 
 	// Metadata Arbitrary metadata for the policy (record<string, string>)
-	Metadata map[string]string `json:"metadata"`
-	Name     string            `json:"name"`
-	Priority int               `json:"priority"`
-	Rules    []PolicyRule      `json:"rules"`
+	Metadata map[string]string  `json:"metadata"`
+	Name     string             `json:"name"`
+	Priority int                `json:"priority"`
+	Rules    []CreatePolicyRule `json:"rules"`
 
 	// Selector CEL expression for matching release targets. Use "true" to match all targets.
 	Selector string `json:"selector"`
@@ -1141,6 +1155,13 @@ type VerificationRuleTriggerOn string
 type VersionCooldownRule struct {
 	// IntervalSeconds Minimum time in seconds that must pass since the currently deployed (or in-progress) version was created before allowing another deployment. This enables batching of frequent upstream releases into periodic deployments.
 	IntervalSeconds int32 `json:"intervalSeconds"`
+}
+
+// VersionSelectorRule defines model for VersionSelectorRule.
+type VersionSelectorRule struct {
+	// Description Human-readable description of what this version selector does. Example: "Only deploy v2.x versions to staging environments"
+	Description *string  `json:"description,omitempty"`
+	Selector    Selector `json:"selector"`
 }
 
 // Workflow defines model for Workflow.

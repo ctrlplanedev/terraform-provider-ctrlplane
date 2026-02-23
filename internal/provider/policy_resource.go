@@ -106,6 +106,37 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 			},
 		},
 		Blocks: map[string]schema.Block{
+			"version_selector": schema.ListNestedBlock{
+				Description: "Version selector rules to filter which deployment versions are allowed",
+				NestedObject: schema.NestedBlockObject{
+					Attributes: map[string]schema.Attribute{
+						"created_at": schema.StringAttribute{
+							Optional:    true,
+							Computed:    true,
+							Description: "Rule creation timestamp",
+							PlanModifiers: []planmodifier.String{
+								stringplanmodifier.UseStateForUnknown(),
+							},
+						},
+						"id": schema.StringAttribute{
+							Optional:    true,
+							Computed:    true,
+							Description: "Rule ID",
+							PlanModifiers: []planmodifier.String{
+								stringplanmodifier.UseStateForUnknown(),
+							},
+						},
+						"selector": schema.StringAttribute{
+							Required:    true,
+							Description: "CEL expression to match allowed versions (has access to version, environment, resource, and deployment variables)",
+						},
+						"description": schema.StringAttribute{
+							Optional:    true,
+							Description: "Human-readable explanation of the rule, shown when a version is blocked",
+						},
+					},
+				},
+			},
 			"version_cooldown": schema.ListNestedBlock{
 				Description: "Version cooldown rules",
 				NestedObject: schema.NestedBlockObject{
@@ -590,6 +621,7 @@ func (r *PolicyResource) Read(ctx context.Context, req resource.ReadRequest, res
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	data.VersionSelector = rules.VersionSelector
 	data.VersionCooldown = rules.VersionCooldown
 	data.DeploymentWindow = rules.DeploymentWindow
 	data.DeploymentDependency = rules.DeploymentDependency
@@ -679,6 +711,7 @@ func (r *PolicyResource) Update(ctx context.Context, req resource.UpdateRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	data.VersionSelector = readRules.VersionSelector
 	data.VersionCooldown = readRules.VersionCooldown
 	data.DeploymentWindow = readRules.DeploymentWindow
 	data.DeploymentDependency = readRules.DeploymentDependency
@@ -723,6 +756,7 @@ type PolicyResourceModel struct {
 	Priority               types.Int64                    `tfsdk:"priority"`
 	Enabled                types.Bool                     `tfsdk:"enabled"`
 	Selector               types.String                   `tfsdk:"selector"`
+	VersionSelector        []PolicyVersionSelector        `tfsdk:"version_selector"`
 	VersionCooldown        []PolicyVersionCooldown        `tfsdk:"version_cooldown"`
 	DeploymentWindow       []PolicyDeploymentWindow       `tfsdk:"deployment_window"`
 	DeploymentDependency   []PolicyDeploymentDependency   `tfsdk:"deployment_dependency"`
@@ -730,6 +764,13 @@ type PolicyResourceModel struct {
 	GradualRollout         []PolicyGradualRollout         `tfsdk:"gradual_rollout"`
 	AnyApproval            []PolicyAnyApproval            `tfsdk:"any_approval"`
 	EnvironmentProgression []PolicyEnvironmentProgression `tfsdk:"environment_progression"`
+}
+
+type PolicyVersionSelector struct {
+	CreatedAt   types.String `tfsdk:"created_at"`
+	ID          types.String `tfsdk:"id"`
+	Selector    types.String `tfsdk:"selector"`
+	Description types.String `tfsdk:"description"`
 }
 
 type PolicyVersionCooldown struct {
@@ -807,6 +848,7 @@ type PolicyDatadogProvider struct {
 }
 
 type policyRulesModel struct {
+	VersionSelector        []PolicyVersionSelector
 	VersionCooldown        []PolicyVersionCooldown
 	DeploymentWindow       []PolicyDeploymentWindow
 	DeploymentDependency   []PolicyDeploymentDependency
@@ -833,6 +875,7 @@ type policyRequestRule struct {
 	DeploymentWindow       *api.DeploymentWindowRule       `json:"deploymentWindow,omitempty"`
 	Verification           *api.VerificationRule           `json:"verification,omitempty"`
 	VersionCooldown        *api.VersionCooldownRule        `json:"versionCooldown,omitempty"`
+	VersionSelector        *api.VersionSelectorRule        `json:"versionSelector,omitempty"`
 	GradualRollout         *api.GradualRolloutRule         `json:"gradualRollout,omitempty"`
 	AnyApproval            *api.AnyApprovalRule            `json:"anyApproval,omitempty"`
 	EnvironmentProgression *api.EnvironmentProgressionRule `json:"environmentProgression,omitempty"`
@@ -895,6 +938,31 @@ func defaultBool(value types.Bool, fallback bool) bool {
 func policyRulesFromModel(data PolicyResourceModel) ([]policyRequestRule, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	rules := make([]policyRequestRule, 0)
+
+	for _, vs := range data.VersionSelector {
+		id := selectorIDValue(vs.ID)
+		selectorPtr, err := selectorPointerFromString(vs.Selector)
+		if err != nil {
+			diags.AddError("Invalid version selector", err.Error())
+			continue
+		}
+		if selectorPtr == nil {
+			diags.AddError("Invalid version selector", "selector must be set")
+			continue
+		}
+		rule := api.VersionSelectorRule{
+			Selector: *selectorPtr,
+		}
+		if selectorValueSet(vs.Description) {
+			desc := vs.Description.ValueString()
+			rule.Description = &desc
+		}
+		rules = append(rules, policyRequestRule{
+			CreatedAt:       createdAtValue(vs.CreatedAt),
+			Id:              id,
+			VersionSelector: &rule,
+		})
+	}
 
 	for _, cooldown := range data.VersionCooldown {
 		id := selectorIDValue(cooldown.ID)
@@ -1140,6 +1208,23 @@ func policyRulesToModel(rules []api.PolicyRule) (policyRulesModel, diag.Diagnost
 	result := policyRulesModel{}
 
 	for _, rule := range rules {
+		if rule.VersionSelector != nil {
+			selectorStr, err := selectorStringValue(&rule.VersionSelector.Selector)
+			if err != nil {
+				diags.AddError("Invalid version selector", err.Error())
+				continue
+			}
+			model := PolicyVersionSelector{
+				CreatedAt:   types.StringValue(rule.CreatedAt),
+				ID:          types.StringValue(rule.Id),
+				Selector:    selectorStr,
+				Description: types.StringNull(),
+			}
+			if rule.VersionSelector.Description != nil {
+				model.Description = types.StringValue(*rule.VersionSelector.Description)
+			}
+			result.VersionSelector = append(result.VersionSelector, model)
+		}
 		if rule.VersionCooldown != nil {
 			duration := time.Duration(rule.VersionCooldown.IntervalSeconds) * time.Second
 			result.VersionCooldown = append(result.VersionCooldown, PolicyVersionCooldown{
@@ -1226,6 +1311,7 @@ func policyRulesToModel(rules []api.PolicyRule) (policyRulesModel, diag.Diagnost
 }
 
 func ensurePolicyIDs(plan *PolicyResourceModel, state *PolicyResourceModel) {
+	mergeVersionSelectorIDs(plan.VersionSelector, versionSelectorListFromState(state))
 	mergeCooldownIDs(plan.VersionCooldown, cooldownListFromState(state))
 	mergeWindowIDs(plan.DeploymentWindow, windowListFromState(state))
 	mergeDeploymentDependencyIDs(plan.DeploymentDependency, deploymentDependencyListFromState(state))
@@ -1236,6 +1322,7 @@ func ensurePolicyIDs(plan *PolicyResourceModel, state *PolicyResourceModel) {
 }
 
 func ensurePolicyRuleCreatedAt(plan *PolicyResourceModel, state *PolicyResourceModel) {
+	mergeVersionSelectorCreatedAt(plan.VersionSelector, versionSelectorListFromState(state))
 	mergeCooldownCreatedAt(plan.VersionCooldown, cooldownListFromState(state))
 	mergeWindowCreatedAt(plan.DeploymentWindow, windowListFromState(state))
 	mergeDeploymentDependencyCreatedAt(plan.DeploymentDependency, deploymentDependencyListFromState(state))
@@ -1255,6 +1342,39 @@ func setPolicyIDOnRules(request *policyRequestPayload, policyID string) {
 			value := policyID
 			(*request.Rules)[i].PolicyId = &value
 		}
+	}
+}
+
+func versionSelectorListFromState(state *PolicyResourceModel) []PolicyVersionSelector {
+	if state == nil {
+		return nil
+	}
+	return state.VersionSelector
+}
+
+func mergeVersionSelectorIDs(plan []PolicyVersionSelector, state []PolicyVersionSelector) {
+	for i := range plan {
+		if selectorValueSet(plan[i].ID) {
+			continue
+		}
+		if i < len(state) && selectorValueSet(state[i].ID) {
+			plan[i].ID = state[i].ID
+			continue
+		}
+		plan[i].ID = types.StringValue(uuid.NewString())
+	}
+}
+
+func mergeVersionSelectorCreatedAt(plan []PolicyVersionSelector, state []PolicyVersionSelector) {
+	for i := range plan {
+		if selectorValueSet(plan[i].CreatedAt) {
+			continue
+		}
+		if i < len(state) && selectorValueSet(state[i].CreatedAt) {
+			plan[i].CreatedAt = state[i].CreatedAt
+			continue
+		}
+		plan[i].CreatedAt = types.StringValue(time.Now().UTC().Format(time.RFC3339))
 	}
 }
 
