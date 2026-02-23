@@ -51,6 +51,16 @@ func TestAccPolicyResource(t *testing.T) {
 						tfjsonpath.New("enabled"),
 						knownvalue.Bool(true),
 					),
+					statecheck.ExpectKnownValue(
+						"ctrlplane_policy.test",
+						tfjsonpath.New("version_selector").AtSliceIndex(0).AtMapKey("selector"),
+						knownvalue.StringExact("!version.tag.contains('-rc')"),
+					),
+					statecheck.ExpectKnownValue(
+						"ctrlplane_policy.test",
+						tfjsonpath.New("version_selector").AtSliceIndex(0).AtMapKey("description"),
+						knownvalue.StringExact("No release candidates"),
+					),
 				},
 			},
 			{
@@ -96,6 +106,11 @@ resource "ctrlplane_policy" "test" {
   priority    = %d
   enabled     = %t
   selector    = "deployment.name == '%s'"
+
+  version_selector {
+    selector    = "!version.tag.contains('-rc')"
+    description = "No release candidates"
+  }
 
   version_cooldown {
     duration = "1h"
