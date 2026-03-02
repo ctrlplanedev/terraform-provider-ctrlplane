@@ -3,3 +3,5 @@ terraform-provider-ctrlplane
 .terraform
 main.tf
 terraform.tfstate*
+*.tfvars
+*.tfvars.json
