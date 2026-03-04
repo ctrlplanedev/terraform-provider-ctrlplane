@@ -1189,11 +1189,14 @@ func policyVerificationMetricFromModel(model PolicyVerificationMetric) (api.Veri
 }
 
 func policySleepProviderFromModel(model PolicySleepProvider) (api.MetricProvider, error) {
-	durationSeconds := int32(defaultInt64(model.DurationSeconds, 30))
+	durationSeconds := defaultInt64(model.DurationSeconds, 30)
+	if durationSeconds < 1 || durationSeconds > 3600 {
+		return api.MetricProvider{}, fmt.Errorf("sleep duration_seconds must be between 1 and 3600, got %d", durationSeconds)
+	}
 
 	sleepProvider := api.SleepMetricProvider{
 		Type:            api.Sleep,
-		DurationSeconds: durationSeconds,
+		DurationSeconds: int32(durationSeconds),
 	}
 
 	var provider api.MetricProvider
@@ -1703,16 +1706,35 @@ func policyVerificationMetricToModel(metric api.VerificationMetricSpec) (PolicyV
 		}
 	}
 
-	if sleepProvider, err := metric.Provider.AsSleepMetricProvider(); err == nil {
+	providerJSON, err := json.Marshal(metric.Provider)
+	if err != nil {
+		return PolicyVerificationMetric{}, fmt.Errorf("failed to marshal metric provider: %w", err)
+	}
+	var discriminator struct {
+		Type string `json:"type"`
+	}
+	if err := json.Unmarshal(providerJSON, &discriminator); err != nil {
+		return PolicyVerificationMetric{}, fmt.Errorf("failed to read metric provider type: %w", err)
+	}
+
+	switch discriminator.Type {
+	case "sleep":
+		sleepProvider, err := metric.Provider.AsSleepMetricProvider()
+		if err != nil {
+			return PolicyVerificationMetric{}, fmt.Errorf("failed to parse sleep provider: %w", err)
+		}
 		model.Sleep = &PolicySleepProvider{
 			DurationSeconds: types.Int64Value(int64(sleepProvider.DurationSeconds)),
 		}
 		return model, nil
+	case "datadog":
+	default:
+		return PolicyVerificationMetric{}, fmt.Errorf("unsupported metric provider type: %q", discriminator.Type)
 	}
 
 	datadogProvider, err := metric.Provider.AsDatadogMetricProvider()
 	if err != nil {
-		return PolicyVerificationMetric{}, fmt.Errorf("unsupported metric provider type: %w", err)
+		return PolicyVerificationMetric{}, fmt.Errorf("failed to parse datadog provider: %w", err)
 	}
 
 	model.Datadog = &PolicyDatadogProvider{}
