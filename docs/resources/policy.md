@@ -140,17 +140,14 @@ Optional:
 <a id="nestedblock--verification--metric--datadog"></a>
 ### Nested Schema for `verification.metric.datadog`
 
-Required:
-
-- `api_key` (String, Sensitive) Datadog API key
-- `app_key` (String, Sensitive) Datadog application key
-- `queries` (Map of String) Datadog metric queries
-
 Optional:
 
 - `aggregator` (String) Datadog aggregator (e.g., "avg")
+- `api_key` (String, Sensitive) Datadog API key
+- `app_key` (String, Sensitive) Datadog application key
 - `formula` (String) Datadog formula
 - `interval` (String) Provider interval (e.g., "1m")
+- `queries` (Map of String) Datadog metric queries
 - `site` (String) Datadog site URL (e.g., us5.datadoghq.com)
 
 

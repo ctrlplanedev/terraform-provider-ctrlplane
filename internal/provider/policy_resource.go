@@ -325,17 +325,17 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 												Description: "Provider interval (e.g., \"1m\")",
 											},
 											"queries": schema.MapAttribute{
-												Required:    true,
+												Optional:    true,
 												Description: "Datadog metric queries",
 												ElementType: types.StringType,
 											},
 											"api_key": schema.StringAttribute{
-												Required:    true,
+												Optional:    true,
 												Description: "Datadog API key",
 												Sensitive:   true,
 											},
 											"app_key": schema.StringAttribute{
-												Required:    true,
+												Optional:    true,
 												Description: "Datadog application key",
 												Sensitive:   true,
 											},
@@ -1208,6 +1208,16 @@ func policySleepProviderFromModel(model PolicySleepProvider) (api.MetricProvider
 }
 
 func policyDatadogProviderFromModel(model PolicyDatadogProvider) (api.MetricProvider, error) {
+	if !selectorValueSet(model.ApiKey) {
+		return api.MetricProvider{}, fmt.Errorf("datadog api_key is required")
+	}
+	if !selectorValueSet(model.AppKey) {
+		return api.MetricProvider{}, fmt.Errorf("datadog app_key is required")
+	}
+	if model.Queries.IsNull() || model.Queries.IsUnknown() {
+		return api.MetricProvider{}, fmt.Errorf("datadog queries is required")
+	}
+
 	queries, err := mapStringValue(model.Queries)
 	if err != nil {
 		return api.MetricProvider{}, fmt.Errorf("invalid provider queries: %w", err)
