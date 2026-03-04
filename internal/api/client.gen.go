@@ -800,6 +800,12 @@ type ReleaseTargetState struct {
 	LatestJob      *Job     `json:"latestJob,omitempty"`
 }
 
+// ReleaseTargetWithState defines model for ReleaseTargetWithState.
+type ReleaseTargetWithState struct {
+	ReleaseTarget ReleaseTarget      `json:"releaseTarget"`
+	State         ReleaseTargetState `json:"state"`
+}
+
 // Resource defines model for Resource.
 type Resource struct {
 	Config      map[string]interface{} `json:"config"`
@@ -1054,10 +1060,26 @@ type UpsertPolicyRequest struct {
 	Metadata map[string]string  `json:"metadata"`
 	Name     string             `json:"name"`
 	Priority int                `json:"priority"`
-	Rules    []CreatePolicyRule `json:"rules"`
+	Rules    []UpsertPolicyRule `json:"rules"`
 
 	// Selector CEL expression for matching release targets. Use "true" to match all targets.
 	Selector string `json:"selector"`
+}
+
+// UpsertPolicyRule defines model for UpsertPolicyRule.
+type UpsertPolicyRule struct {
+	AnyApproval            *AnyApprovalRule            `json:"anyApproval,omitempty"`
+	CreatedAt              *string                     `json:"createdAt,omitempty"`
+	DeploymentDependency   *DeploymentDependencyRule   `json:"deploymentDependency,omitempty"`
+	DeploymentWindow       *DeploymentWindowRule       `json:"deploymentWindow,omitempty"`
+	EnvironmentProgression *EnvironmentProgressionRule `json:"environmentProgression,omitempty"`
+	GradualRollout         *GradualRolloutRule         `json:"gradualRollout,omitempty"`
+	Id                     *string                     `json:"id,omitempty"`
+	PolicyId               *string                     `json:"policyId,omitempty"`
+	Retry                  *RetryRule                  `json:"retry,omitempty"`
+	Verification           *VerificationRule           `json:"verification,omitempty"`
+	VersionCooldown        *VersionCooldownRule        `json:"versionCooldown,omitempty"`
+	VersionSelector        *VersionSelectorRule        `json:"versionSelector,omitempty"`
 }
 
 // UpsertRelationshipRuleRequest defines model for UpsertRelationshipRuleRequest.
@@ -1405,6 +1427,21 @@ type PreviewReleaseTargetsForResourceParams struct {
 	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
+// GetReleaseTargetStatesJSONBody defines parameters for GetReleaseTargetStates.
+type GetReleaseTargetStatesJSONBody struct {
+	DeploymentId  string `json:"deploymentId"`
+	EnvironmentId string `json:"environmentId"`
+}
+
+// GetReleaseTargetStatesParams defines parameters for GetReleaseTargetStates.
+type GetReleaseTargetStatesParams struct {
+	// Limit Maximum number of items to return
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Number of items to skip
+	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
 // GetJobsForReleaseTargetParams defines parameters for GetJobsForReleaseTarget.
 type GetJobsForReleaseTargetParams struct {
 	// Limit Maximum number of items to return
@@ -1532,6 +1569,9 @@ type RequestRelationshipRuleUpsertJSONRequestBody = UpsertRelationshipRuleReques
 
 // PreviewReleaseTargetsForResourceJSONRequestBody defines body for PreviewReleaseTargetsForResource for application/json ContentType.
 type PreviewReleaseTargetsForResourceJSONRequestBody = ResourcePreviewRequest
+
+// GetReleaseTargetStatesJSONRequestBody defines body for GetReleaseTargetStates for application/json ContentType.
+type GetReleaseTargetStatesJSONRequestBody GetReleaseTargetStatesJSONBody
 
 // RequestResourceProviderUpsertJSONRequestBody defines body for RequestResourceProviderUpsert for application/json ContentType.
 type RequestResourceProviderUpsertJSONRequestBody = UpsertResourceProviderRequest
@@ -2668,6 +2708,11 @@ type ClientInterface interface {
 
 	PreviewReleaseTargetsForResource(ctx context.Context, workspaceId string, params *PreviewReleaseTargetsForResourceParams, body PreviewReleaseTargetsForResourceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetReleaseTargetStatesWithBody request with any body
+	GetReleaseTargetStatesWithBody(ctx context.Context, workspaceId string, params *GetReleaseTargetStatesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	GetReleaseTargetStates(ctx context.Context, workspaceId string, params *GetReleaseTargetStatesParams, body GetReleaseTargetStatesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetReleaseTargetDesiredRelease request
 	GetReleaseTargetDesiredRelease(ctx context.Context, workspaceId string, releaseTargetKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -3531,6 +3576,30 @@ func (c *Client) PreviewReleaseTargetsForResourceWithBody(ctx context.Context, w
 
 func (c *Client) PreviewReleaseTargetsForResource(ctx context.Context, workspaceId string, params *PreviewReleaseTargetsForResourceParams, body PreviewReleaseTargetsForResourceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPreviewReleaseTargetsForResourceRequest(c.Server, workspaceId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetReleaseTargetStatesWithBody(ctx context.Context, workspaceId string, params *GetReleaseTargetStatesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetReleaseTargetStatesRequestWithBody(c.Server, workspaceId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetReleaseTargetStates(ctx context.Context, workspaceId string, params *GetReleaseTargetStatesParams, body GetReleaseTargetStatesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetReleaseTargetStatesRequest(c.Server, workspaceId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -6314,6 +6383,91 @@ func NewPreviewReleaseTargetsForResourceRequestWithBody(server string, workspace
 	return req, nil
 }
 
+// NewGetReleaseTargetStatesRequest calls the generic GetReleaseTargetStates builder with application/json body
+func NewGetReleaseTargetStatesRequest(server string, workspaceId string, params *GetReleaseTargetStatesParams, body GetReleaseTargetStatesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewGetReleaseTargetStatesRequestWithBody(server, workspaceId, params, "application/json", bodyReader)
+}
+
+// NewGetReleaseTargetStatesRequestWithBody generates requests for GetReleaseTargetStates with any type of body
+func NewGetReleaseTargetStatesRequestWithBody(server string, workspaceId string, params *GetReleaseTargetStatesParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "workspaceId", runtime.ParamLocationPath, workspaceId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/release-targets/state", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "offset", runtime.ParamLocationQuery, *params.Offset); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetReleaseTargetDesiredReleaseRequest generates requests for GetReleaseTargetDesiredRelease
 func NewGetReleaseTargetDesiredReleaseRequest(server string, workspaceId string, releaseTargetKey string) (*http.Request, error) {
 	var err error
@@ -8141,6 +8295,11 @@ type ClientWithResponsesInterface interface {
 
 	PreviewReleaseTargetsForResourceWithResponse(ctx context.Context, workspaceId string, params *PreviewReleaseTargetsForResourceParams, body PreviewReleaseTargetsForResourceJSONRequestBody, reqEditors ...RequestEditorFn) (*PreviewReleaseTargetsForResourceResponse, error)
 
+	// GetReleaseTargetStatesWithBodyWithResponse request with any body
+	GetReleaseTargetStatesWithBodyWithResponse(ctx context.Context, workspaceId string, params *GetReleaseTargetStatesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GetReleaseTargetStatesResponse, error)
+
+	GetReleaseTargetStatesWithResponse(ctx context.Context, workspaceId string, params *GetReleaseTargetStatesParams, body GetReleaseTargetStatesJSONRequestBody, reqEditors ...RequestEditorFn) (*GetReleaseTargetStatesResponse, error)
+
 	// GetReleaseTargetDesiredReleaseWithResponse request
 	GetReleaseTargetDesiredReleaseWithResponse(ctx context.Context, workspaceId string, releaseTargetKey string, reqEditors ...RequestEditorFn) (*GetReleaseTargetDesiredReleaseResponse, error)
 
@@ -9428,6 +9587,40 @@ func (r PreviewReleaseTargetsForResourceResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PreviewReleaseTargetsForResourceResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetReleaseTargetStatesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *struct {
+		Items []ReleaseTargetWithState `json:"items"`
+
+		// Limit Maximum number of items returned
+		Limit int `json:"limit"`
+
+		// Offset Number of items skipped
+		Offset int `json:"offset"`
+
+		// Total Total number of items available
+		Total int `json:"total"`
+	}
+	JSON400 *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetReleaseTargetStatesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetReleaseTargetStatesResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -10762,6 +10955,23 @@ func (c *ClientWithResponses) PreviewReleaseTargetsForResourceWithResponse(ctx c
 		return nil, err
 	}
 	return ParsePreviewReleaseTargetsForResourceResponse(rsp)
+}
+
+// GetReleaseTargetStatesWithBodyWithResponse request with arbitrary body returning *GetReleaseTargetStatesResponse
+func (c *ClientWithResponses) GetReleaseTargetStatesWithBodyWithResponse(ctx context.Context, workspaceId string, params *GetReleaseTargetStatesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GetReleaseTargetStatesResponse, error) {
+	rsp, err := c.GetReleaseTargetStatesWithBody(ctx, workspaceId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetReleaseTargetStatesResponse(rsp)
+}
+
+func (c *ClientWithResponses) GetReleaseTargetStatesWithResponse(ctx context.Context, workspaceId string, params *GetReleaseTargetStatesParams, body GetReleaseTargetStatesJSONRequestBody, reqEditors ...RequestEditorFn) (*GetReleaseTargetStatesResponse, error) {
+	rsp, err := c.GetReleaseTargetStates(ctx, workspaceId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetReleaseTargetStatesResponse(rsp)
 }
 
 // GetReleaseTargetDesiredReleaseWithResponse request returning *GetReleaseTargetDesiredReleaseResponse
@@ -12897,6 +13107,50 @@ func ParsePreviewReleaseTargetsForResourceResponse(rsp *http.Response) (*Preview
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			Items []ReleaseTargetPreview `json:"items"`
+
+			// Limit Maximum number of items returned
+			Limit int `json:"limit"`
+
+			// Offset Number of items skipped
+			Offset int `json:"offset"`
+
+			// Total Total number of items available
+			Total int `json:"total"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetReleaseTargetStatesResponse parses an HTTP response from a GetReleaseTargetStatesWithResponse call
+func ParseGetReleaseTargetStatesResponse(rsp *http.Response) (*GetReleaseTargetStatesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetReleaseTargetStatesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Items []ReleaseTargetWithState `json:"items"`
 
 			// Limit Maximum number of items returned
 			Limit int `json:"limit"`
