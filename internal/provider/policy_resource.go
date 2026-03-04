@@ -302,6 +302,17 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 											},
 										},
 									},
+									"sleep": schema.SingleNestedBlock{
+										Description: "Sleep metric provider configuration",
+										Attributes: map[string]schema.Attribute{
+											"duration_seconds": schema.Int64Attribute{
+												Optional:    true,
+												Computed:    true,
+												Description: "Duration to sleep in seconds (1-3600, default 30)",
+												Default:     int64default.StaticInt64(30),
+											},
+										},
+									},
 									"datadog": schema.SingleNestedBlock{
 										Description: "Datadog metric provider configuration",
 										Attributes: map[string]schema.Attribute{
@@ -829,7 +840,12 @@ type PolicyVerificationMetric struct {
 	Count    types.Int64                  `tfsdk:"count"`
 	Success  *PolicyVerificationCondition `tfsdk:"success"`
 	Failure  *PolicyVerificationCondition `tfsdk:"failure"`
+	Sleep    *PolicySleepProvider         `tfsdk:"sleep"`
 	Datadog  *PolicyDatadogProvider       `tfsdk:"datadog"`
+}
+
+type PolicySleepProvider struct {
+	DurationSeconds types.Int64 `tfsdk:"duration_seconds"`
 }
 
 type PolicyVerificationCondition struct {
@@ -1113,8 +1129,14 @@ func policyVerificationMetricFromModel(model PolicyVerificationMetric) (api.Veri
 	if model.Success == nil {
 		return api.VerificationMetricSpec{}, fmt.Errorf("metric success block is required")
 	}
-	if model.Datadog == nil {
-		return api.VerificationMetricSpec{}, fmt.Errorf("metric datadog block is required")
+
+	hasSleep := model.Sleep != nil
+	hasDatadog := model.Datadog != nil
+	if !hasSleep && !hasDatadog {
+		return api.VerificationMetricSpec{}, fmt.Errorf("exactly one of sleep or datadog provider block is required")
+	}
+	if hasSleep && hasDatadog {
+		return api.VerificationMetricSpec{}, fmt.Errorf("only one of sleep or datadog provider block can be set")
 	}
 
 	intervalSeconds, err := parseDurationSeconds(model.Interval)
@@ -1132,7 +1154,12 @@ func policyVerificationMetricFromModel(model PolicyVerificationMetric) (api.Veri
 		return api.VerificationMetricSpec{}, fmt.Errorf("success condition must be set")
 	}
 
-	provider, err := policyDatadogProviderFromModel(*model.Datadog)
+	var provider api.MetricProvider
+	if hasSleep {
+		provider, err = policySleepProviderFromModel(*model.Sleep)
+	} else {
+		provider, err = policyDatadogProviderFromModel(*model.Datadog)
+	}
 	if err != nil {
 		return api.VerificationMetricSpec{}, err
 	}
@@ -1159,6 +1186,22 @@ func policyVerificationMetricFromModel(model PolicyVerificationMetric) (api.Veri
 	}
 
 	return spec, nil
+}
+
+func policySleepProviderFromModel(model PolicySleepProvider) (api.MetricProvider, error) {
+	durationSeconds := int32(defaultInt64(model.DurationSeconds, 30))
+
+	sleepProvider := api.SleepMetricProvider{
+		Type:            api.Sleep,
+		DurationSeconds: durationSeconds,
+	}
+
+	var provider api.MetricProvider
+	if err := provider.FromSleepMetricProvider(sleepProvider); err != nil {
+		return api.MetricProvider{}, err
+	}
+
+	return provider, nil
 }
 
 func policyDatadogProviderFromModel(model PolicyDatadogProvider) (api.MetricProvider, error) {
@@ -1631,11 +1674,6 @@ func policyVerificationRuleToModel(rule *api.VerificationRule) (PolicyVerificati
 }
 
 func policyVerificationMetricToModel(metric api.VerificationMetricSpec) (PolicyVerificationMetric, error) {
-	provider, err := metric.Provider.AsDatadogMetricProvider()
-	if err != nil {
-		return PolicyVerificationMetric{}, err
-	}
-
 	model := PolicyVerificationMetric{
 		Name:     types.StringValue(metric.Name),
 		Interval: types.StringValue((time.Duration(metric.IntervalSeconds) * time.Second).String()),
@@ -1645,7 +1683,8 @@ func policyVerificationMetricToModel(metric api.VerificationMetricSpec) (PolicyV
 			Threshold: types.Int64Null(),
 		},
 		Failure: nil,
-		Datadog: &PolicyDatadogProvider{},
+		Sleep:   nil,
+		Datadog: nil,
 	}
 
 	if metric.SuccessThreshold != nil {
@@ -1664,28 +1703,41 @@ func policyVerificationMetricToModel(metric api.VerificationMetricSpec) (PolicyV
 		}
 	}
 
+	if sleepProvider, err := metric.Provider.AsSleepMetricProvider(); err == nil {
+		model.Sleep = &PolicySleepProvider{
+			DurationSeconds: types.Int64Value(int64(sleepProvider.DurationSeconds)),
+		}
+		return model, nil
+	}
+
+	datadogProvider, err := metric.Provider.AsDatadogMetricProvider()
+	if err != nil {
+		return PolicyVerificationMetric{}, fmt.Errorf("unsupported metric provider type: %w", err)
+	}
+
+	model.Datadog = &PolicyDatadogProvider{}
 	model.Datadog.Site = types.StringNull()
-	if provider.Site != nil {
-		model.Datadog.Site = types.StringValue(*provider.Site)
+	if datadogProvider.Site != nil {
+		model.Datadog.Site = types.StringValue(*datadogProvider.Site)
 	}
 	model.Datadog.Interval = types.StringNull()
-	if provider.IntervalSeconds != nil {
-		model.Datadog.Interval = types.StringValue((time.Duration(*provider.IntervalSeconds) * time.Second).String())
+	if datadogProvider.IntervalSeconds != nil {
+		model.Datadog.Interval = types.StringValue((time.Duration(*datadogProvider.IntervalSeconds) * time.Second).String())
 	}
 	model.Datadog.Queries = types.MapNull(types.StringType)
-	if len(provider.Queries) > 0 {
-		result, _ := types.MapValueFrom(context.Background(), types.StringType, provider.Queries)
+	if len(datadogProvider.Queries) > 0 {
+		result, _ := types.MapValueFrom(context.Background(), types.StringType, datadogProvider.Queries)
 		model.Datadog.Queries = result
 	}
-	model.Datadog.ApiKey = types.StringValue(provider.ApiKey)
-	model.Datadog.AppKey = types.StringValue(provider.AppKey)
+	model.Datadog.ApiKey = types.StringValue(datadogProvider.ApiKey)
+	model.Datadog.AppKey = types.StringValue(datadogProvider.AppKey)
 	model.Datadog.Aggregator = types.StringNull()
-	if provider.Aggregator != nil {
-		model.Datadog.Aggregator = types.StringValue(string(*provider.Aggregator))
+	if datadogProvider.Aggregator != nil {
+		model.Datadog.Aggregator = types.StringValue(string(*datadogProvider.Aggregator))
 	}
 	model.Datadog.Formula = types.StringNull()
-	if provider.Formula != nil {
-		model.Datadog.Formula = types.StringValue(*provider.Formula)
+	if datadogProvider.Formula != nil {
+		model.Datadog.Formula = types.StringValue(*datadogProvider.Formula)
 	}
 
 	return model, nil

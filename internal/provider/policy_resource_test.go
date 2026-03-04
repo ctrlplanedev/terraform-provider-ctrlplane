@@ -97,6 +97,75 @@ func TestAccPolicyResource(t *testing.T) {
 	})
 }
 
+func TestAccPolicyResourceSleepVerification(t *testing.T) {
+	name := fmt.Sprintf("tf-acc-policy-sleep-%d", time.Now().UnixNano())
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccPolicyResourceSleepVerificationConfig(name, 60),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"ctrlplane_policy.test_sleep",
+						tfjsonpath.New("id"),
+						knownvalue.NotNull(),
+					),
+					statecheck.ExpectKnownValue(
+						"ctrlplane_policy.test_sleep",
+						tfjsonpath.New("name"),
+						knownvalue.StringExact(name),
+					),
+					statecheck.ExpectKnownValue(
+						"ctrlplane_policy.test_sleep",
+						tfjsonpath.New("verification").AtSliceIndex(0).AtMapKey("trigger_on"),
+						knownvalue.StringExact("jobSuccess"),
+					),
+				},
+			},
+			{
+				Config: testAccPolicyResourceSleepVerificationConfig(name, 120),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"ctrlplane_policy.test_sleep",
+						tfjsonpath.New("id"),
+						knownvalue.NotNull(),
+					),
+				},
+			},
+		},
+	})
+}
+
+func testAccPolicyResourceSleepVerificationConfig(name string, durationSeconds int) string {
+	return fmt.Sprintf(`
+%s
+resource "ctrlplane_policy" "test_sleep" {
+  name     = %q
+  selector = "true"
+
+  verification {
+    trigger_on = "jobSuccess"
+
+    metric {
+      name     = "wait-for-stabilization"
+      interval = "30s"
+      count    = 1
+
+      success {
+        condition = "result.ok == true"
+      }
+
+      sleep {
+        duration_seconds = %d
+      }
+    }
+  }
+}
+`, testAccProviderConfig(), name, durationSeconds)
+}
+
 func testAccPolicyResourceConfig(name, description string, priority int, enabled bool) string {
 	return fmt.Sprintf(`
 %s
