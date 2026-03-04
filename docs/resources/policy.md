@@ -134,6 +134,7 @@ Optional:
 
 - `datadog` (Block, Optional) Datadog metric provider configuration (see [below for nested schema](#nestedblock--verification--metric--datadog))
 - `failure` (Block, Optional) Failure condition (see [below for nested schema](#nestedblock--verification--metric--failure))
+- `sleep` (Block, Optional) Sleep metric provider configuration (see [below for nested schema](#nestedblock--verification--metric--sleep))
 - `success` (Block, Optional) Success condition (see [below for nested schema](#nestedblock--verification--metric--success))
 
 <a id="nestedblock--verification--metric--datadog"></a>
@@ -160,6 +161,14 @@ Optional:
 
 - `condition` (String) CEL expression to evaluate failure
 - `threshold` (Number) Consecutive failures before failing
+
+
+<a id="nestedblock--verification--metric--sleep"></a>
+### Nested Schema for `verification.metric.sleep`
+
+Optional:
+
+- `duration_seconds` (Number) Duration to sleep in seconds (1-3600, default 30)
 
 
 <a id="nestedblock--verification--metric--success"></a>
