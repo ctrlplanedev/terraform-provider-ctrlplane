@@ -1,7 +1,11 @@
+// Copyright IBM Corp. 2021, 2026
+// SPDX-License-Identifier: MPL-2.0
+
 package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -102,9 +106,9 @@ func (r *ResourceProviderResource) Schema(ctx context.Context, req resource.Sche
 							Required:    true,
 							Description: "The version of the resource",
 						},
-						"config": schema.DynamicAttribute{
+						"config": schema.StringAttribute{
 							Optional:    true,
-							Description: "Configuration for the resource as a map of key-value pairs",
+							Description: "JSON-encoded configuration for the resource. Use jsonencode() to set this value.",
 						},
 						"metadata": schema.MapAttribute{
 							Optional:    true,
@@ -235,7 +239,7 @@ func (r *ResourceProviderResource) Read(ctx context.Context, req resource.ReadRe
 				Identifier: types.StringValue(apiRes.Identifier),
 				Kind:       types.StringValue(apiRes.Kind),
 				Version:    types.StringValue(apiRes.Version),
-				Config:     goMapToDynamic(apiRes.Config),
+				Config:     configToJSONString(apiRes.Config),
 				Metadata:   stringMapValue(&apiRes.Metadata),
 			})
 		case http.StatusNotFound:
@@ -391,20 +395,20 @@ func (r *ResourceProviderResource) waitForResourceAvailable(ctx context.Context,
 
 // ResourceProviderModel describes the resource provider data model.
 type ResourceProviderModel struct {
-	ID        types.String                       `tfsdk:"id"`
-	Name      types.String                       `tfsdk:"name"`
-	Metadata  types.Map                          `tfsdk:"metadata"`
+	ID        types.String                        `tfsdk:"id"`
+	Name      types.String                        `tfsdk:"name"`
+	Metadata  types.Map                           `tfsdk:"metadata"`
 	Resources []ResourceProviderResourceItemModel `tfsdk:"resource"`
 }
 
 // ResourceProviderResourceItemModel describes an individual resource within the provider.
 type ResourceProviderResourceItemModel struct {
-	Name       types.String  `tfsdk:"name"`
-	Identifier types.String  `tfsdk:"identifier"`
-	Kind       types.String  `tfsdk:"kind"`
-	Version    types.String  `tfsdk:"version"`
-	Config     types.Dynamic `tfsdk:"config"`
-	Metadata   types.Map     `tfsdk:"metadata"`
+	Name       types.String `tfsdk:"name"`
+	Identifier types.String `tfsdk:"identifier"`
+	Kind       types.String `tfsdk:"kind"`
+	Version    types.String `tfsdk:"version"`
+	Config     types.String `tfsdk:"config"`
+	Metadata   types.Map    `tfsdk:"metadata"`
 }
 
 // resourceItemsFromModel converts Terraform model resource items to API request format.
@@ -412,7 +416,7 @@ func resourceItemsFromModel(items []ResourceProviderResourceItemModel) ([]api.Re
 	now := time.Now().UTC()
 	result := make([]api.ResourceProviderResource, 0, len(items))
 	for _, item := range items {
-		config, err := resourceConfigFromDynamic(item.Config)
+		config, err := configFromJSONString(item.Config)
 		if err != nil {
 			return nil, fmt.Errorf("resource '%s': %w", item.Identifier.ValueString(), err)
 		}
@@ -427,4 +431,26 @@ func resourceItemsFromModel(items []ResourceProviderResourceItemModel) ([]api.Re
 		})
 	}
 	return result, nil
+}
+
+func configFromJSONString(s types.String) (map[string]interface{}, error) {
+	if s.IsNull() || s.IsUnknown() || s.ValueString() == "" {
+		return map[string]interface{}{}, nil
+	}
+	var config map[string]interface{}
+	if err := json.Unmarshal([]byte(s.ValueString()), &config); err != nil {
+		return nil, fmt.Errorf("config must be a JSON object: %w", err)
+	}
+	return config, nil
+}
+
+func configToJSONString(m map[string]interface{}) types.String {
+	if len(m) == 0 {
+		return types.StringNull()
+	}
+	b, err := json.Marshal(m)
+	if err != nil {
+		return types.StringNull()
+	}
+	return types.StringValue(string(b))
 }
