@@ -214,41 +214,31 @@ func (r *ResourceProviderResource) Read(ctx context.Context, req resource.ReadRe
 	data.Name = types.StringValue(provider.Name)
 	data.Metadata = stringMapValue(provider.Metadata)
 
-	var updatedResources []ResourceProviderResourceItemModel
-	for _, res := range data.Resources {
-		identifier := res.Identifier.ValueString()
-		resourceResp, err := r.workspace.Client.GetResourceByIdentifierWithResponse(
-			ctx,
-			r.workspace.ID.String(),
-			identifier,
-		)
-		if err != nil {
-			resp.Diagnostics.AddError("Failed to read resource",
-				fmt.Sprintf("Failed to read resource '%s': %s", identifier, err.Error()))
-			return
-		}
+	resourcesResp, err := r.workspace.Client.GetResourceProviderResourcesWithResponse(
+		ctx,
+		r.workspace.ID.String(),
+		data.Name.ValueString(),
+	)
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to list provider resources", err.Error())
+		return
+	}
+	if resourcesResp.StatusCode() != http.StatusOK || resourcesResp.JSON200 == nil {
+		resp.Diagnostics.AddError("Failed to list provider resources",
+			formatResponseError(resourcesResp.StatusCode(), resourcesResp.Body))
+		return
+	}
 
-		switch resourceResp.StatusCode() {
-		case http.StatusOK:
-			if resourceResp.JSON200 == nil {
-				continue
-			}
-			apiRes := resourceResp.JSON200
-			updatedResources = append(updatedResources, ResourceProviderResourceItemModel{
-				Name:       types.StringValue(apiRes.Name),
-				Identifier: types.StringValue(apiRes.Identifier),
-				Kind:       types.StringValue(apiRes.Kind),
-				Version:    types.StringValue(apiRes.Version),
-				Config:     configToJSONString(apiRes.Config),
-				Metadata:   stringMapValue(&apiRes.Metadata),
-			})
-		case http.StatusNotFound:
-			continue
-		default:
-			resp.Diagnostics.AddError("Failed to read resource",
-				formatResponseError(resourceResp.StatusCode(), resourceResp.Body))
-			return
-		}
+	var updatedResources []ResourceProviderResourceItemModel
+	for _, apiRes := range resourcesResp.JSON200.Items {
+		updatedResources = append(updatedResources, ResourceProviderResourceItemModel{
+			Name:       types.StringValue(apiRes.Name),
+			Identifier: types.StringValue(apiRes.Identifier),
+			Kind:       types.StringValue(apiRes.Kind),
+			Version:    types.StringValue(apiRes.Version),
+			Config:     configToJSONString(apiRes.Config),
+			Metadata:   stringMapValue(&apiRes.Metadata),
+		})
 	}
 	data.Resources = updatedResources
 
