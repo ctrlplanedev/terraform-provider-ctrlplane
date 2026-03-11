@@ -2733,6 +2733,9 @@ type ClientInterface interface {
 	// GetResourceProviderByName request
 	GetResourceProviderByName(ctx context.Context, workspaceId string, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetResourceProviderResources request
+	GetResourceProviderResources(ctx context.Context, workspaceId string, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// SetResourceProviderResourcesWithBody request with any body
 	SetResourceProviderResourcesWithBody(ctx context.Context, workspaceId string, providerId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -3684,6 +3687,18 @@ func (c *Client) RequestResourceProviderUpsert(ctx context.Context, workspaceId 
 
 func (c *Client) GetResourceProviderByName(ctx context.Context, workspaceId string, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetResourceProviderByNameRequest(c.Server, workspaceId, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetResourceProviderResources(ctx context.Context, workspaceId string, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetResourceProviderResourcesRequest(c.Server, workspaceId, name)
 	if err != nil {
 		return nil, err
 	}
@@ -6796,6 +6811,47 @@ func NewGetResourceProviderByNameRequest(server string, workspaceId string, name
 	return req, nil
 }
 
+// NewGetResourceProviderResourcesRequest generates requests for GetResourceProviderResources
+func NewGetResourceProviderResourcesRequest(server string, workspaceId string, name string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "workspaceId", runtime.ParamLocationPath, workspaceId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/resource-providers/name/%s/resources", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewSetResourceProviderResourcesRequest calls the generic SetResourceProviderResources builder with application/json body
 func NewSetResourceProviderResourcesRequest(server string, workspaceId string, providerId string, body SetResourceProviderResourcesJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -8320,6 +8376,9 @@ type ClientWithResponsesInterface interface {
 	// GetResourceProviderByNameWithResponse request
 	GetResourceProviderByNameWithResponse(ctx context.Context, workspaceId string, name string, reqEditors ...RequestEditorFn) (*GetResourceProviderByNameResponse, error)
 
+	// GetResourceProviderResourcesWithResponse request
+	GetResourceProviderResourcesWithResponse(ctx context.Context, workspaceId string, name string, reqEditors ...RequestEditorFn) (*GetResourceProviderResourcesResponse, error)
+
 	// SetResourceProviderResourcesWithBodyWithResponse request with any body
 	SetResourceProviderResourcesWithBodyWithResponse(ctx context.Context, workspaceId string, providerId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetResourceProviderResourcesResponse, error)
 
@@ -9780,6 +9839,41 @@ func (r GetResourceProviderByNameResponse) StatusCode() int {
 	return 0
 }
 
+type GetResourceProviderResourcesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *struct {
+		Items []Resource `json:"items"`
+
+		// Limit Maximum number of items returned
+		Limit int `json:"limit"`
+
+		// Offset Number of items skipped
+		Offset int `json:"offset"`
+
+		// Total Total number of items available
+		Total int `json:"total"`
+	}
+	JSON400 *ErrorResponse
+	JSON404 *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetResourceProviderResourcesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetResourceProviderResourcesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type SetResourceProviderResourcesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -11034,6 +11128,15 @@ func (c *ClientWithResponses) GetResourceProviderByNameWithResponse(ctx context.
 		return nil, err
 	}
 	return ParseGetResourceProviderByNameResponse(rsp)
+}
+
+// GetResourceProviderResourcesWithResponse request returning *GetResourceProviderResourcesResponse
+func (c *ClientWithResponses) GetResourceProviderResourcesWithResponse(ctx context.Context, workspaceId string, name string, reqEditors ...RequestEditorFn) (*GetResourceProviderResourcesResponse, error) {
+	rsp, err := c.GetResourceProviderResources(ctx, workspaceId, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetResourceProviderResourcesResponse(rsp)
 }
 
 // SetResourceProviderResourcesWithBodyWithResponse request with arbitrary body returning *SetResourceProviderResourcesResponse
@@ -13397,6 +13500,57 @@ func ParseGetResourceProviderByNameResponse(rsp *http.Response) (*GetResourcePro
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetResourceProviderResourcesResponse parses an HTTP response from a GetResourceProviderResourcesWithResponse call
+func ParseGetResourceProviderResourcesResponse(rsp *http.Response) (*GetResourceProviderResourcesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetResourceProviderResourcesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Items []Resource `json:"items"`
+
+			// Limit Maximum number of items returned
+			Limit int `json:"limit"`
+
+			// Offset Number of items skipped
+			Offset int `json:"offset"`
+
+			// Total Total number of items available
+			Total int `json:"total"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 
