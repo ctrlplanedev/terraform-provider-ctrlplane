@@ -276,6 +276,15 @@ func (r *ResourceProviderResource) Update(ctx context.Context, req resource.Upda
 		return
 	}
 
+	// Set all current resources on the provider first so the backend is
+	// never left in a partially-deleted state if the call fails.
+	if len(data.Resources) > 0 {
+		if err := r.setResources(ctx, data.ID.ValueString(), data.Resources); err != nil {
+			resp.Diagnostics.AddError("Failed to set resources", err.Error())
+			return
+		}
+	}
+
 	// Delete resources that were removed from the config.
 	newIdentifiers := make(map[string]bool, len(data.Resources))
 	for _, res := range data.Resources {
@@ -289,14 +298,6 @@ func (r *ResourceProviderResource) Update(ctx context.Context, req resource.Upda
 		if err := r.deleteResource(ctx, identifier); err != nil {
 			resp.Diagnostics.AddError("Failed to delete resource",
 				fmt.Sprintf("Failed to delete resource '%s': %s", identifier, err.Error()))
-			return
-		}
-	}
-
-	// Set all current resources on the provider.
-	if len(data.Resources) > 0 {
-		if err := r.setResources(ctx, data.ID.ValueString(), data.Resources); err != nil {
-			resp.Diagnostics.AddError("Failed to set resources", err.Error())
 			return
 		}
 	}
