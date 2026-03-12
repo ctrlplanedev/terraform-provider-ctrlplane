@@ -59,11 +59,6 @@ Required:
 - `installation_id` (Number) GitHub app installation ID
 - `owner` (String) GitHub repository owner
 - `repo` (String) GitHub repository name
-- `workflow_id` (Number) GitHub Actions workflow ID
-
-Optional:
-
-- `ref` (String) Git ref to run the workflow on (defaults to "main" if omitted)
 
 
 <a id="nestedblock--terraform_cloud"></a>

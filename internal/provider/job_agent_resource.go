@@ -120,33 +120,25 @@ func (r *JobAgentResource) Schema(ctx context.Context, req resource.SchemaReques
 					},
 				},
 			},
-			"github": schema.ListNestedBlock{
-				Description: "GitHub job agent configuration",
-				NestedObject: schema.NestedBlockObject{
-					Attributes: map[string]schema.Attribute{
-						"installation_id": schema.Int64Attribute{
-							Required:    true,
-							Description: "GitHub app installation ID",
-						},
-						"owner": schema.StringAttribute{
-							Required:    true,
-							Description: "GitHub repository owner",
-						},
-						"ref": schema.StringAttribute{
-							Optional:    true,
-							Description: "Git ref to run the workflow on (defaults to \"main\" if omitted)",
-						},
-						"repo": schema.StringAttribute{
-							Required:    true,
-							Description: "GitHub repository name",
-						},
-						"workflow_id": schema.Int64Attribute{
-							Required:    true,
-							Description: "GitHub Actions workflow ID",
-						},
+		"github": schema.ListNestedBlock{
+			Description: "GitHub job agent configuration",
+			NestedObject: schema.NestedBlockObject{
+				Attributes: map[string]schema.Attribute{
+					"installation_id": schema.Int64Attribute{
+						Required:    true,
+						Description: "GitHub app installation ID",
+					},
+					"owner": schema.StringAttribute{
+						Required:    true,
+						Description: "GitHub repository owner",
+					},
+					"repo": schema.StringAttribute{
+						Required:    true,
+						Description: "GitHub repository name",
 					},
 				},
 			},
+		},
 			"terraform_cloud": schema.ListNestedBlock{
 				Description: "Terraform Cloud job agent configuration",
 				NestedObject: schema.NestedBlockObject{
@@ -445,9 +437,7 @@ type JobAgentArgoCDModel struct {
 type JobAgentGitHubModel struct {
 	InstallationId types.Int64  `tfsdk:"installation_id"`
 	Owner          types.String `tfsdk:"owner"`
-	Ref            types.String `tfsdk:"ref"`
 	Repo           types.String `tfsdk:"repo"`
-	WorkflowId     types.Int64  `tfsdk:"workflow_id"`
 }
 
 type JobAgentTFCModel struct {
@@ -510,10 +500,6 @@ func jobAgentConfigFromModel(data JobAgentResourceModel) (string, *map[string]in
 			"installationId": github.InstallationId.ValueInt64(),
 			"owner":          github.Owner.ValueString(),
 			"repo":           github.Repo.ValueString(),
-			"workflowId":     github.WorkflowId.ValueInt64(),
-		}
-		if !github.Ref.IsNull() && !github.Ref.IsUnknown() && github.Ref.ValueString() != "" {
-			cfg["ref"] = github.Ref.ValueString()
 		}
 		return "github-app", &cfg, nil
 	case len(data.TerraformCloud) > 0:
@@ -564,11 +550,6 @@ func setJobAgentBlocksFromAPI(data *JobAgentResourceModel, jobType string, confi
 			InstallationId: types.Int64Value(toInt64(config["installationId"])),
 			Owner:          types.StringValue(fmt.Sprint(config["owner"])),
 			Repo:           types.StringValue(fmt.Sprint(config["repo"])),
-			WorkflowId:     types.Int64Value(toInt64(config["workflowId"])),
-			Ref:            types.StringNull(),
-		}
-		if ref, ok := config["ref"]; ok && ref != nil && fmt.Sprint(ref) != "" {
-			github.Ref = types.StringValue(fmt.Sprint(ref))
 		}
 		data.GitHub = []JobAgentGitHubModel{github}
 	case "tfe":
