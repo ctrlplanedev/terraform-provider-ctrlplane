@@ -103,13 +103,6 @@ const (
 	Prometheus PrometheusMetricProviderType = "prometheus"
 )
 
-// Defines values for RelatableEntityType.
-const (
-	RelatableEntityTypeDeployment  RelatableEntityType = "deployment"
-	RelatableEntityTypeEnvironment RelatableEntityType = "environment"
-	RelatableEntityTypeResource    RelatableEntityType = "resource"
-)
-
 // Defines values for RetryRuleBackoffStrategy.
 const (
 	RetryRuleBackoffStrategyExponential RetryRuleBackoffStrategy = "exponential"
@@ -182,11 +175,6 @@ type ApprovalStatus string
 // BooleanValue defines model for BooleanValue.
 type BooleanValue = bool
 
-// CelMatcher defines model for CelMatcher.
-type CelMatcher struct {
-	Cel string `json:"cel"`
-}
-
 // CelSelector defines model for CelSelector.
 type CelSelector struct {
 	Cel string `json:"cel"`
@@ -194,14 +182,16 @@ type CelSelector struct {
 
 // CreateDeploymentRequest defines model for CreateDeploymentRequest.
 type CreateDeploymentRequest struct {
-	Description      *string                 `json:"description,omitempty"`
-	JobAgentConfig   *map[string]interface{} `json:"jobAgentConfig,omitempty"`
-	JobAgentId       *string                 `json:"jobAgentId,omitempty"`
-	JobAgents        *[]DeploymentJobAgent   `json:"jobAgents,omitempty"`
-	Metadata         *map[string]string      `json:"metadata,omitempty"`
-	Name             string                  `json:"name"`
-	ResourceSelector *Selector               `json:"resourceSelector,omitempty"`
-	Slug             string                  `json:"slug"`
+	Description    *string                 `json:"description,omitempty"`
+	JobAgentConfig *map[string]interface{} `json:"jobAgentConfig,omitempty"`
+	JobAgentId     *string                 `json:"jobAgentId,omitempty"`
+	JobAgents      *[]DeploymentJobAgent   `json:"jobAgents,omitempty"`
+	Metadata       *map[string]string      `json:"metadata,omitempty"`
+	Name           string                  `json:"name"`
+
+	// ResourceSelector CEL expression to determine if the deployment should be used
+	ResourceSelector *string `json:"resourceSelector,omitempty"`
+	Slug             string  `json:"slug"`
 }
 
 // CreateDeploymentVersionRequest defines model for CreateDeploymentVersionRequest.
@@ -217,10 +207,12 @@ type CreateDeploymentVersionRequest struct {
 
 // CreateEnvironmentRequest defines model for CreateEnvironmentRequest.
 type CreateEnvironmentRequest struct {
-	Description      *string            `json:"description,omitempty"`
-	Metadata         *map[string]string `json:"metadata,omitempty"`
-	Name             string             `json:"name"`
-	ResourceSelector *Selector          `json:"resourceSelector,omitempty"`
+	Description *string            `json:"description,omitempty"`
+	Metadata    *map[string]string `json:"metadata,omitempty"`
+	Name        string             `json:"name"`
+
+	// ResourceSelector CEL expression to determine if the environment should be used
+	ResourceSelector *string `json:"resourceSelector,omitempty"`
 }
 
 // CreatePolicyRequest defines model for CreatePolicyRequest.
@@ -253,21 +245,11 @@ type CreatePolicyRule struct {
 
 // CreateRelationshipRuleRequest defines model for CreateRelationshipRuleRequest.
 type CreateRelationshipRuleRequest struct {
-	Description      *string                               `json:"description,omitempty"`
-	FromSelector     *Selector                             `json:"fromSelector,omitempty"`
-	FromType         RelatableEntityType                   `json:"fromType"`
-	Matcher          CreateRelationshipRuleRequest_Matcher `json:"matcher"`
-	Metadata         map[string]string                     `json:"metadata"`
-	Name             string                                `json:"name"`
-	Reference        string                                `json:"reference"`
-	RelationshipType string                                `json:"relationshipType"`
-	ToSelector       *Selector                             `json:"toSelector,omitempty"`
-	ToType           RelatableEntityType                   `json:"toType"`
-}
-
-// CreateRelationshipRuleRequest_Matcher defines model for CreateRelationshipRuleRequest.Matcher.
-type CreateRelationshipRuleRequest_Matcher struct {
-	union json.RawMessage
+	Cel         string            `json:"cel"`
+	Description *string           `json:"description,omitempty"`
+	Metadata    map[string]string `json:"metadata"`
+	Name        string            `json:"name"`
+	Reference   string            `json:"reference"`
 }
 
 // CreateSystemRequest defines model for CreateSystemRequest.
@@ -341,15 +323,17 @@ type DatadogMetricProviderType string
 
 // Deployment defines model for Deployment.
 type Deployment struct {
-	Description      *string                `json:"description,omitempty"`
-	Id               string                 `json:"id"`
-	JobAgentConfig   map[string]interface{} `json:"jobAgentConfig"`
-	JobAgentId       *string                `json:"jobAgentId,omitempty"`
-	JobAgents        *[]DeploymentJobAgent  `json:"jobAgents,omitempty"`
-	Metadata         *map[string]string     `json:"metadata,omitempty"`
-	Name             string                 `json:"name"`
-	ResourceSelector *Selector              `json:"resourceSelector,omitempty"`
-	Slug             string                 `json:"slug"`
+	Description    *string                `json:"description,omitempty"`
+	Id             string                 `json:"id"`
+	JobAgentConfig map[string]interface{} `json:"jobAgentConfig"`
+	JobAgentId     *string                `json:"jobAgentId,omitempty"`
+	JobAgents      *[]DeploymentJobAgent  `json:"jobAgents,omitempty"`
+	Metadata       *map[string]string     `json:"metadata,omitempty"`
+	Name           string                 `json:"name"`
+
+	// ResourceSelector CEL expression to determine if the deployment should be used
+	ResourceSelector *string `json:"resourceSelector,omitempty"`
+	Slug             string  `json:"slug"`
 }
 
 // DeploymentAndSystems defines model for DeploymentAndSystems.
@@ -396,11 +380,13 @@ type DeploymentVariableRequestAccepted struct {
 
 // DeploymentVariableValue defines model for DeploymentVariableValue.
 type DeploymentVariableValue struct {
-	DeploymentVariableId string    `json:"deploymentVariableId"`
-	Id                   string    `json:"id"`
-	Priority             int64     `json:"priority"`
-	ResourceSelector     *Selector `json:"resourceSelector,omitempty"`
-	Value                Value     `json:"value"`
+	DeploymentVariableId string `json:"deploymentVariableId"`
+	Id                   string `json:"id"`
+	Priority             int64  `json:"priority"`
+
+	// ResourceSelector A CEL expression to select which resources this value applies to
+	ResourceSelector *string `json:"resourceSelector,omitempty"`
+	Value            Value   `json:"value"`
 }
 
 // DeploymentVariableValueRequestAccepted defines model for DeploymentVariableValueRequestAccepted.
@@ -471,12 +457,14 @@ type DispatchContext struct {
 
 // Environment defines model for Environment.
 type Environment struct {
-	CreatedAt        time.Time          `json:"createdAt"`
-	Description      *string            `json:"description,omitempty"`
-	Id               string             `json:"id"`
-	Metadata         *map[string]string `json:"metadata,omitempty"`
-	Name             string             `json:"name"`
-	ResourceSelector *Selector          `json:"resourceSelector,omitempty"`
+	CreatedAt   time.Time          `json:"createdAt"`
+	Description *string            `json:"description,omitempty"`
+	Id          string             `json:"id"`
+	Metadata    *map[string]string `json:"metadata,omitempty"`
+	Name        string             `json:"name"`
+
+	// ResourceSelector CEL expression to determine if the environment should be used
+	ResourceSelector *string `json:"resourceSelector,omitempty"`
 }
 
 // EnvironmentProgressionRule defines model for EnvironmentProgressionRule.
@@ -500,13 +488,15 @@ type EnvironmentRequestAccepted struct {
 
 // EnvironmentWithSystems defines model for EnvironmentWithSystems.
 type EnvironmentWithSystems struct {
-	CreatedAt        time.Time          `json:"createdAt"`
-	Description      *string            `json:"description,omitempty"`
-	Id               string             `json:"id"`
-	Metadata         *map[string]string `json:"metadata,omitempty"`
-	Name             string             `json:"name"`
-	ResourceSelector *Selector          `json:"resourceSelector,omitempty"`
-	Systems          []System           `json:"systems"`
+	CreatedAt   time.Time          `json:"createdAt"`
+	Description *string            `json:"description,omitempty"`
+	Id          string             `json:"id"`
+	Metadata    *map[string]string `json:"metadata,omitempty"`
+	Name        string             `json:"name"`
+
+	// ResourceSelector CEL expression to determine if the environment should be used
+	ResourceSelector *string  `json:"resourceSelector,omitempty"`
+	Systems          []System `json:"systems"`
 }
 
 // Error defines model for Error.
@@ -746,28 +736,15 @@ type ReferenceValue struct {
 	Reference string   `json:"reference"`
 }
 
-// RelatableEntityType defines model for RelatableEntityType.
-type RelatableEntityType string
-
 // RelationshipRule defines model for RelationshipRule.
 type RelationshipRule struct {
-	Description      *string                  `json:"description,omitempty"`
-	FromSelector     *Selector                `json:"fromSelector,omitempty"`
-	FromType         RelatableEntityType      `json:"fromType"`
-	Id               string                   `json:"id"`
-	Matcher          RelationshipRule_Matcher `json:"matcher"`
-	Metadata         map[string]string        `json:"metadata"`
-	Name             string                   `json:"name"`
-	Reference        string                   `json:"reference"`
-	RelationshipType string                   `json:"relationshipType"`
-	ToSelector       *Selector                `json:"toSelector,omitempty"`
-	ToType           RelatableEntityType      `json:"toType"`
-	WorkspaceId      string                   `json:"workspaceId"`
-}
-
-// RelationshipRule_Matcher defines model for RelationshipRule.Matcher.
-type RelationshipRule_Matcher struct {
-	union json.RawMessage
+	Cel         string            `json:"cel"`
+	Description *string           `json:"description,omitempty"`
+	Id          string            `json:"id"`
+	Metadata    map[string]string `json:"metadata"`
+	Name        string            `json:"name"`
+	Reference   string            `json:"reference"`
+	WorkspaceId string            `json:"workspaceId"`
 }
 
 // Release defines model for Release.
@@ -1009,14 +986,16 @@ type UpdateWorkspaceRequest struct {
 
 // UpsertDeploymentRequest defines model for UpsertDeploymentRequest.
 type UpsertDeploymentRequest struct {
-	Description      *string                 `json:"description,omitempty"`
-	JobAgentConfig   *map[string]interface{} `json:"jobAgentConfig,omitempty"`
-	JobAgentId       *string                 `json:"jobAgentId,omitempty"`
-	JobAgents        *[]DeploymentJobAgent   `json:"jobAgents,omitempty"`
-	Metadata         *map[string]string      `json:"metadata,omitempty"`
-	Name             string                  `json:"name"`
-	ResourceSelector *Selector               `json:"resourceSelector,omitempty"`
-	Slug             string                  `json:"slug"`
+	Description    *string                 `json:"description,omitempty"`
+	JobAgentConfig *map[string]interface{} `json:"jobAgentConfig,omitempty"`
+	JobAgentId     *string                 `json:"jobAgentId,omitempty"`
+	JobAgents      *[]DeploymentJobAgent   `json:"jobAgents,omitempty"`
+	Metadata       *map[string]string      `json:"metadata,omitempty"`
+	Name           string                  `json:"name"`
+
+	// ResourceSelector CEL expression to determine if the deployment should be used
+	ResourceSelector *string `json:"resourceSelector,omitempty"`
+	Slug             string  `json:"slug"`
 }
 
 // UpsertDeploymentVariableRequest defines model for UpsertDeploymentVariableRequest.
@@ -1029,18 +1008,22 @@ type UpsertDeploymentVariableRequest struct {
 
 // UpsertDeploymentVariableValueRequest defines model for UpsertDeploymentVariableValueRequest.
 type UpsertDeploymentVariableValueRequest struct {
-	DeploymentVariableId string    `json:"deploymentVariableId"`
-	Priority             int64     `json:"priority"`
-	ResourceSelector     *Selector `json:"resourceSelector,omitempty"`
-	Value                Value     `json:"value"`
+	DeploymentVariableId string `json:"deploymentVariableId"`
+	Priority             int64  `json:"priority"`
+
+	// ResourceSelector A CEL expression to select which resources this value applies to
+	ResourceSelector *string `json:"resourceSelector,omitempty"`
+	Value            Value   `json:"value"`
 }
 
 // UpsertEnvironmentRequest defines model for UpsertEnvironmentRequest.
 type UpsertEnvironmentRequest struct {
-	Description      *string            `json:"description,omitempty"`
-	Metadata         *map[string]string `json:"metadata,omitempty"`
-	Name             string             `json:"name"`
-	ResourceSelector *Selector          `json:"resourceSelector,omitempty"`
+	Description *string            `json:"description,omitempty"`
+	Metadata    *map[string]string `json:"metadata,omitempty"`
+	Name        string             `json:"name"`
+
+	// ResourceSelector CEL expression to determine if the environment should be used
+	ResourceSelector *string `json:"resourceSelector,omitempty"`
 }
 
 // UpsertJobAgentRequest defines model for UpsertJobAgentRequest.
@@ -1084,21 +1067,11 @@ type UpsertPolicyRule struct {
 
 // UpsertRelationshipRuleRequest defines model for UpsertRelationshipRuleRequest.
 type UpsertRelationshipRuleRequest struct {
-	Description      *string                               `json:"description,omitempty"`
-	FromSelector     *Selector                             `json:"fromSelector,omitempty"`
-	FromType         RelatableEntityType                   `json:"fromType"`
-	Matcher          UpsertRelationshipRuleRequest_Matcher `json:"matcher"`
-	Metadata         map[string]string                     `json:"metadata"`
-	Name             string                                `json:"name"`
-	Reference        string                                `json:"reference"`
-	RelationshipType string                                `json:"relationshipType"`
-	ToSelector       *Selector                             `json:"toSelector,omitempty"`
-	ToType           RelatableEntityType                   `json:"toType"`
-}
-
-// UpsertRelationshipRuleRequest_Matcher defines model for UpsertRelationshipRuleRequest.Matcher.
-type UpsertRelationshipRuleRequest_Matcher struct {
-	union json.RawMessage
+	Cel         string            `json:"cel"`
+	Description *string           `json:"description,omitempty"`
+	Metadata    map[string]string `json:"metadata"`
+	Name        string            `json:"name"`
+	Reference   string            `json:"reference"`
 }
 
 // UpsertResourceProviderRequest defines model for UpsertResourceProviderRequest.
@@ -1594,42 +1567,6 @@ type CreateWorkflowJSONRequestBody = CreateWorkflow
 // UpdateWorkflowJSONRequestBody defines body for UpdateWorkflow for application/json ContentType.
 type UpdateWorkflowJSONRequestBody = UpdateWorkflow
 
-// AsCelMatcher returns the union data inside the CreateRelationshipRuleRequest_Matcher as a CelMatcher
-func (t CreateRelationshipRuleRequest_Matcher) AsCelMatcher() (CelMatcher, error) {
-	var body CelMatcher
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromCelMatcher overwrites any union data inside the CreateRelationshipRuleRequest_Matcher as the provided CelMatcher
-func (t *CreateRelationshipRuleRequest_Matcher) FromCelMatcher(v CelMatcher) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeCelMatcher performs a merge with any union data inside the CreateRelationshipRuleRequest_Matcher, using the provided CelMatcher
-func (t *CreateRelationshipRuleRequest_Matcher) MergeCelMatcher(v CelMatcher) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-func (t CreateRelationshipRuleRequest_Matcher) MarshalJSON() ([]byte, error) {
-	b, err := t.union.MarshalJSON()
-	return b, err
-}
-
-func (t *CreateRelationshipRuleRequest_Matcher) UnmarshalJSON(b []byte) error {
-	err := t.union.UnmarshalJSON(b)
-	return err
-}
-
 // AsBooleanValue returns the union data inside the LiteralValue as a BooleanValue
 func (t LiteralValue) AsBooleanValue() (BooleanValue, error) {
 	var body BooleanValue
@@ -1975,42 +1912,6 @@ func (t *MetricProvider) UnmarshalJSON(b []byte) error {
 	return err
 }
 
-// AsCelMatcher returns the union data inside the RelationshipRule_Matcher as a CelMatcher
-func (t RelationshipRule_Matcher) AsCelMatcher() (CelMatcher, error) {
-	var body CelMatcher
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromCelMatcher overwrites any union data inside the RelationshipRule_Matcher as the provided CelMatcher
-func (t *RelationshipRule_Matcher) FromCelMatcher(v CelMatcher) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeCelMatcher performs a merge with any union data inside the RelationshipRule_Matcher, using the provided CelMatcher
-func (t *RelationshipRule_Matcher) MergeCelMatcher(v CelMatcher) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-func (t RelationshipRule_Matcher) MarshalJSON() ([]byte, error) {
-	b, err := t.union.MarshalJSON()
-	return b, err
-}
-
-func (t *RelationshipRule_Matcher) UnmarshalJSON(b []byte) error {
-	err := t.union.UnmarshalJSON(b)
-	return err
-}
-
 // AsJsonSelector returns the union data inside the Selector as a JsonSelector
 func (t Selector) AsJsonSelector() (JsonSelector, error) {
 	var body JsonSelector
@@ -2069,42 +1970,6 @@ func (t Selector) MarshalJSON() ([]byte, error) {
 }
 
 func (t *Selector) UnmarshalJSON(b []byte) error {
-	err := t.union.UnmarshalJSON(b)
-	return err
-}
-
-// AsCelMatcher returns the union data inside the UpsertRelationshipRuleRequest_Matcher as a CelMatcher
-func (t UpsertRelationshipRuleRequest_Matcher) AsCelMatcher() (CelMatcher, error) {
-	var body CelMatcher
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromCelMatcher overwrites any union data inside the UpsertRelationshipRuleRequest_Matcher as the provided CelMatcher
-func (t *UpsertRelationshipRuleRequest_Matcher) FromCelMatcher(v CelMatcher) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeCelMatcher performs a merge with any union data inside the UpsertRelationshipRuleRequest_Matcher, using the provided CelMatcher
-func (t *UpsertRelationshipRuleRequest_Matcher) MergeCelMatcher(v CelMatcher) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-func (t UpsertRelationshipRuleRequest_Matcher) MarshalJSON() ([]byte, error) {
-	b, err := t.union.MarshalJSON()
-	return b, err
-}
-
-func (t *UpsertRelationshipRuleRequest_Matcher) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -2729,6 +2594,9 @@ type ClientInterface interface {
 	RequestResourceProviderUpsertWithBody(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	RequestResourceProviderUpsert(ctx context.Context, workspaceId string, body RequestResourceProviderUpsertJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteResourceProviderByName request
+	DeleteResourceProviderByName(ctx context.Context, workspaceId string, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetResourceProviderByName request
 	GetResourceProviderByName(ctx context.Context, workspaceId string, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -3675,6 +3543,18 @@ func (c *Client) RequestResourceProviderUpsertWithBody(ctx context.Context, work
 
 func (c *Client) RequestResourceProviderUpsert(ctx context.Context, workspaceId string, body RequestResourceProviderUpsertJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRequestResourceProviderUpsertRequest(c.Server, workspaceId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteResourceProviderByName(ctx context.Context, workspaceId string, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteResourceProviderByNameRequest(c.Server, workspaceId, name)
 	if err != nil {
 		return nil, err
 	}
@@ -6770,6 +6650,47 @@ func NewRequestResourceProviderUpsertRequestWithBody(server string, workspaceId 
 	return req, nil
 }
 
+// NewDeleteResourceProviderByNameRequest generates requests for DeleteResourceProviderByName
+func NewDeleteResourceProviderByNameRequest(server string, workspaceId string, name string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "workspaceId", runtime.ParamLocationPath, workspaceId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/resource-providers/name/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetResourceProviderByNameRequest generates requests for GetResourceProviderByName
 func NewGetResourceProviderByNameRequest(server string, workspaceId string, name string) (*http.Request, error) {
 	var err error
@@ -8373,6 +8294,9 @@ type ClientWithResponsesInterface interface {
 
 	RequestResourceProviderUpsertWithResponse(ctx context.Context, workspaceId string, body RequestResourceProviderUpsertJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestResourceProviderUpsertResponse, error)
 
+	// DeleteResourceProviderByNameWithResponse request
+	DeleteResourceProviderByNameWithResponse(ctx context.Context, workspaceId string, name string, reqEditors ...RequestEditorFn) (*DeleteResourceProviderByNameResponse, error)
+
 	// GetResourceProviderByNameWithResponse request
 	GetResourceProviderByNameWithResponse(ctx context.Context, workspaceId string, name string, reqEditors ...RequestEditorFn) (*GetResourceProviderByNameResponse, error)
 
@@ -9817,6 +9741,30 @@ func (r RequestResourceProviderUpsertResponse) StatusCode() int {
 	return 0
 }
 
+type DeleteResourceProviderByNameResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *ResourceProvider
+	JSON400      *ErrorResponse
+	JSON404      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteResourceProviderByNameResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteResourceProviderByNameResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetResourceProviderByNameResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -11119,6 +11067,15 @@ func (c *ClientWithResponses) RequestResourceProviderUpsertWithResponse(ctx cont
 		return nil, err
 	}
 	return ParseRequestResourceProviderUpsertResponse(rsp)
+}
+
+// DeleteResourceProviderByNameWithResponse request returning *DeleteResourceProviderByNameResponse
+func (c *ClientWithResponses) DeleteResourceProviderByNameWithResponse(ctx context.Context, workspaceId string, name string, reqEditors ...RequestEditorFn) (*DeleteResourceProviderByNameResponse, error) {
+	rsp, err := c.DeleteResourceProviderByName(ctx, workspaceId, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteResourceProviderByNameResponse(rsp)
 }
 
 // GetResourceProviderByNameWithResponse request returning *GetResourceProviderByNameResponse
@@ -13474,6 +13431,46 @@ func ParseRequestResourceProviderUpsertResponse(rsp *http.Response) (*RequestRes
 			return nil, err
 		}
 		response.JSON400 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteResourceProviderByNameResponse parses an HTTP response from a DeleteResourceProviderByNameWithResponse call
+func ParseDeleteResourceProviderByNameResponse(rsp *http.Response) (*DeleteResourceProviderByNameResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteResourceProviderByNameResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest ResourceProvider
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 

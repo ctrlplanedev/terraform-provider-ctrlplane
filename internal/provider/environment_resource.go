@@ -59,10 +59,9 @@ func (r *EnvironmentResource) Create(ctx context.Context, req resource.CreateReq
 	}
 
 	workspaceId := r.workspace.ID
-	selector, err := selectorPointerFromString(data.ResourceSelector)
-	if err != nil {
-		resp.Diagnostics.AddError("Failed to create environment", fmt.Sprintf("Invalid resource_selector CEL: %s", err.Error()))
-		return
+	var selector *string
+	if cel := normalizeCEL(data.ResourceSelector); cel != "" {
+		selector = &cel
 	}
 
 	requestBody := api.RequestEnvironmentCreationJSONRequestBody{
@@ -197,11 +196,10 @@ func (r *EnvironmentResource) Read(ctx context.Context, req resource.ReadRequest
 	data.Name = types.StringValue(envResp.JSON200.Name)
 	data.Description = descriptionValue(envResp.JSON200.Description)
 	data.Metadata = stringMapValue(envResp.JSON200.Metadata)
-	if selectorValue, err := selectorStringValue(envResp.JSON200.ResourceSelector); err != nil {
-		resp.Diagnostics.AddError("Failed to read environment", fmt.Sprintf("Invalid resource_selector CEL: %s", err.Error()))
-		return
+	if envResp.JSON200.ResourceSelector != nil && *envResp.JSON200.ResourceSelector != "" {
+		data.ResourceSelector = types.StringValue(*envResp.JSON200.ResourceSelector)
 	} else {
-		data.ResourceSelector = selectorValue
+		data.ResourceSelector = types.StringNull()
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -252,10 +250,9 @@ func (r *EnvironmentResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	selector, selErr := selectorPointerFromString(data.ResourceSelector)
-	if selErr != nil {
-		resp.Diagnostics.AddError("Failed to update environment", fmt.Sprintf("Invalid resource_selector CEL: %s", selErr.Error()))
-		return
+	var selector *string
+	if cel := normalizeCEL(data.ResourceSelector); cel != "" {
+		selector = &cel
 	}
 
 	requestBody := api.RequestEnvironmentUpsertJSONRequestBody{

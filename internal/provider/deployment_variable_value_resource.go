@@ -165,10 +165,9 @@ func (r *DeploymentVariableValueResource) Create(ctx context.Context, req resour
 		return
 	}
 
-	selector, err := selectorPointerFromString(data.ResourceSelector)
-	if err != nil {
-		resp.Diagnostics.AddError("Failed to create deployment variable value", fmt.Sprintf("Failed to parse resource_selector: %s", err.Error()))
-		return
+	var selector *string
+	if cel := normalizeCEL(data.ResourceSelector); cel != "" {
+		selector = &cel
 	}
 
 	requestBody := api.RequestDeploymentVariableValueUpsertJSONRequestBody{
@@ -269,12 +268,11 @@ func (r *DeploymentVariableValueResource) Read(ctx context.Context, req resource
 	data.VariableId = types.StringValue(value.DeploymentVariableId)
 	data.Priority = types.Int64Value(value.Priority)
 
-	selectorStr, err := selectorStringValue(value.ResourceSelector)
-	if err != nil {
-		resp.Diagnostics.AddError("Failed to read deployment variable value", fmt.Sprintf("Failed to parse resource_selector: %s", err.Error()))
-		return
+	if value.ResourceSelector != nil && *value.ResourceSelector != "" {
+		data.ResourceSelector = types.StringValue(*value.ResourceSelector)
+	} else {
+		data.ResourceSelector = types.StringNull()
 	}
-	data.ResourceSelector = selectorStr
 
 	diags := setValueOnModel(ctx, &data, value.Value)
 	resp.Diagnostics.Append(diags...)
@@ -298,10 +296,9 @@ func (r *DeploymentVariableValueResource) Update(ctx context.Context, req resour
 		return
 	}
 
-	selector, err := selectorPointerFromString(data.ResourceSelector)
-	if err != nil {
-		resp.Diagnostics.AddError("Failed to update deployment variable value", fmt.Sprintf("Failed to parse resource_selector: %s", err.Error()))
-		return
+	var selector *string
+	if cel := normalizeCEL(data.ResourceSelector); cel != "" {
+		selector = &cel
 	}
 
 	requestBody := api.UpsertDeploymentVariableValueRequest{

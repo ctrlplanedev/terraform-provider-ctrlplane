@@ -242,10 +242,9 @@ func (r *DeploymentResource) Create(ctx context.Context, req resource.CreateRequ
 		}
 	}
 
-	selector, err := selectorPointerFromString(data.ResourceSelector)
-	if err != nil {
-		resp.Diagnostics.AddError("Failed to create deployment", fmt.Sprintf("Invalid resource_selector CEL: %s", err.Error()))
-		return
+	var selector *string
+	if cel := normalizeCEL(data.ResourceSelector); cel != "" {
+		selector = &cel
 	}
 
 	requestBody := api.RequestDeploymentCreationJSONRequestBody{
@@ -338,11 +337,10 @@ func (r *DeploymentResource) Read(ctx context.Context, req resource.ReadRequest,
 	data.Name = types.StringValue(dep.Name)
 	data.Metadata = stringMapValue(dep.Metadata)
 
-	if selectorValue, err := selectorStringValue(dep.ResourceSelector); err != nil {
-		resp.Diagnostics.AddError("Failed to read deployment", fmt.Sprintf("Invalid resource_selector CEL: %s", err.Error()))
-		return
+	if dep.ResourceSelector != nil && *dep.ResourceSelector != "" {
+		data.ResourceSelector = types.StringValue(*dep.ResourceSelector)
 	} else {
-		data.ResourceSelector = selectorValue
+		data.ResourceSelector = types.StringNull()
 	}
 
 	if dep.JobAgents != nil && len(*dep.JobAgents) > 0 {
@@ -394,10 +392,9 @@ func (r *DeploymentResource) Update(ctx context.Context, req resource.UpdateRequ
 		}
 	}
 
-	selector, err := selectorPointerFromString(data.ResourceSelector)
-	if err != nil {
-		resp.Diagnostics.AddError("Failed to update deployment", fmt.Sprintf("Invalid resource_selector CEL: %s", err.Error()))
-		return
+	var selector *string
+	if cel := normalizeCEL(data.ResourceSelector); cel != "" {
+		selector = &cel
 	}
 
 	requestBody := api.UpsertDeploymentRequest{
