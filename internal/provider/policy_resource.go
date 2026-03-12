@@ -111,7 +111,6 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						"created_at": schema.StringAttribute{
-							Optional:    true,
 							Computed:    true,
 							Description: "Rule creation timestamp",
 							PlanModifiers: []planmodifier.String{
@@ -142,7 +141,6 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						"created_at": schema.StringAttribute{
-							Optional:    true,
 							Computed:    true,
 							Description: "Rule creation timestamp",
 							PlanModifiers: []planmodifier.String{
@@ -169,7 +167,6 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						"created_at": schema.StringAttribute{
-							Optional:    true,
 							Computed:    true,
 							Description: "Rule creation timestamp",
 							PlanModifiers: []planmodifier.String{
@@ -177,7 +174,6 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 							},
 						},
 						"id": schema.StringAttribute{
-							Optional:    true,
 							Computed:    true,
 							Description: "Rule ID",
 							PlanModifiers: []planmodifier.String{
@@ -210,7 +206,6 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						"created_at": schema.StringAttribute{
-							Optional:    true,
 							Computed:    true,
 							Description: "Rule creation timestamp",
 							PlanModifiers: []planmodifier.String{
@@ -237,7 +232,6 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						"created_at": schema.StringAttribute{
-							Optional:    true,
 							Computed:    true,
 							Description: "Rule creation timestamp",
 							PlanModifiers: []planmodifier.String{
@@ -360,7 +354,6 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						"created_at": schema.StringAttribute{
-							Optional:    true,
 							Computed:    true,
 							Description: "Rule creation timestamp",
 							PlanModifiers: []planmodifier.String{
@@ -368,7 +361,6 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 							},
 						},
 						"id": schema.StringAttribute{
-							Optional:    true,
 							Computed:    true,
 							Description: "Rule ID",
 							PlanModifiers: []planmodifier.String{
@@ -391,7 +383,6 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						"created_at": schema.StringAttribute{
-							Optional:    true,
 							Computed:    true,
 							Description: "Rule creation timestamp",
 							PlanModifiers: []planmodifier.String{
@@ -399,7 +390,6 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 							},
 						},
 						"id": schema.StringAttribute{
-							Optional:    true,
 							Computed:    true,
 							Description: "Rule ID",
 							PlanModifiers: []planmodifier.String{
@@ -418,7 +408,6 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						"created_at": schema.StringAttribute{
-							Optional:    true,
 							Computed:    true,
 							Description: "Rule creation timestamp",
 							PlanModifiers: []planmodifier.String{
@@ -426,7 +415,6 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 							},
 						},
 						"id": schema.StringAttribute{
-							Optional:    true,
 							Computed:    true,
 							Description: "Rule ID",
 							PlanModifiers: []planmodifier.String{
@@ -465,7 +453,11 @@ func (r *PolicyResource) ValidateConfig(ctx context.Context, req resource.Valida
 		return
 	}
 
-	if data.Selector.IsNull() || data.Selector.IsUnknown() || data.Selector.ValueString() == "" {
+	if data.Selector.IsUnknown() {
+		return
+	}
+
+	if data.Selector.IsNull() || data.Selector.ValueString() == "" {
 		resp.Diagnostics.AddError("Invalid policy configuration", "The selector attribute must be set to a CEL expression.")
 		return
 	}

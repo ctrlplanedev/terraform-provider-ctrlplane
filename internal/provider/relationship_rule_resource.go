@@ -8,7 +8,6 @@ import (
 	"net/http"
 
 	"github.com/ctrlplanedev/terraform-provider-ctrlplane/internal/api"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -16,7 +15,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -32,21 +30,13 @@ type RelationshipRuleResource struct {
 	workspace *api.WorkspaceClient
 }
 
-type RelationshipRuleEndpointModel struct {
-	Type     types.String `tfsdk:"type"`
-	Selector types.String `tfsdk:"selector"`
-}
-
 type RelationshipRuleResourceModel struct {
-	ID               types.String                   `tfsdk:"id"`
-	Name             types.String                   `tfsdk:"name"`
-	Reference        types.String                   `tfsdk:"reference"`
-	Description      types.String                   `tfsdk:"description"`
-	RelationshipType types.String                   `tfsdk:"relationship_type"`
-	Matcher          types.String                   `tfsdk:"matcher"`
-	From             *RelationshipRuleEndpointModel `tfsdk:"from"`
-	To               *RelationshipRuleEndpointModel `tfsdk:"to"`
-	Metadata         types.Map                      `tfsdk:"metadata"`
+	ID          types.String `tfsdk:"id"`
+	Name        types.String `tfsdk:"name"`
+	Reference   types.String `tfsdk:"reference"`
+	Description types.String `tfsdk:"description"`
+	Cel         types.String `tfsdk:"matcher"`
+	Metadata    types.Map    `tfsdk:"metadata"`
 }
 
 func (r *RelationshipRuleResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -72,30 +62,6 @@ func (r *RelationshipRuleResource) Configure(ctx context.Context, req resource.C
 }
 
 func (r *RelationshipRuleResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
-	entityTypeValues := []string{"deployment", "environment", "resource"}
-
-	endpointBlock := schema.SingleNestedBlock{
-		Attributes: map[string]schema.Attribute{
-			"type": schema.StringAttribute{
-				Required:    true,
-				Description: "The entity type (one of: deployment, environment, resource)",
-				Validators: []validator.String{
-					stringvalidator.OneOf(entityTypeValues...),
-				},
-			},
-			"selector": schema.StringAttribute{
-				Optional:    true,
-				Description: "A CEL expression to filter entities",
-			},
-		},
-	}
-
-	fromBlock := endpointBlock
-	fromBlock.Description = "The source side of the relationship"
-
-	toBlock := endpointBlock
-	toBlock.Description = "The target side of the relationship"
-
 	resp.Schema = schema.Schema{
 		Description: "Manages a relationship rule in Ctrlplane. Relationship rules define how entities (resources, deployments, environments) are related to each other.",
 		Attributes: map[string]schema.Attribute{
@@ -121,13 +87,9 @@ func (r *RelationshipRuleResource) Schema(ctx context.Context, req resource.Sche
 				Optional:    true,
 				Description: "A description of the relationship rule",
 			},
-			"relationship_type": schema.StringAttribute{
-				Required:    true,
-				Description: "The type of relationship (e.g., \"depends_on\", \"associated_with\")",
-			},
 			"matcher": schema.StringAttribute{
 				Required:    true,
-				Description: "A CEL expression used to match entities for the relationship",
+				Description: "A CEL expression that defines the relationship rule",
 			},
 			"metadata": schema.MapAttribute{
 				Optional:    true,
@@ -140,10 +102,6 @@ func (r *RelationshipRuleResource) Schema(ctx context.Context, req resource.Sche
 				}(),
 			},
 		},
-		Blocks: map[string]schema.Block{
-			"from": fromBlock,
-			"to":   toBlock,
-		},
 	}
 }
 
@@ -154,20 +112,7 @@ func (r *RelationshipRuleResource) Create(ctx context.Context, req resource.Crea
 		return
 	}
 
-	if data.From == nil {
-		resp.Diagnostics.AddError("Missing required block", "The \"from\" block is required")
-		return
-	}
-	if data.To == nil {
-		resp.Diagnostics.AddError("Missing required block", "The \"to\" block is required")
-		return
-	}
-
-	var matcher api.CreateRelationshipRuleRequest_Matcher
-	if err := matcher.FromCelMatcher(api.CelMatcher{Cel: data.Matcher.ValueString()}); err != nil {
-		resp.Diagnostics.AddError("Invalid matcher", err.Error())
-		return
-	}
+	cel := normalizeCEL(data.Cel)
 
 	metadata := map[string]string{}
 	if !data.Metadata.IsNull() && !data.Metadata.IsUnknown() {
@@ -179,32 +124,11 @@ func (r *RelationshipRuleResource) Create(ctx context.Context, req resource.Crea
 	}
 
 	requestBody := api.CreateRelationshipRuleJSONRequestBody{
-		Name:             data.Name.ValueString(),
-		Reference:        data.Reference.ValueString(),
-		Description:      data.Description.ValueStringPointer(),
-		RelationshipType: data.RelationshipType.ValueString(),
-		FromType:         api.RelatableEntityType(data.From.Type.ValueString()),
-		ToType:           api.RelatableEntityType(data.To.Type.ValueString()),
-		Matcher:          matcher,
-		Metadata:         metadata,
-	}
-
-	if selectorValueSet(data.From.Selector) {
-		fromSelector, err := selectorPointerFromString(data.From.Selector)
-		if err != nil {
-			resp.Diagnostics.AddError("Invalid from selector", err.Error())
-			return
-		}
-		requestBody.FromSelector = fromSelector
-	}
-
-	if selectorValueSet(data.To.Selector) {
-		toSelector, err := selectorPointerFromString(data.To.Selector)
-		if err != nil {
-			resp.Diagnostics.AddError("Invalid to selector", err.Error())
-			return
-		}
-		requestBody.ToSelector = toSelector
+		Name:        data.Name.ValueString(),
+		Reference:   data.Reference.ValueString(),
+		Description: data.Description.ValueStringPointer(),
+		Cel:         cel,
+		Metadata:    metadata,
 	}
 
 	createResp, err := r.workspace.Client.CreateRelationshipRuleWithResponse(
@@ -291,41 +215,7 @@ func (r *RelationshipRuleResource) Read(ctx context.Context, req resource.ReadRe
 	data.Name = types.StringValue(rule.Name)
 	data.Reference = types.StringValue(rule.Reference)
 	data.Description = descriptionValue(rule.Description)
-	data.RelationshipType = types.StringValue(rule.RelationshipType)
-
-	celMatcher, err := rule.Matcher.AsCelMatcher()
-	if err != nil {
-		resp.Diagnostics.AddError("Failed to read matcher", err.Error())
-		return
-	}
-	data.Matcher = types.StringValue(celMatcher.Cel)
-
-	data.From = &RelationshipRuleEndpointModel{
-		Type:     types.StringValue(string(rule.FromType)),
-		Selector: types.StringNull(),
-	}
-	if rule.FromSelector != nil {
-		fromSelectorValue, err := selectorStringValue(rule.FromSelector)
-		if err != nil {
-			resp.Diagnostics.AddError("Failed to read from selector", err.Error())
-			return
-		}
-		data.From.Selector = fromSelectorValue
-	}
-
-	data.To = &RelationshipRuleEndpointModel{
-		Type:     types.StringValue(string(rule.ToType)),
-		Selector: types.StringNull(),
-	}
-	if rule.ToSelector != nil {
-		toSelectorValue, err := selectorStringValue(rule.ToSelector)
-		if err != nil {
-			resp.Diagnostics.AddError("Failed to read to selector", err.Error())
-			return
-		}
-		data.To.Selector = toSelectorValue
-	}
-
+	data.Cel = types.StringValue(rule.Cel)
 	data.Metadata = stringMapValue(&rule.Metadata)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -343,20 +233,7 @@ func (r *RelationshipRuleResource) Update(ctx context.Context, req resource.Upda
 
 	data.ID = state.ID
 
-	if data.From == nil {
-		resp.Diagnostics.AddError("Missing required block", "The \"from\" block is required")
-		return
-	}
-	if data.To == nil {
-		resp.Diagnostics.AddError("Missing required block", "The \"to\" block is required")
-		return
-	}
-
-	var matcher api.UpsertRelationshipRuleRequest_Matcher
-	if err := matcher.FromCelMatcher(api.CelMatcher{Cel: data.Matcher.ValueString()}); err != nil {
-		resp.Diagnostics.AddError("Invalid matcher", err.Error())
-		return
-	}
+	cel := normalizeCEL(data.Cel)
 
 	metadata := map[string]string{}
 	if !data.Metadata.IsNull() && !data.Metadata.IsUnknown() {
@@ -368,32 +245,11 @@ func (r *RelationshipRuleResource) Update(ctx context.Context, req resource.Upda
 	}
 
 	requestBody := api.RequestRelationshipRuleUpsertJSONRequestBody{
-		Name:             data.Name.ValueString(),
-		Reference:        data.Reference.ValueString(),
-		Description:      data.Description.ValueStringPointer(),
-		RelationshipType: data.RelationshipType.ValueString(),
-		FromType:         api.RelatableEntityType(data.From.Type.ValueString()),
-		ToType:           api.RelatableEntityType(data.To.Type.ValueString()),
-		Matcher:          matcher,
-		Metadata:         metadata,
-	}
-
-	if selectorValueSet(data.From.Selector) {
-		fromSelector, err := selectorPointerFromString(data.From.Selector)
-		if err != nil {
-			resp.Diagnostics.AddError("Invalid from selector", err.Error())
-			return
-		}
-		requestBody.FromSelector = fromSelector
-	}
-
-	if selectorValueSet(data.To.Selector) {
-		toSelector, err := selectorPointerFromString(data.To.Selector)
-		if err != nil {
-			resp.Diagnostics.AddError("Invalid to selector", err.Error())
-			return
-		}
-		requestBody.ToSelector = toSelector
+		Name:        data.Name.ValueString(),
+		Reference:   data.Reference.ValueString(),
+		Description: data.Description.ValueStringPointer(),
+		Cel:         cel,
+		Metadata:    metadata,
 	}
 
 	upsertResp, err := r.workspace.Client.RequestRelationshipRuleUpsertWithResponse(
@@ -407,13 +263,10 @@ func (r *RelationshipRuleResource) Update(ctx context.Context, req resource.Upda
 		return
 	}
 
-	if upsertResp.StatusCode() != http.StatusAccepted {
+	switch upsertResp.StatusCode() {
+	case http.StatusOK, http.StatusAccepted:
+	default:
 		resp.Diagnostics.AddError("Failed to update relationship rule", formatResponseError(upsertResp.StatusCode(), upsertResp.Body))
-		return
-	}
-
-	if upsertResp.JSON202 == nil {
-		resp.Diagnostics.AddError("Failed to update relationship rule", "Empty response from server")
 		return
 	}
 

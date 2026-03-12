@@ -5,6 +5,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ctrlplanedev/terraform-provider-ctrlplane/internal/api"
@@ -71,12 +72,15 @@ func waitForResource(ctx context.Context, check func() (bool, error)) error {
 	}
 }
 
-func selectorPointerFromString(value types.String) (*api.Selector, error) {
+func normalizeCEL(value types.String) string {
 	if value.IsNull() || value.IsUnknown() {
-		return nil, nil
+		return ""
 	}
+	return strings.Join(strings.Fields(value.ValueString()), " ")
+}
 
-	raw := value.ValueString()
+func selectorPointerFromString(value types.String) (*api.Selector, error) {
+	raw := normalizeCEL(value)
 	if raw == "" {
 		return nil, nil
 	}
