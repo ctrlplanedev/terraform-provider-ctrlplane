@@ -46,7 +46,7 @@ Required:
 
 - `min_approvals` (Number) Minimum number of approvals required
 
-Optional:
+Read-Only:
 
 - `created_at` (String) Rule creation timestamp
 - `id` (String) Rule ID
@@ -61,8 +61,11 @@ Required:
 
 Optional:
 
-- `created_at` (String) Rule creation timestamp
 - `id` (String) Rule ID
+
+Read-Only:
+
+- `created_at` (String) Rule creation timestamp
 
 
 <a id="nestedblock--deployment_window"></a>
@@ -76,9 +79,12 @@ Required:
 Optional:
 
 - `allow_window` (Boolean) Allow deployments during the window (deny when false)
+- `timezone` (String) IANA timezone for the recurrence rule
+
+Read-Only:
+
 - `created_at` (String) Rule creation timestamp
 - `id` (String) Rule ID
-- `timezone` (String) IANA timezone for the recurrence rule
 
 
 <a id="nestedblock--environment_progression"></a>
@@ -90,11 +96,14 @@ Required:
 
 Optional:
 
-- `created_at` (String) Rule creation timestamp
-- `id` (String) Rule ID
 - `maximum_age_hours` (Number) Maximum age in hours of dependency deployment before blocking progression
 - `minimum_sock_time_minutes` (Number) Minimum time in minutes to wait after the dependency environment is in a success state
 - `minimum_success_percentage` (Number) Minimum percentage of successful deployments required
+
+Read-Only:
+
+- `created_at` (String) Rule creation timestamp
+- `id` (String) Rule ID
 
 
 <a id="nestedblock--gradual_rollout"></a>
@@ -105,7 +114,7 @@ Required:
 - `rollout_type` (String) Rollout strategy: "linear" or "linear-normalized"
 - `time_scale_interval` (Number) Base time interval in seconds used to compute delay between deployments
 
-Optional:
+Read-Only:
 
 - `created_at` (String) Rule creation timestamp
 - `id` (String) Rule ID
@@ -116,10 +125,13 @@ Optional:
 
 Optional:
 
-- `created_at` (String) Rule creation timestamp
 - `id` (String) Rule ID
 - `metric` (Block List) Verification metrics (see [below for nested schema](#nestedblock--verification--metric))
 - `trigger_on` (String) When to trigger verification (e.g., "jobSuccess")
+
+Read-Only:
+
+- `created_at` (String) Rule creation timestamp
 
 <a id="nestedblock--verification--metric"></a>
 ### Nested Schema for `verification.metric`
@@ -191,8 +203,11 @@ Required:
 
 Optional:
 
-- `created_at` (String) Rule creation timestamp
 - `id` (String) Rule ID
+
+Read-Only:
+
+- `created_at` (String) Rule creation timestamp
 
 
 <a id="nestedblock--version_selector"></a>
@@ -204,6 +219,9 @@ Required:
 
 Optional:
 
-- `created_at` (String) Rule creation timestamp
 - `description` (String) Human-readable explanation of the rule, shown when a version is blocked
 - `id` (String) Rule ID
+
+Read-Only:
+
+- `created_at` (String) Rule creation timestamp

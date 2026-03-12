@@ -17,41 +17,15 @@ Manages a relationship rule in Ctrlplane. Relationship rules define how entities
 
 ### Required
 
-- `matcher` (String) A CEL expression used to match entities for the relationship
+- `matcher` (String) A CEL expression that defines the relationship rule
 - `name` (String) The name of the relationship rule
 - `reference` (String) A unique reference identifier for the relationship rule
-- `relationship_type` (String) The type of relationship (e.g., "depends_on", "associated_with")
 
 ### Optional
 
 - `description` (String) A description of the relationship rule
-- `from` (Block, Optional) The source side of the relationship (see [below for nested schema](#nestedblock--from))
 - `metadata` (Map of String) Metadata key-value pairs for the relationship rule
-- `to` (Block, Optional) The target side of the relationship (see [below for nested schema](#nestedblock--to))
 
 ### Read-Only
 
 - `id` (String) The unique identifier of the relationship rule
-
-<a id="nestedblock--from"></a>
-### Nested Schema for `from`
-
-Required:
-
-- `type` (String) The entity type (one of: deployment, environment, resource)
-
-Optional:
-
-- `selector` (String) A CEL expression to filter entities
-
-
-<a id="nestedblock--to"></a>
-### Nested Schema for `to`
-
-Required:
-
-- `type` (String) The entity type (one of: deployment, environment, resource)
-
-Optional:
-
-- `selector` (String) A CEL expression to filter entities
