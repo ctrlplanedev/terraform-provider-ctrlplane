@@ -48,6 +48,21 @@ const (
 	Datadog DatadogMetricProviderType = "datadog"
 )
 
+// Defines values for DeploymentPlanStatus.
+const (
+	DeploymentPlanStatusCompleted DeploymentPlanStatus = "completed"
+	DeploymentPlanStatusComputing DeploymentPlanStatus = "computing"
+	DeploymentPlanStatusFailed    DeploymentPlanStatus = "failed"
+)
+
+// Defines values for DeploymentPlanTargetStatus.
+const (
+	DeploymentPlanTargetStatusCompleted   DeploymentPlanTargetStatus = "completed"
+	DeploymentPlanTargetStatusComputing   DeploymentPlanTargetStatus = "computing"
+	DeploymentPlanTargetStatusErrored     DeploymentPlanTargetStatus = "errored"
+	DeploymentPlanTargetStatusUnsupported DeploymentPlanTargetStatus = "unsupported"
+)
+
 // Defines values for DeploymentVersionStatus.
 const (
 	DeploymentVersionStatusBuilding    DeploymentVersionStatus = "building"
@@ -175,9 +190,11 @@ type ApprovalStatus string
 // BooleanValue defines model for BooleanValue.
 type BooleanValue = bool
 
-// CelSelector defines model for CelSelector.
-type CelSelector struct {
-	Cel string `json:"cel"`
+// CreateDeploymentPlanRequest defines model for CreateDeploymentPlanRequest.
+type CreateDeploymentPlanRequest struct {
+	// Metadata Arbitrary key-value metadata for the plan (e.g. GitHub PR links, CI run URLs)
+	Metadata *map[string]string    `json:"metadata,omitempty"`
+	Version  DeploymentPlanVersion `json:"version"`
 }
 
 // CreateDeploymentRequest defines model for CreateDeploymentRequest.
@@ -357,6 +374,60 @@ type DeploymentJobAgent struct {
 	Selector string `json:"selector"`
 }
 
+// DeploymentPlan defines model for DeploymentPlan.
+type DeploymentPlan struct {
+	Id      string                 `json:"id"`
+	Status  DeploymentPlanStatus   `json:"status"`
+	Summary *DeploymentPlanSummary `json:"summary,omitempty"`
+	Targets []DeploymentPlanTarget `json:"targets"`
+}
+
+// DeploymentPlanStatus defines model for DeploymentPlan.Status.
+type DeploymentPlanStatus string
+
+// DeploymentPlanSummary defines model for DeploymentPlanSummary.
+type DeploymentPlanSummary struct {
+	Changed     int  `json:"changed"`
+	Errored     int  `json:"errored"`
+	Total       int  `json:"total"`
+	Unchanged   int  `json:"unchanged"`
+	Unsupported *int `json:"unsupported,omitempty"`
+}
+
+// DeploymentPlanTarget defines model for DeploymentPlanTarget.
+type DeploymentPlanTarget struct {
+	// ContentHash Hash of the rendered output for change detection
+	ContentHash *string `json:"contentHash,omitempty"`
+
+	// Current Full rendered output of the currently deployed state
+	Current         *string `json:"current,omitempty"`
+	EnvironmentId   string  `json:"environmentId"`
+	EnvironmentName string  `json:"environmentName"`
+	HasChanges      *bool   `json:"hasChanges"`
+
+	// Proposed Full rendered output of the proposed version
+	Proposed     *string                    `json:"proposed,omitempty"`
+	ResourceId   string                     `json:"resourceId"`
+	ResourceName string                     `json:"resourceName"`
+	Status       DeploymentPlanTargetStatus `json:"status"`
+}
+
+// DeploymentPlanTargetStatus defines model for DeploymentPlanTarget.Status.
+type DeploymentPlanTargetStatus string
+
+// DeploymentPlanVersion defines model for DeploymentPlanVersion.
+type DeploymentPlanVersion struct {
+	Config         *map[string]interface{} `json:"config,omitempty"`
+	JobAgentConfig *map[string]interface{} `json:"jobAgentConfig,omitempty"`
+	Metadata       *map[string]string      `json:"metadata,omitempty"`
+
+	// Name Display name for the proposed version (defaults to tag if omitted)
+	Name *string `json:"name,omitempty"`
+
+	// Tag Version tag for the proposed deployment (e.g. pr-123-abc123)
+	Tag string `json:"tag"`
+}
+
 // DeploymentRequestAccepted defines model for DeploymentRequestAccepted.
 type DeploymentRequestAccepted struct {
 	Id      string `json:"id"`
@@ -469,7 +540,8 @@ type Environment struct {
 
 // EnvironmentProgressionRule defines model for EnvironmentProgressionRule.
 type EnvironmentProgressionRule struct {
-	DependsOnEnvironmentSelector Selector `json:"dependsOnEnvironmentSelector"`
+	// DependsOnEnvironmentSelector CEL expression to match the environment(s) that must have a successful release before this environment can proceed.
+	DependsOnEnvironmentSelector string `json:"dependsOnEnvironmentSelector"`
 
 	// MaximumAgeHours Maximum age of dependency deployment before blocking progression (prevents stale promotions)
 	MaximumAgeHours *int32 `json:"maximumAgeHours,omitempty"`
@@ -608,11 +680,6 @@ type JobWithRelease struct {
 	Job         Job          `json:"job"`
 	Release     Release      `json:"release"`
 	Resource    *Resource    `json:"resource,omitempty"`
-}
-
-// JsonSelector defines model for JsonSelector.
-type JsonSelector struct {
-	Json map[string]interface{} `json:"json"`
 }
 
 // LiteralValue defines model for LiteralValue.
@@ -874,11 +941,6 @@ type RetryRule struct {
 
 // RetryRuleBackoffStrategy Backoff strategy: "linear" uses constant backoffSeconds delay, "exponential" doubles the delay with each retry (backoffSeconds * 2^(attempt-1)).
 type RetryRuleBackoffStrategy string
-
-// Selector defines model for Selector.
-type Selector struct {
-	union json.RawMessage
-}
 
 // SensitiveValue defines model for SensitiveValue.
 type SensitiveValue struct {
@@ -1155,8 +1217,10 @@ type VersionCooldownRule struct {
 // VersionSelectorRule defines model for VersionSelectorRule.
 type VersionSelectorRule struct {
 	// Description Human-readable description of what this version selector does. Example: "Only deploy v2.x versions to staging environments"
-	Description *string  `json:"description,omitempty"`
-	Selector    Selector `json:"selector"`
+	Description *string `json:"description,omitempty"`
+
+	// Selector CEL expression to select which versions are eligible for deployment.
+	Selector string `json:"selector"`
 }
 
 // Workflow defines model for Workflow.
@@ -1269,7 +1333,8 @@ type WorkflowRun struct {
 type WorkflowSelectorArrayInput struct {
 	Key      string `json:"key"`
 	Selector struct {
-		Default    *Selector                                    `json:"default,omitempty"`
+		// Default CEL expression for the default selector.
+		Default    *string                                      `json:"default,omitempty"`
 		EntityType WorkflowSelectorArrayInputSelectorEntityType `json:"entityType"`
 	} `json:"selector"`
 	Type WorkflowSelectorArrayInputType `json:"type"`
@@ -1509,6 +1574,9 @@ type RequestDeploymentCreationJSONRequestBody = CreateDeploymentRequest
 
 // RequestDeploymentUpsertJSONRequestBody defines body for RequestDeploymentUpsert for application/json ContentType.
 type RequestDeploymentUpsertJSONRequestBody = UpsertDeploymentRequest
+
+// CreateDeploymentPlanJSONRequestBody defines body for CreateDeploymentPlan for application/json ContentType.
+type CreateDeploymentPlanJSONRequestBody = CreateDeploymentPlanRequest
 
 // CreateDeploymentVersionJSONRequestBody defines body for CreateDeploymentVersion for application/json ContentType.
 type CreateDeploymentVersionJSONRequestBody = CreateDeploymentVersionRequest
@@ -1908,68 +1976,6 @@ func (t MetricProvider) MarshalJSON() ([]byte, error) {
 }
 
 func (t *MetricProvider) UnmarshalJSON(b []byte) error {
-	err := t.union.UnmarshalJSON(b)
-	return err
-}
-
-// AsJsonSelector returns the union data inside the Selector as a JsonSelector
-func (t Selector) AsJsonSelector() (JsonSelector, error) {
-	var body JsonSelector
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromJsonSelector overwrites any union data inside the Selector as the provided JsonSelector
-func (t *Selector) FromJsonSelector(v JsonSelector) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeJsonSelector performs a merge with any union data inside the Selector, using the provided JsonSelector
-func (t *Selector) MergeJsonSelector(v JsonSelector) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsCelSelector returns the union data inside the Selector as a CelSelector
-func (t Selector) AsCelSelector() (CelSelector, error) {
-	var body CelSelector
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromCelSelector overwrites any union data inside the Selector as the provided CelSelector
-func (t *Selector) FromCelSelector(v CelSelector) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeCelSelector performs a merge with any union data inside the Selector, using the provided CelSelector
-func (t *Selector) MergeCelSelector(v CelSelector) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-func (t Selector) MarshalJSON() ([]byte, error) {
-	b, err := t.union.MarshalJSON()
-	return b, err
-}
-
-func (t *Selector) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -2466,6 +2472,14 @@ type ClientInterface interface {
 	RequestDeploymentUpsertWithBody(ctx context.Context, workspaceId string, deploymentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	RequestDeploymentUpsert(ctx context.Context, workspaceId string, deploymentId string, body RequestDeploymentUpsertJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateDeploymentPlanWithBody request with any body
+	CreateDeploymentPlanWithBody(ctx context.Context, workspaceId string, deploymentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateDeploymentPlan(ctx context.Context, workspaceId string, deploymentId string, body CreateDeploymentPlanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetDeploymentPlan request
+	GetDeploymentPlan(ctx context.Context, workspaceId string, deploymentId string, planId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListDeploymentVariablesByDeployment request
 	ListDeploymentVariablesByDeployment(ctx context.Context, workspaceId string, deploymentId string, params *ListDeploymentVariablesByDeploymentParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2979,6 +2993,42 @@ func (c *Client) RequestDeploymentUpsertWithBody(ctx context.Context, workspaceI
 
 func (c *Client) RequestDeploymentUpsert(ctx context.Context, workspaceId string, deploymentId string, body RequestDeploymentUpsertJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRequestDeploymentUpsertRequest(c.Server, workspaceId, deploymentId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateDeploymentPlanWithBody(ctx context.Context, workspaceId string, deploymentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateDeploymentPlanRequestWithBody(c.Server, workspaceId, deploymentId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateDeploymentPlan(ctx context.Context, workspaceId string, deploymentId string, body CreateDeploymentPlanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateDeploymentPlanRequest(c.Server, workspaceId, deploymentId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetDeploymentPlan(ctx context.Context, workspaceId string, deploymentId string, planId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetDeploymentPlanRequest(c.Server, workspaceId, deploymentId, planId)
 	if err != nil {
 		return nil, err
 	}
@@ -4742,6 +4792,108 @@ func NewRequestDeploymentUpsertRequestWithBody(server string, workspaceId string
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateDeploymentPlanRequest calls the generic CreateDeploymentPlan builder with application/json body
+func NewCreateDeploymentPlanRequest(server string, workspaceId string, deploymentId string, body CreateDeploymentPlanJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateDeploymentPlanRequestWithBody(server, workspaceId, deploymentId, "application/json", bodyReader)
+}
+
+// NewCreateDeploymentPlanRequestWithBody generates requests for CreateDeploymentPlan with any type of body
+func NewCreateDeploymentPlanRequestWithBody(server string, workspaceId string, deploymentId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "workspaceId", runtime.ParamLocationPath, workspaceId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "deploymentId", runtime.ParamLocationPath, deploymentId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/deployments/%s/plan", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetDeploymentPlanRequest generates requests for GetDeploymentPlan
+func NewGetDeploymentPlanRequest(server string, workspaceId string, deploymentId string, planId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "workspaceId", runtime.ParamLocationPath, workspaceId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "deploymentId", runtime.ParamLocationPath, deploymentId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "planId", runtime.ParamLocationPath, planId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/deployments/%s/plan/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -8166,6 +8318,14 @@ type ClientWithResponsesInterface interface {
 
 	RequestDeploymentUpsertWithResponse(ctx context.Context, workspaceId string, deploymentId string, body RequestDeploymentUpsertJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestDeploymentUpsertResponse, error)
 
+	// CreateDeploymentPlanWithBodyWithResponse request with any body
+	CreateDeploymentPlanWithBodyWithResponse(ctx context.Context, workspaceId string, deploymentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateDeploymentPlanResponse, error)
+
+	CreateDeploymentPlanWithResponse(ctx context.Context, workspaceId string, deploymentId string, body CreateDeploymentPlanJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateDeploymentPlanResponse, error)
+
+	// GetDeploymentPlanWithResponse request
+	GetDeploymentPlanWithResponse(ctx context.Context, workspaceId string, deploymentId string, planId string, reqEditors ...RequestEditorFn) (*GetDeploymentPlanResponse, error)
+
 	// ListDeploymentVariablesByDeploymentWithResponse request
 	ListDeploymentVariablesByDeploymentWithResponse(ctx context.Context, workspaceId string, deploymentId string, params *ListDeploymentVariablesByDeploymentParams, reqEditors ...RequestEditorFn) (*ListDeploymentVariablesByDeploymentResponse, error)
 
@@ -8826,6 +8986,55 @@ func (r RequestDeploymentUpsertResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r RequestDeploymentUpsertResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type CreateDeploymentPlanResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DeploymentPlan
+	JSON202      *DeploymentPlan
+	JSON400      *ErrorResponse
+	JSON404      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateDeploymentPlanResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateDeploymentPlanResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetDeploymentPlanResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DeploymentPlan
+	JSON400      *ErrorResponse
+	JSON404      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetDeploymentPlanResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetDeploymentPlanResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -10659,6 +10868,32 @@ func (c *ClientWithResponses) RequestDeploymentUpsertWithResponse(ctx context.Co
 	return ParseRequestDeploymentUpsertResponse(rsp)
 }
 
+// CreateDeploymentPlanWithBodyWithResponse request with arbitrary body returning *CreateDeploymentPlanResponse
+func (c *ClientWithResponses) CreateDeploymentPlanWithBodyWithResponse(ctx context.Context, workspaceId string, deploymentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateDeploymentPlanResponse, error) {
+	rsp, err := c.CreateDeploymentPlanWithBody(ctx, workspaceId, deploymentId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateDeploymentPlanResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateDeploymentPlanWithResponse(ctx context.Context, workspaceId string, deploymentId string, body CreateDeploymentPlanJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateDeploymentPlanResponse, error) {
+	rsp, err := c.CreateDeploymentPlan(ctx, workspaceId, deploymentId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateDeploymentPlanResponse(rsp)
+}
+
+// GetDeploymentPlanWithResponse request returning *GetDeploymentPlanResponse
+func (c *ClientWithResponses) GetDeploymentPlanWithResponse(ctx context.Context, workspaceId string, deploymentId string, planId string, reqEditors ...RequestEditorFn) (*GetDeploymentPlanResponse, error) {
+	rsp, err := c.GetDeploymentPlan(ctx, workspaceId, deploymentId, planId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetDeploymentPlanResponse(rsp)
+}
+
 // ListDeploymentVariablesByDeploymentWithResponse request returning *ListDeploymentVariablesByDeploymentResponse
 func (c *ClientWithResponses) ListDeploymentVariablesByDeploymentWithResponse(ctx context.Context, workspaceId string, deploymentId string, params *ListDeploymentVariablesByDeploymentParams, reqEditors ...RequestEditorFn) (*ListDeploymentVariablesByDeploymentResponse, error) {
 	rsp, err := c.ListDeploymentVariablesByDeployment(ctx, workspaceId, deploymentId, params, reqEditors...)
@@ -12092,6 +12327,93 @@ func ParseRequestDeploymentUpsertResponse(rsp *http.Response) (*RequestDeploymen
 			return nil, err
 		}
 		response.JSON202 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateDeploymentPlanResponse parses an HTTP response from a CreateDeploymentPlanWithResponse call
+func ParseCreateDeploymentPlanResponse(rsp *http.Response) (*CreateDeploymentPlanResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateDeploymentPlanResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DeploymentPlan
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest DeploymentPlan
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetDeploymentPlanResponse parses an HTTP response from a GetDeploymentPlanWithResponse call
+func ParseGetDeploymentPlanResponse(rsp *http.Response) (*GetDeploymentPlanResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetDeploymentPlanResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DeploymentPlan
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 

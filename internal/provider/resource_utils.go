@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ctrlplanedev/terraform-provider-ctrlplane/internal/api"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -79,33 +78,3 @@ func normalizeCEL(value types.String) string {
 	return strings.Join(strings.Fields(value.ValueString()), " ")
 }
 
-func selectorPointerFromString(value types.String) (*api.Selector, error) {
-	raw := normalizeCEL(value)
-	if raw == "" {
-		return nil, nil
-	}
-
-	var selector api.Selector
-	if err := selector.FromCelSelector(api.CelSelector{Cel: raw}); err != nil {
-		return nil, err
-	}
-
-	return &selector, nil
-}
-
-func selectorStringValue(selector *api.Selector) (types.String, error) {
-	if selector == nil {
-		return types.StringNull(), nil
-	}
-
-	parsed, err := selector.AsCelSelector()
-	if err != nil {
-		return types.StringNull(), err
-	}
-
-	if parsed.Cel == "" {
-		return types.StringNull(), nil
-	}
-
-	return types.StringValue(parsed.Cel), nil
-}
