@@ -160,6 +160,14 @@ func (r *JobAgentResource) Schema(ctx context.Context, req resource.SchemaReques
 							Description: "Terraform Cloud API token",
 							Sensitive:   true,
 						},
+						"webhook_url": schema.StringAttribute{
+							Required:    true,
+							Description: "The ctrlplane API endpoint for TFC webhook notifications (e.g. https://ctrlplane.example.com/api/tfe/webhook)",
+						},
+						"trigger_run_on_change": schema.BoolAttribute{
+							Optional:    true,
+							Description: "Whether to create a TFC run on dispatch. When false, only the workspace and variables are synced. Defaults to true.",
+						},
 					},
 				},
 			},
@@ -441,10 +449,12 @@ type JobAgentGitHubModel struct {
 }
 
 type JobAgentTFCModel struct {
-	Address      types.String `tfsdk:"address"`
-	Organization types.String `tfsdk:"organization"`
-	Template     types.String `tfsdk:"template"`
-	Token        types.String `tfsdk:"token"`
+	Address            types.String `tfsdk:"address"`
+	Organization       types.String `tfsdk:"organization"`
+	Template           types.String `tfsdk:"template"`
+	Token              types.String `tfsdk:"token"`
+	WebhookUrl         types.String `tfsdk:"webhook_url"`
+	TriggerRunOnChange types.Bool   `tfsdk:"trigger_run_on_change"`
 }
 
 type JobAgentTestRunnerModel struct {
@@ -509,6 +519,10 @@ func jobAgentConfigFromModel(data JobAgentResourceModel) (string, *map[string]in
 			"organization": tfc.Organization.ValueString(),
 			"template":     tfc.Template.ValueString(),
 			"token":        tfc.Token.ValueString(),
+			"webhookUrl":   tfc.WebhookUrl.ValueString(),
+		}
+		if !tfc.TriggerRunOnChange.IsNull() && !tfc.TriggerRunOnChange.IsUnknown() {
+			cfg["triggerRunOnChange"] = tfc.TriggerRunOnChange.ValueBool()
 		}
 		return "tfe", &cfg, nil
 	case len(data.TestRunner) > 0:
@@ -553,14 +567,18 @@ func setJobAgentBlocksFromAPI(data *JobAgentResourceModel, jobType string, confi
 		}
 		data.GitHub = []JobAgentGitHubModel{github}
 	case "tfe":
-		data.TerraformCloud = []JobAgentTFCModel{
-			{
-				Address:      types.StringValue(fmt.Sprint(config["address"])),
-				Organization: types.StringValue(fmt.Sprint(config["organization"])),
-				Template:     types.StringValue(fmt.Sprint(config["template"])),
-				Token:        types.StringValue(fmt.Sprint(config["token"])),
-			},
+		tfc := JobAgentTFCModel{
+			Address:            types.StringValue(fmt.Sprint(config["address"])),
+			Organization:       types.StringValue(fmt.Sprint(config["organization"])),
+			Template:           types.StringValue(fmt.Sprint(config["template"])),
+			Token:              types.StringValue(fmt.Sprint(config["token"])),
+			WebhookUrl:         types.StringValue(fmt.Sprint(config["webhookUrl"])),
+			TriggerRunOnChange: types.BoolNull(),
 		}
+		if v, ok := config["triggerRunOnChange"].(bool); ok {
+			tfc.TriggerRunOnChange = types.BoolValue(v)
+		}
+		data.TerraformCloud = []JobAgentTFCModel{tfc}
 	case "test-runner":
 		testRunner := JobAgentTestRunnerModel{
 			DelaySeconds: types.Int64Null(),
