@@ -949,17 +949,13 @@ func policyRulesFromModel(data PolicyResourceModel) ([]policyRequestRule, diag.D
 
 	for _, vs := range data.VersionSelector {
 		id := selectorIDValue(vs.ID)
-		selectorPtr, err := selectorPointerFromString(vs.Selector)
-		if err != nil {
-			diags.AddError("Invalid version selector", err.Error())
-			continue
-		}
-		if selectorPtr == nil {
+		cel := normalizeCEL(vs.Selector)
+		if cel == "" {
 			diags.AddError("Invalid version selector", "selector must be set")
 			continue
 		}
 		rule := api.VersionSelectorRule{
-			Selector: *selectorPtr,
+			Selector: cel,
 		}
 		if selectorValueSet(vs.Description) {
 			desc := vs.Description.ValueString()
@@ -1057,17 +1053,13 @@ func policyRulesFromModel(data PolicyResourceModel) ([]policyRequestRule, diag.D
 
 	for _, progression := range data.EnvironmentProgression {
 		id := selectorIDValue(progression.ID)
-		selectorPtr, err := selectorPointerFromString(progression.DependsOnEnvironmentSelector)
-		if err != nil {
-			diags.AddError("Invalid environment progression selector", err.Error())
-			continue
-		}
-		if selectorPtr == nil {
+		cel := normalizeCEL(progression.DependsOnEnvironmentSelector)
+		if cel == "" {
 			diags.AddError("Invalid environment progression selector", "depends_on_environment_selector must be set")
 			continue
 		}
 		rule := api.EnvironmentProgressionRule{
-			DependsOnEnvironmentSelector: *selectorPtr,
+			DependsOnEnvironmentSelector: cel,
 		}
 		if float64ValueSet(progression.MinimumSuccessPercentage) {
 			val := float32(progression.MinimumSuccessPercentage.ValueFloat64())
@@ -1257,15 +1249,10 @@ func policyRulesToModel(rules []api.PolicyRule) (policyRulesModel, diag.Diagnost
 
 	for _, rule := range rules {
 		if rule.VersionSelector != nil {
-			selectorStr, err := selectorStringValue(&rule.VersionSelector.Selector)
-			if err != nil {
-				diags.AddError("Invalid version selector", err.Error())
-				continue
-			}
 			model := PolicyVersionSelector{
 				CreatedAt:   types.StringValue(rule.CreatedAt),
 				ID:          types.StringValue(rule.Id),
-				Selector:    selectorStr,
+				Selector:    types.StringValue(rule.VersionSelector.Selector),
 				Description: types.StringNull(),
 			}
 			if rule.VersionSelector.Description != nil {
@@ -1328,16 +1315,10 @@ func policyRulesToModel(rules []api.PolicyRule) (policyRulesModel, diag.Diagnost
 			})
 		}
 		if rule.EnvironmentProgression != nil {
-			selector := &rule.EnvironmentProgression.DependsOnEnvironmentSelector
-			selectorStr, err := selectorStringValue(selector)
-			if err != nil {
-				diags.AddError("Invalid environment progression selector", err.Error())
-				continue
-			}
 			model := PolicyEnvironmentProgression{
 				CreatedAt:                    types.StringValue(rule.CreatedAt),
 				ID:                           types.StringValue(rule.Id),
-				DependsOnEnvironmentSelector: selectorStr,
+				DependsOnEnvironmentSelector: types.StringValue(rule.EnvironmentProgression.DependsOnEnvironmentSelector),
 				MinimumSuccessPercentage:     types.Float64Null(),
 				MinimumSockTimeMinutes:       types.Int64Null(),
 				MaximumAgeHours:              types.Int64Null(),

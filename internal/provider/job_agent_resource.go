@@ -120,25 +120,25 @@ func (r *JobAgentResource) Schema(ctx context.Context, req resource.SchemaReques
 					},
 				},
 			},
-		"github": schema.ListNestedBlock{
-			Description: "GitHub job agent configuration",
-			NestedObject: schema.NestedBlockObject{
-				Attributes: map[string]schema.Attribute{
-					"installation_id": schema.Int64Attribute{
-						Required:    true,
-						Description: "GitHub app installation ID",
-					},
-					"owner": schema.StringAttribute{
-						Required:    true,
-						Description: "GitHub repository owner",
-					},
-					"repo": schema.StringAttribute{
-						Required:    true,
-						Description: "GitHub repository name",
+			"github": schema.ListNestedBlock{
+				Description: "GitHub job agent configuration",
+				NestedObject: schema.NestedBlockObject{
+					Attributes: map[string]schema.Attribute{
+						"installation_id": schema.Int64Attribute{
+							Required:    true,
+							Description: "GitHub app installation ID",
+						},
+						"owner": schema.StringAttribute{
+							Required:    true,
+							Description: "GitHub repository owner",
+						},
+						"repo": schema.StringAttribute{
+							Required:    true,
+							Description: "GitHub repository name",
+						},
 					},
 				},
 			},
-		},
 			"terraform_cloud": schema.ListNestedBlock{
 				Description: "Terraform Cloud job agent configuration",
 				NestedObject: schema.NestedBlockObject{
