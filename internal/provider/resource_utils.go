@@ -77,4 +77,3 @@ func normalizeCEL(value types.String) string {
 	}
 	return strings.Join(strings.Fields(value.ValueString()), " ")
 }
-
