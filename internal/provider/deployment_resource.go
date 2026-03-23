@@ -166,6 +166,10 @@ func (r *DeploymentResource) Schema(ctx context.Context, req resource.SchemaRequ
 									Description: "Terraform Cloud API token",
 									Sensitive:   true,
 								},
+								"trigger_run_on_change": schema.BoolAttribute{
+									Optional:    true,
+									Description: "Whether to create a TFC run on dispatch. When false, only the workspace and variables are synced. Defaults to true.",
+								},
 							},
 						},
 						"test_runner": schema.SingleNestedBlock{
@@ -344,7 +348,11 @@ func (r *DeploymentResource) Read(ctx context.Context, req resource.ReadRequest,
 	}
 
 	if dep.JobAgents != nil && len(*dep.JobAgents) > 0 {
-		agentModels := deploymentJobAgentModelsFromAPI(*dep.JobAgents)
+		agentModels, err := r.deploymentJobAgentModelsFromAPI(ctx, *dep.JobAgents)
+		if err != nil {
+			resp.Diagnostics.AddError("Failed to read deployment", err.Error())
+			return
+		}
 		agentList, diags := types.ListValueFrom(ctx, deploymentJobAgentObjectType, agentModels)
 		resp.Diagnostics.Append(diags...)
 		if resp.Diagnostics.HasError() {
@@ -352,6 +360,7 @@ func (r *DeploymentResource) Read(ctx context.Context, req resource.ReadRequest,
 		}
 		data.JobAgent = agentList
 	} else if dep.JobAgentId != nil {
+		agentType := r.lookupJobAgentType(ctx, *dep.JobAgentId)
 		jobAgent := DeploymentJobAgentModel{
 			Id:             types.StringValue(*dep.JobAgentId),
 			Priority:       types.Int64Null(),
@@ -362,7 +371,7 @@ func (r *DeploymentResource) Read(ctx context.Context, req resource.ReadRequest,
 			TestRunner:     nil,
 		}
 		if len(dep.JobAgentConfig) > 0 {
-			setDeploymentJobAgentBlocksFromConfig(&jobAgent, dep.JobAgentConfig)
+			setDeploymentJobAgentBlocksFromConfig(&jobAgent, dep.JobAgentConfig, agentType)
 		}
 		agentList, diags := types.ListValueFrom(ctx, deploymentJobAgentObjectType, []DeploymentJobAgentModel{jobAgent})
 		resp.Diagnostics.Append(diags...)
@@ -479,10 +488,11 @@ var deploymentJobAgentGitHubAttrTypes = map[string]attr.Type{
 }
 
 var deploymentJobAgentTFCAttrTypes = map[string]attr.Type{
-	"address":      types.StringType,
-	"organization": types.StringType,
-	"template":     types.StringType,
-	"token":        types.StringType,
+	"address":               types.StringType,
+	"organization":          types.StringType,
+	"template":              types.StringType,
+	"token":                 types.StringType,
+	"trigger_run_on_change": types.BoolType,
 }
 
 var deploymentJobAgentTestRunnerAttrTypes = map[string]attr.Type{
@@ -528,10 +538,11 @@ type DeploymentJobAgentGitHubModel struct {
 }
 
 type DeploymentJobAgentTFCModel struct {
-	Address      types.String `tfsdk:"address"`
-	Organization types.String `tfsdk:"organization"`
-	Template     types.String `tfsdk:"template"`
-	Token        types.String `tfsdk:"token"`
+	Address            types.String `tfsdk:"address"`
+	Organization       types.String `tfsdk:"organization"`
+	Template           types.String `tfsdk:"template"`
+	Token              types.String `tfsdk:"token"`
+	TriggerRunOnChange types.Bool   `tfsdk:"trigger_run_on_change"`
 }
 
 type DeploymentJobAgentTestRunnerModel struct {
@@ -565,9 +576,9 @@ func deploymentJobAgentsFromModel(agents []DeploymentJobAgentModel) *[]api.Deplo
 	return &result
 }
 
-func deploymentJobAgentModelsFromAPI(agents []api.DeploymentJobAgent) []DeploymentJobAgentModel {
+func (r *DeploymentResource) deploymentJobAgentModelsFromAPI(ctx context.Context, agents []api.DeploymentJobAgent) ([]DeploymentJobAgentModel, error) {
 	if len(agents) == 0 {
-		return nil
+		return nil, nil
 	}
 	result := make([]DeploymentJobAgentModel, 0, len(agents))
 	for _, agent := range agents {
@@ -584,11 +595,35 @@ func deploymentJobAgentModelsFromAPI(agents []api.DeploymentJobAgent) []Deployme
 			model.Selector = types.StringValue(agent.Selector)
 		}
 		if len(agent.Config) > 0 {
-			setDeploymentJobAgentBlocksFromConfig(&model, agent.Config)
+			agentType := r.lookupJobAgentType(ctx, agent.Ref)
+			setDeploymentJobAgentBlocksFromConfig(&model, agent.Config, agentType)
 		}
 		result = append(result, model)
 	}
-	return result
+	return result, nil
+}
+
+func (r *DeploymentResource) lookupJobAgentType(ctx context.Context, jobAgentID string) string {
+	resp, err := r.workspace.Client.GetJobAgentWithResponse(ctx, r.workspace.ID.String(), jobAgentID)
+	if err != nil || resp.StatusCode() != http.StatusOK || resp.JSON200 == nil {
+		return ""
+	}
+	return normalizeJobAgentType(resp.JSON200.Type)
+}
+
+func normalizeJobAgentType(apiType string) string {
+	switch apiType {
+	case "argo-cd":
+		return "argocd"
+	case "github-app":
+		return "github"
+	case "tfe":
+		return "terraform_cloud"
+	case "test-runner":
+		return "test_runner"
+	default:
+		return apiType
+	}
 }
 
 func countDeploymentJobAgentBlocks(ja DeploymentJobAgentModel) int {
@@ -660,6 +695,9 @@ func deploymentJobAgentConfigFromModel(ja DeploymentJobAgentModel) *map[string]i
 		if !ja.TerraformCloud.Token.IsNull() && !ja.TerraformCloud.Token.IsUnknown() && ja.TerraformCloud.Token.ValueString() != "" {
 			cfg["token"] = ja.TerraformCloud.Token.ValueString()
 		}
+		if !ja.TerraformCloud.TriggerRunOnChange.IsNull() && !ja.TerraformCloud.TriggerRunOnChange.IsUnknown() {
+			cfg["triggerRunOnChange"] = ja.TerraformCloud.TriggerRunOnChange.ValueBool()
+		}
 		if len(cfg) == 0 {
 			return nil
 		}
@@ -684,7 +722,7 @@ func deploymentJobAgentConfigFromModel(ja DeploymentJobAgentModel) *map[string]i
 	}
 }
 
-func setDeploymentJobAgentBlocksFromConfig(ja *DeploymentJobAgentModel, config map[string]interface{}) {
+func setDeploymentJobAgentBlocksFromConfig(ja *DeploymentJobAgentModel, config map[string]interface{}, agentType string) {
 	ja.ArgoCD = nil
 	ja.GitHub = nil
 	ja.TerraformCloud = nil
@@ -694,7 +732,14 @@ func setDeploymentJobAgentBlocksFromConfig(ja *DeploymentJobAgentModel, config m
 		return
 	}
 
-	if configHasAny(config, "installationId", "workflowId", "owner", "repo") {
+	switch agentType {
+	case "argocd":
+		ja.ArgoCD = &DeploymentJobAgentArgoCDModel{
+			ApiKey:    stringValueOrNull(config["apiKey"]),
+			ServerUrl: stringValueOrNull(config["serverUrl"]),
+			Template:  stringValueOrNull(config["template"]),
+		}
+	case "github":
 		github := DeploymentJobAgentGitHubModel{
 			InstallationId: types.Int64Null(),
 			Owner:          types.StringNull(),
@@ -718,29 +763,15 @@ func setDeploymentJobAgentBlocksFromConfig(ja *DeploymentJobAgentModel, config m
 			github.Ref = types.StringValue(fmt.Sprint(v))
 		}
 		ja.GitHub = &github
-		return
-	}
-
-	if configHasAny(config, "apiKey", "serverUrl", "template") {
-		ja.ArgoCD = &DeploymentJobAgentArgoCDModel{
-			ApiKey:    stringValueOrNull(config["apiKey"]),
-			ServerUrl: stringValueOrNull(config["serverUrl"]),
-			Template:  stringValueOrNull(config["template"]),
-		}
-		return
-	}
-
-	if configHasAny(config, "address", "organization", "template", "token") {
+	case "terraform_cloud":
 		ja.TerraformCloud = &DeploymentJobAgentTFCModel{
-			Address:      stringValueOrNull(config["address"]),
-			Organization: stringValueOrNull(config["organization"]),
-			Template:     stringValueOrNull(config["template"]),
-			Token:        stringValueOrNull(config["token"]),
+			Address:            stringValueOrNull(config["address"]),
+			Organization:       stringValueOrNull(config["organization"]),
+			Template:           stringValueOrNull(config["template"]),
+			Token:              stringValueOrNull(config["token"]),
+			TriggerRunOnChange: boolValueOrNull(config["triggerRunOnChange"]),
 		}
-		return
-	}
-
-	if configHasAny(config, "delaySeconds", "message", "status") {
+	case "test_runner":
 		testRunner := DeploymentJobAgentTestRunnerModel{
 			DelaySeconds: types.Int64Null(),
 			Message:      types.StringNull(),
@@ -759,24 +790,21 @@ func setDeploymentJobAgentBlocksFromConfig(ja *DeploymentJobAgentModel, config m
 	}
 }
 
-func configHasAny(config map[string]interface{}, keys ...string) bool {
-	for _, key := range keys {
-		if _, ok := config[key]; ok {
-			return true
-		}
-	}
-	return false
-}
-
 func stringValueOrNull(value interface{}) types.String {
 	if value == nil {
 		return types.StringNull()
 	}
-	str := fmt.Sprint(value)
-	if str == "" {
-		return types.StringNull()
+	return types.StringValue(fmt.Sprint(value))
+}
+
+func boolValueOrNull(value interface{}) types.Bool {
+	if value == nil {
+		return types.BoolNull()
 	}
-	return types.StringValue(str)
+	if b, ok := value.(bool); ok {
+		return types.BoolValue(b)
+	}
+	return types.BoolNull()
 }
 
 func stringInterfaceMapPointer(value types.Map) *map[string]interface{} {

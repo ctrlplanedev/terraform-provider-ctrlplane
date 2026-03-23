@@ -156,7 +156,7 @@ func (r *JobAgentResource) Schema(ctx context.Context, req resource.SchemaReques
 							Description: "Terraform Cloud workspace template",
 						},
 						"token": schema.StringAttribute{
-							Required:    true,
+							Optional:    true,
 							Description: "Terraform Cloud API token",
 							Sensitive:   true,
 						},
@@ -568,15 +568,11 @@ func setJobAgentBlocksFromAPI(data *JobAgentResourceModel, jobType string, confi
 		data.GitHub = []JobAgentGitHubModel{github}
 	case "tfe":
 		tfc := JobAgentTFCModel{
-			Address:            types.StringValue(fmt.Sprint(config["address"])),
-			Organization:       types.StringValue(fmt.Sprint(config["organization"])),
-			Template:           types.StringValue(fmt.Sprint(config["template"])),
-			Token:              types.StringValue(fmt.Sprint(config["token"])),
-			WebhookUrl:         types.StringValue(fmt.Sprint(config["webhookUrl"])),
-			TriggerRunOnChange: types.BoolNull(),
-		}
-		if v, ok := config["triggerRunOnChange"].(bool); ok {
-			tfc.TriggerRunOnChange = types.BoolValue(v)
+			Address:            stringValueOrNull(config["address"]),
+			Organization:       stringValueOrNull(config["organization"]),
+			Template:           stringValueOrNull(config["template"]),
+			WebhookUrl:         stringValueOrNull(config["webhookUrl"]),
+			TriggerRunOnChange: boolValueOrNull(config["triggerRunOnChange"]),
 		}
 		data.TerraformCloud = []JobAgentTFCModel{tfc}
 	case "test-runner":
