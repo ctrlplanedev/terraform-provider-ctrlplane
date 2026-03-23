@@ -6,6 +6,7 @@ package provider
 import (
 	"testing"
 
+	"github.com/ctrlplanedev/terraform-provider-ctrlplane/internal/api"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -72,6 +73,72 @@ func TestDeploymentJobAgentBlockType(t *testing.T) {
 				t.Errorf("expected %q, got %q", tt.expected, got)
 			}
 		})
+	}
+}
+
+func TestDeploymentJobAgentModelsFromAPI_PreservesToken(t *testing.T) {
+	// The API never returns sensitive token values. Verify that the token
+	// from prior state is preserved after reading back from the API.
+	apiAgents := []api.DeploymentJobAgent{
+		{
+			Ref:    "agent-1",
+			Config: api.JobAgentConfig{"address": "https://tfe.example.com", "organization": "my-org"},
+		},
+	}
+
+	priorAgents := []DeploymentJobAgentModel{
+		{
+			Id: types.StringValue("agent-1"),
+			TerraformCloud: &DeploymentJobAgentTFCModel{
+				Address:      types.StringValue("https://tfe.example.com"),
+				Organization: types.StringValue("my-org"),
+				Token:        types.StringValue("secret-token"),
+			},
+		},
+	}
+
+	result := deploymentJobAgentModelsFromAPI(apiAgents, priorAgents)
+
+	if len(result) != 1 {
+		t.Fatalf("expected 1 agent, got %d", len(result))
+	}
+	if result[0].TerraformCloud == nil {
+		t.Fatal("expected TerraformCloud block to be set")
+	}
+	if result[0].TerraformCloud.Token.ValueString() != "secret-token" {
+		t.Errorf("expected token to be preserved as 'secret-token', got %q", result[0].TerraformCloud.Token.ValueString())
+	}
+}
+
+func TestDeploymentJobAgentModelsFromAPI_NullTokenStaysNull(t *testing.T) {
+	// When prior state has no token (null), read should also produce null.
+	apiAgents := []api.DeploymentJobAgent{
+		{
+			Ref:    "agent-1",
+			Config: api.JobAgentConfig{"address": "https://tfe.example.com"},
+		},
+	}
+
+	priorAgents := []DeploymentJobAgentModel{
+		{
+			Id: types.StringValue("agent-1"),
+			TerraformCloud: &DeploymentJobAgentTFCModel{
+				Address: types.StringValue("https://tfe.example.com"),
+				Token:   types.StringNull(),
+			},
+		},
+	}
+
+	result := deploymentJobAgentModelsFromAPI(apiAgents, priorAgents)
+
+	if len(result) != 1 {
+		t.Fatalf("expected 1 agent, got %d", len(result))
+	}
+	if result[0].TerraformCloud == nil {
+		t.Fatal("expected TerraformCloud block to be set")
+	}
+	if !result[0].TerraformCloud.Token.IsNull() {
+		t.Errorf("expected token to remain null, got %q", result[0].TerraformCloud.Token.ValueString())
 	}
 }
 
