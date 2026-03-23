@@ -350,7 +350,10 @@ func (r *DeploymentResource) Read(ctx context.Context, req resource.ReadRequest,
 	// Extract prior state agents to preserve block type across read.
 	var priorAgents []DeploymentJobAgentModel
 	if !data.JobAgent.IsNull() && !data.JobAgent.IsUnknown() {
-		data.JobAgent.ElementsAs(ctx, &priorAgents, false)
+		resp.Diagnostics.Append(data.JobAgent.ElementsAs(ctx, &priorAgents, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
 
 	if dep.JobAgents != nil && len(*dep.JobAgents) > 0 {
