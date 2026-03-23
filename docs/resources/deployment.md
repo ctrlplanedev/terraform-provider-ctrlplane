@@ -76,6 +76,7 @@ Optional:
 - `organization` (String) Terraform Cloud organization name
 - `template` (String) Terraform Cloud workspace template
 - `token` (String, Sensitive) Terraform Cloud API token
+- `trigger_run_on_change` (Boolean) Whether to create a TFC run on dispatch. When false, only the workspace and variables are synced. Defaults to true.
 
 
 <a id="nestedblock--job_agent--test_runner"></a>

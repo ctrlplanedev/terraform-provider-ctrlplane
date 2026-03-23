@@ -348,11 +348,7 @@ func (r *DeploymentResource) Read(ctx context.Context, req resource.ReadRequest,
 	}
 
 	if dep.JobAgents != nil && len(*dep.JobAgents) > 0 {
-		agentModels, err := r.deploymentJobAgentModelsFromAPI(ctx, *dep.JobAgents)
-		if err != nil {
-			resp.Diagnostics.AddError("Failed to read deployment", err.Error())
-			return
-		}
+		agentModels := r.deploymentJobAgentModelsFromAPI(ctx, *dep.JobAgents)
 		agentList, diags := types.ListValueFrom(ctx, deploymentJobAgentObjectType, agentModels)
 		resp.Diagnostics.Append(diags...)
 		if resp.Diagnostics.HasError() {
@@ -576,9 +572,9 @@ func deploymentJobAgentsFromModel(agents []DeploymentJobAgentModel) *[]api.Deplo
 	return &result
 }
 
-func (r *DeploymentResource) deploymentJobAgentModelsFromAPI(ctx context.Context, agents []api.DeploymentJobAgent) ([]DeploymentJobAgentModel, error) {
+func (r *DeploymentResource) deploymentJobAgentModelsFromAPI(ctx context.Context, agents []api.DeploymentJobAgent) []DeploymentJobAgentModel {
 	if len(agents) == 0 {
-		return nil, nil
+		return nil
 	}
 	result := make([]DeploymentJobAgentModel, 0, len(agents))
 	for _, agent := range agents {
@@ -600,7 +596,7 @@ func (r *DeploymentResource) deploymentJobAgentModelsFromAPI(ctx context.Context
 		}
 		result = append(result, model)
 	}
-	return result, nil
+	return result
 }
 
 func (r *DeploymentResource) lookupJobAgentType(ctx context.Context, jobAgentID string) string {
