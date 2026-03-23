@@ -335,7 +335,18 @@ func (r *JobAgentResource) Read(ctx context.Context, req resource.ReadRequest, r
 		data.Metadata = stringMapValue(&jobAgent.Metadata)
 	}
 
+	// Preserve sensitive fields that the API doesn't return.
+	var priorToken types.String
+	if len(data.TerraformCloud) > 0 {
+		priorToken = data.TerraformCloud[0].Token
+	}
+
 	setJobAgentBlocksFromAPI(&data, jobAgent.Type, jobAgent.Config)
+
+	// Restore token from prior state since the API never returns it.
+	if len(data.TerraformCloud) > 0 && !priorToken.IsNull() {
+		data.TerraformCloud[0].Token = priorToken
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -518,8 +529,10 @@ func jobAgentConfigFromModel(data JobAgentResourceModel) (string, *map[string]in
 			"address":      tfc.Address.ValueString(),
 			"organization": tfc.Organization.ValueString(),
 			"template":     tfc.Template.ValueString(),
-			"token":        tfc.Token.ValueString(),
 			"webhookUrl":   tfc.WebhookUrl.ValueString(),
+		}
+		if !tfc.Token.IsNull() && !tfc.Token.IsUnknown() && tfc.Token.ValueString() != "" {
+			cfg["token"] = tfc.Token.ValueString()
 		}
 		if !tfc.TriggerRunOnChange.IsNull() && !tfc.TriggerRunOnChange.IsUnknown() {
 			cfg["triggerRunOnChange"] = tfc.TriggerRunOnChange.ValueBool()
@@ -571,6 +584,7 @@ func setJobAgentBlocksFromAPI(data *JobAgentResourceModel, jobType string, confi
 			Address:            stringValueOrNull(config["address"]),
 			Organization:       stringValueOrNull(config["organization"]),
 			Template:           stringValueOrNull(config["template"]),
+			Token:              types.StringNull(),
 			WebhookUrl:         stringValueOrNull(config["webhookUrl"]),
 			TriggerRunOnChange: boolValueOrNull(config["triggerRunOnChange"]),
 		}

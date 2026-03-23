@@ -347,8 +347,14 @@ func (r *DeploymentResource) Read(ctx context.Context, req resource.ReadRequest,
 		data.ResourceSelector = types.StringNull()
 	}
 
+	// Extract prior state agents to preserve block type across read.
+	var priorAgents []DeploymentJobAgentModel
+	if !data.JobAgent.IsNull() && !data.JobAgent.IsUnknown() {
+		data.JobAgent.ElementsAs(ctx, &priorAgents, false)
+	}
+
 	if dep.JobAgents != nil && len(*dep.JobAgents) > 0 {
-		agentModels := r.deploymentJobAgentModelsFromAPI(ctx, *dep.JobAgents)
+		agentModels := deploymentJobAgentModelsFromAPI(*dep.JobAgents, priorAgents)
 		agentList, diags := types.ListValueFrom(ctx, deploymentJobAgentObjectType, agentModels)
 		resp.Diagnostics.Append(diags...)
 		if resp.Diagnostics.HasError() {
@@ -356,7 +362,10 @@ func (r *DeploymentResource) Read(ctx context.Context, req resource.ReadRequest,
 		}
 		data.JobAgent = agentList
 	} else if dep.JobAgentId != nil {
-		agentType := r.lookupJobAgentType(ctx, *dep.JobAgentId)
+		var blockType string
+		if len(priorAgents) > 0 {
+			blockType = deploymentJobAgentBlockType(priorAgents[0])
+		}
 		jobAgent := DeploymentJobAgentModel{
 			Id:             types.StringValue(*dep.JobAgentId),
 			Priority:       types.Int64Null(),
@@ -367,7 +376,7 @@ func (r *DeploymentResource) Read(ctx context.Context, req resource.ReadRequest,
 			TestRunner:     nil,
 		}
 		if len(dep.JobAgentConfig) > 0 {
-			setDeploymentJobAgentBlocksFromConfig(&jobAgent, dep.JobAgentConfig, agentType)
+			setDeploymentJobAgentBlocksFromConfig(&jobAgent, dep.JobAgentConfig, blockType)
 		}
 		agentList, diags := types.ListValueFrom(ctx, deploymentJobAgentObjectType, []DeploymentJobAgentModel{jobAgent})
 		resp.Diagnostics.Append(diags...)
@@ -572,12 +581,12 @@ func deploymentJobAgentsFromModel(agents []DeploymentJobAgentModel) *[]api.Deplo
 	return &result
 }
 
-func (r *DeploymentResource) deploymentJobAgentModelsFromAPI(ctx context.Context, agents []api.DeploymentJobAgent) []DeploymentJobAgentModel {
+func deploymentJobAgentModelsFromAPI(agents []api.DeploymentJobAgent, priorAgents []DeploymentJobAgentModel) []DeploymentJobAgentModel {
 	if len(agents) == 0 {
 		return nil
 	}
 	result := make([]DeploymentJobAgentModel, 0, len(agents))
-	for _, agent := range agents {
+	for i, agent := range agents {
 		model := DeploymentJobAgentModel{
 			Id:             types.StringValue(agent.Ref),
 			Priority:       types.Int64Null(),
@@ -591,34 +600,29 @@ func (r *DeploymentResource) deploymentJobAgentModelsFromAPI(ctx context.Context
 			model.Selector = types.StringValue(agent.Selector)
 		}
 		if len(agent.Config) > 0 {
-			agentType := r.lookupJobAgentType(ctx, agent.Ref)
-			setDeploymentJobAgentBlocksFromConfig(&model, agent.Config, agentType)
+			var blockType string
+			if i < len(priorAgents) {
+				blockType = deploymentJobAgentBlockType(priorAgents[i])
+			}
+			setDeploymentJobAgentBlocksFromConfig(&model, agent.Config, blockType)
 		}
 		result = append(result, model)
 	}
 	return result
 }
 
-func (r *DeploymentResource) lookupJobAgentType(ctx context.Context, jobAgentID string) string {
-	resp, err := r.workspace.Client.GetJobAgentWithResponse(ctx, r.workspace.ID.String(), jobAgentID)
-	if err != nil || resp.StatusCode() != http.StatusOK || resp.JSON200 == nil {
-		return ""
-	}
-	return normalizeJobAgentType(resp.JSON200.Type)
-}
-
-func normalizeJobAgentType(apiType string) string {
-	switch apiType {
-	case "argo-cd":
+func deploymentJobAgentBlockType(ja DeploymentJobAgentModel) string {
+	switch {
+	case ja.ArgoCD != nil:
 		return "argocd"
-	case "github-app":
+	case ja.GitHub != nil:
 		return "github"
-	case "tfe":
+	case ja.TerraformCloud != nil:
 		return "terraform_cloud"
-	case "test-runner":
+	case ja.TestRunner != nil:
 		return "test_runner"
 	default:
-		return apiType
+		return ""
 	}
 }
 
