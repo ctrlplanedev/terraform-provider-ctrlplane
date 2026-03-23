@@ -378,6 +378,11 @@ func (r *DeploymentResource) Read(ctx context.Context, req resource.ReadRequest,
 		if len(dep.JobAgentConfig) > 0 {
 			setDeploymentJobAgentBlocksFromConfig(&jobAgent, dep.JobAgentConfig, blockType)
 		}
+		if len(priorAgents) > 0 && jobAgent.TerraformCloud != nil && priorAgents[0].TerraformCloud != nil {
+			if !priorAgents[0].TerraformCloud.Token.IsNull() {
+				jobAgent.TerraformCloud.Token = priorAgents[0].TerraformCloud.Token
+			}
+		}
 		agentList, diags := types.ListValueFrom(ctx, deploymentJobAgentObjectType, []DeploymentJobAgentModel{jobAgent})
 		resp.Diagnostics.Append(diags...)
 		if resp.Diagnostics.HasError() {
@@ -605,6 +610,12 @@ func deploymentJobAgentModelsFromAPI(agents []api.DeploymentJobAgent, priorAgent
 				blockType = deploymentJobAgentBlockType(priorAgents[i])
 			}
 			setDeploymentJobAgentBlocksFromConfig(&model, agent.Config, blockType)
+		}
+		// Preserve sensitive token from prior state since the API won't return it.
+		if i < len(priorAgents) && model.TerraformCloud != nil && priorAgents[i].TerraformCloud != nil {
+			if !priorAgents[i].TerraformCloud.Token.IsNull() {
+				model.TerraformCloud.Token = priorAgents[i].TerraformCloud.Token
+			}
 		}
 		result = append(result, model)
 	}
