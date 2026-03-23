@@ -69,7 +69,12 @@ Required:
 - `address` (String) Terraform Cloud address (e.g. https://app.terraform.io)
 - `organization` (String) Terraform Cloud organization name
 - `template` (String) Terraform Cloud workspace template
+- `webhook_url` (String) The ctrlplane API endpoint for TFC webhook notifications (e.g. https://ctrlplane.example.com/api/tfe/webhook)
+
+Optional:
+
 - `token` (String, Sensitive) Terraform Cloud API token
+- `trigger_run_on_change` (Boolean) Whether to create a TFC run on dispatch. When false, only the workspace and variables are synced. Defaults to true.
 
 
 <a id="nestedblock--test_runner"></a>
