@@ -732,6 +732,9 @@ func setDeploymentJobAgentBlocksFromConfig(ja *DeploymentJobAgentModel, config m
 		return
 	}
 
+	// agentType is derived from prior state; it will be "" after `terraform import`
+	// (no prior state exists). In that case no block is populated — the next
+	// plan/apply will reconcile from the user's HCL config.
 	switch agentType {
 	case "argocd":
 		ja.ArgoCD = &DeploymentJobAgentArgoCDModel{
