@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/defaults"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -20,10 +21,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-var _ resource.Resource = &DeploymentResource{}
-var _ resource.ResourceWithImportState = &DeploymentResource{}
-var _ resource.ResourceWithConfigure = &DeploymentResource{}
-var _ resource.ResourceWithValidateConfig = &DeploymentResource{}
+var (
+	_ resource.Resource                   = &DeploymentResource{}
+	_ resource.ResourceWithImportState    = &DeploymentResource{}
+	_ resource.ResourceWithConfigure      = &DeploymentResource{}
+	_ resource.ResourceWithValidateConfig = &DeploymentResource{}
+)
 
 func NewDeploymentResource() resource.Resource {
 	return &DeploymentResource{}
@@ -121,6 +124,40 @@ func (r *DeploymentResource) Schema(ctx context.Context, req resource.SchemaRequ
 								},
 							},
 						},
+						"argo_workflow": schema.SingleNestedBlock{
+							Description: "ArgoWorkflow job agent overrides",
+							Attributes: map[string]schema.Attribute{
+								"api_key": schema.StringAttribute{
+									Optional:    true,
+									Description: "ArgoWorkflow API token",
+									Sensitive:   true,
+								},
+								"server_url": schema.StringAttribute{
+									Optional:    true,
+									Description: "ArgoWorkflow server address (host[:port] or URL)",
+								},
+								"template": schema.StringAttribute{
+									Optional:    true,
+									Description: "ArgoWorkflow application template",
+								},
+								"name": schema.StringAttribute{
+									Optional:    true,
+									Description: "The name of the argo template to call",
+								},
+								"webhook_secret": schema.StringAttribute{
+									Optional:    true,
+									Description: "ArgoEvents webhook secret",
+									Sensitive:   true,
+								},
+								"http_insecure": schema.BoolAttribute{
+									Optional:    true,
+									Computed:    true,
+									Description: "Allow insecure HTTP connections (defaults to false)",
+									Default:     booldefault.StaticBool(false),
+								},
+							},
+						},
+
 						"github": schema.SingleNestedBlock{
 							Description: "GitHub job agent overrides",
 							Attributes: map[string]schema.Attribute{
@@ -492,6 +529,15 @@ var deploymentJobAgentArgoCDAttrTypes = map[string]attr.Type{
 	"template":   types.StringType,
 }
 
+var deploymentJobAgentArgoWorkflowAttrTypes = map[string]attr.Type{
+	"api_key":        types.StringType,
+	"server_url":     types.StringType,
+	"template":       types.StringType,
+	"name":           types.StringType,
+	"webhook_secret": types.StringType,
+	"http_insecure":  types.BoolType,
+}
+
 var deploymentJobAgentGitHubAttrTypes = map[string]attr.Type{
 	"installation_id": types.Int64Type,
 	"owner":           types.StringType,
@@ -520,6 +566,7 @@ var deploymentJobAgentObjectType = types.ObjectType{
 		"priority":        types.Int64Type,
 		"selector":        types.StringType,
 		"argocd":          types.ObjectType{AttrTypes: deploymentJobAgentArgoCDAttrTypes},
+		"argo_workflow":   types.ObjectType{AttrTypes: deploymentJobAgentArgoWorkflowAttrTypes},
 		"github":          types.ObjectType{AttrTypes: deploymentJobAgentGitHubAttrTypes},
 		"terraform_cloud": types.ObjectType{AttrTypes: deploymentJobAgentTFCAttrTypes},
 		"test_runner":     types.ObjectType{AttrTypes: deploymentJobAgentTestRunnerAttrTypes},
@@ -527,19 +574,29 @@ var deploymentJobAgentObjectType = types.ObjectType{
 }
 
 type DeploymentJobAgentModel struct {
-	Id             types.String                       `tfsdk:"id"`
-	Priority       types.Int64                        `tfsdk:"priority"`
-	Selector       types.String                       `tfsdk:"selector"`
-	ArgoCD         *DeploymentJobAgentArgoCDModel     `tfsdk:"argocd"`
-	GitHub         *DeploymentJobAgentGitHubModel     `tfsdk:"github"`
-	TerraformCloud *DeploymentJobAgentTFCModel        `tfsdk:"terraform_cloud"`
-	TestRunner     *DeploymentJobAgentTestRunnerModel `tfsdk:"test_runner"`
+	Id             types.String                         `tfsdk:"id"`
+	Priority       types.Int64                          `tfsdk:"priority"`
+	Selector       types.String                         `tfsdk:"selector"`
+	ArgoCD         *DeploymentJobAgentArgoCDModel       `tfsdk:"argocd"`
+	ArgoWorkflow   *DeploymentJobAgentArgoWorkflowModel `tfsdk:"argo_workflow"`
+	GitHub         *DeploymentJobAgentGitHubModel       `tfsdk:"github"`
+	TerraformCloud *DeploymentJobAgentTFCModel          `tfsdk:"terraform_cloud"`
+	TestRunner     *DeploymentJobAgentTestRunnerModel   `tfsdk:"test_runner"`
 }
 
 type DeploymentJobAgentArgoCDModel struct {
 	ApiKey    types.String `tfsdk:"api_key"`
 	ServerUrl types.String `tfsdk:"server_url"`
 	Template  types.String `tfsdk:"template"`
+}
+
+type DeploymentJobAgentArgoWorkflowModel struct {
+	ApiKey        types.String `tfsdk:"api_key"`
+	WebhookSecret types.String `tfsdk:"webhook_secret"`
+	ServerUrl     types.String `tfsdk:"server_url"`
+	Template      types.String `tfsdk:"template"`
+	Name          types.String `tfsdk:"name"`
+	HttpInsecure  types.Bool   `tfsdk:"http_insecure"`
 }
 
 type DeploymentJobAgentGitHubModel struct {
@@ -629,6 +686,8 @@ func deploymentJobAgentBlockType(ja DeploymentJobAgentModel) string {
 	switch {
 	case ja.ArgoCD != nil:
 		return "argocd"
+	case ja.ArgoWorkflow != nil:
+		return "argo_workflow"
 	case ja.GitHub != nil:
 		return "github"
 	case ja.TerraformCloud != nil:
@@ -643,6 +702,9 @@ func deploymentJobAgentBlockType(ja DeploymentJobAgentModel) string {
 func countDeploymentJobAgentBlocks(ja DeploymentJobAgentModel) int {
 	count := 0
 	if ja.ArgoCD != nil {
+		count++
+	}
+	if ja.ArgoWorkflow != nil {
 		count++
 	}
 	if ja.GitHub != nil {
@@ -674,6 +736,31 @@ func deploymentJobAgentConfigFromModel(ja DeploymentJobAgentModel) *map[string]i
 			return nil
 		}
 		return &cfg
+	case ja.ArgoWorkflow != nil:
+		cfg := map[string]any{}
+		if !ja.ArgoWorkflow.ApiKey.IsNull() && !ja.ArgoWorkflow.ApiKey.IsUnknown() && ja.ArgoWorkflow.ApiKey.ValueString() != "" {
+			cfg["apiKey"] = ja.ArgoWorkflow.ApiKey.ValueString()
+		}
+		if !ja.ArgoWorkflow.WebhookSecret.IsNull() && !ja.ArgoWorkflow.WebhookSecret.IsUnknown() && ja.ArgoWorkflow.WebhookSecret.ValueString() != "" {
+			cfg["webhookSecret"] = ja.ArgoWorkflow.WebhookSecret.ValueString()
+		}
+		if !ja.ArgoWorkflow.ServerUrl.IsNull() && !ja.ArgoWorkflow.ServerUrl.IsUnknown() && ja.ArgoWorkflow.ServerUrl.ValueString() != "" {
+			cfg["serverUrl"] = ja.ArgoWorkflow.ServerUrl.ValueString()
+		}
+		if !ja.ArgoWorkflow.Template.IsNull() && !ja.ArgoWorkflow.Template.IsUnknown() && ja.ArgoWorkflow.Template.ValueString() != "" {
+			cfg["template"] = ja.ArgoWorkflow.Template.ValueString()
+		}
+		if !ja.ArgoWorkflow.Name.IsNull() && !ja.ArgoWorkflow.Name.IsUnknown() && ja.ArgoWorkflow.Name.ValueString() != "" {
+			cfg["name"] = ja.ArgoWorkflow.Name.ValueString()
+		}
+		if !ja.ArgoWorkflow.HttpInsecure.IsNull() && !ja.ArgoWorkflow.HttpInsecure.IsUnknown() {
+			cfg["httpInsecure"] = ja.ArgoWorkflow.HttpInsecure.ValueBool()
+		}
+		if len(cfg) == 0 {
+			return nil
+		}
+		return &cfg
+
 	case ja.GitHub != nil:
 		cfg := map[string]any{}
 		if !ja.GitHub.InstallationId.IsNull() && !ja.GitHub.InstallationId.IsUnknown() {
@@ -738,6 +825,7 @@ func deploymentJobAgentConfigFromModel(ja DeploymentJobAgentModel) *map[string]i
 
 func setDeploymentJobAgentBlocksFromConfig(ja *DeploymentJobAgentModel, config map[string]interface{}, agentType string) {
 	ja.ArgoCD = nil
+	ja.ArgoWorkflow = nil
 	ja.GitHub = nil
 	ja.TerraformCloud = nil
 	ja.TestRunner = nil
@@ -788,6 +876,17 @@ func setDeploymentJobAgentBlocksFromConfig(ja *DeploymentJobAgentModel, config m
 			Token:              stringValueOrNull(config["token"]),
 			TriggerRunOnChange: boolValueOrNull(config["triggerRunOnChange"]),
 		}
+
+	case "argo_workflow":
+		ja.ArgoWorkflow = &DeploymentJobAgentArgoWorkflowModel{
+			ApiKey:        stringValueOrNull(config["apiKey"]),
+			WebhookSecret: stringValueOrNull(config["webhookSecret"]),
+			ServerUrl:     stringValueOrNull(config["serverUrl"]),
+			Template:      stringValueOrNull(config["template"]),
+			Name:          stringValueOrNull(config["name"]),
+			HttpInsecure:  boolValueOrNull(config["httpInsecure"]),
+		}
+
 	case "test_runner":
 		testRunner := DeploymentJobAgentTestRunnerModel{
 			DelaySeconds: types.Int64Null(),
