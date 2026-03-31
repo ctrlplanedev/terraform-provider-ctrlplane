@@ -138,17 +138,17 @@ func (r *WorkflowResource) Create(ctx context.Context, req resource.CreateReques
 		return
 	}
 
-	if createResp.StatusCode() != http.StatusAccepted {
+	if createResp.StatusCode() != http.StatusCreated {
 		resp.Diagnostics.AddError("Failed to create workflow", formatResponseError(createResp.StatusCode(), createResp.Body))
 		return
 	}
 
-	if createResp.JSON202 == nil {
+	if createResp.JSON201 == nil {
 		resp.Diagnostics.AddError("Failed to create workflow", "Empty response from server")
 		return
 	}
 
-	setWorkflowModelFromAPI(&data, createResp.JSON202)
+	setWorkflowModelFromAPI(&data, createResp.JSON201)
 	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
 }
 
@@ -247,6 +247,28 @@ func (r *WorkflowResource) Delete(ctx context.Context, req resource.DeleteReques
 
 // --- helpers ---
 
+// normalizeInputsJSON re-marshals workflow inputs through a generic structure
+// so that JSON key order is deterministic (Go sorts map keys alphabetically).
+// This prevents Terraform from detecting spurious diffs due to key ordering.
+func normalizeInputsJSON(inputs []api.WorkflowInput) string {
+	raw, err := json.Marshal(inputs)
+	if err != nil {
+		return "[]"
+	}
+
+	var normalized []map[string]interface{}
+	if err := json.Unmarshal(raw, &normalized); err != nil {
+		return "[]"
+	}
+
+	out, err := json.Marshal(normalized)
+	if err != nil {
+		return "[]"
+	}
+
+	return string(out)
+}
+
 func parseWorkflowInputs(raw types.String) ([]api.WorkflowInput, error) {
 	if raw.IsNull() || raw.IsUnknown() {
 		return []api.WorkflowInput{}, nil
@@ -287,12 +309,7 @@ func setWorkflowModelFromAPI(data *WorkflowResourceModel, w *api.Workflow) {
 	data.ID = types.StringValue(w.Id)
 	data.Name = types.StringValue(w.Name)
 
-	inputsJSON, err := json.Marshal(w.Inputs)
-	if err != nil {
-		data.Inputs = types.StringValue("[]")
-	} else {
-		data.Inputs = types.StringValue(string(inputsJSON))
-	}
+	data.Inputs = types.StringValue(normalizeInputsJSON(w.Inputs))
 
 	agents := make([]WorkflowJobAgentModel, len(w.JobAgents))
 	for i, a := range w.JobAgents {

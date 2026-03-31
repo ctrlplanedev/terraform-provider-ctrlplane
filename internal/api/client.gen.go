@@ -10783,7 +10783,7 @@ func (r ListWorkflowsResponse) StatusCode() int {
 type CreateWorkflowResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON202      *Workflow
+	JSON201      *Workflow
 	JSON400      *ErrorResponse
 }
 
@@ -14991,12 +14991,12 @@ func ParseCreateWorkflowResponse(rsp *http.Response) (*CreateWorkflowResponse, e
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest Workflow
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON202 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest ErrorResponse
