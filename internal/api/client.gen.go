@@ -118,6 +118,13 @@ const (
 	Prometheus PrometheusMetricProviderType = "prometheus"
 )
 
+// Defines values for ReleaseTargetStateResponseLatestJobVerificationsStatus.
+const (
+	ReleaseTargetStateResponseLatestJobVerificationsStatusFailed  ReleaseTargetStateResponseLatestJobVerificationsStatus = "failed"
+	ReleaseTargetStateResponseLatestJobVerificationsStatusPassed  ReleaseTargetStateResponseLatestJobVerificationsStatus = "passed"
+	ReleaseTargetStateResponseLatestJobVerificationsStatusRunning ReleaseTargetStateResponseLatestJobVerificationsStatus = "running"
+)
+
 // Defines values for RetryRuleBackoffStrategy.
 const (
 	RetryRuleBackoffStrategyExponential RetryRuleBackoffStrategy = "exponential"
@@ -132,6 +139,13 @@ const (
 // Defines values for TerraformCloudRunMetricProviderType.
 const (
 	TerraformCloudRun TerraformCloudRunMetricProviderType = "terraformCloudRun"
+)
+
+// Defines values for VerificationMeasurementStatus.
+const (
+	VerificationMeasurementStatusFailed       VerificationMeasurementStatus = "failed"
+	VerificationMeasurementStatusInconclusive VerificationMeasurementStatus = "inconclusive"
+	VerificationMeasurementStatusPassed       VerificationMeasurementStatus = "passed"
 )
 
 // Defines values for VerificationRuleTriggerOn.
@@ -279,23 +293,22 @@ type CreateSystemRequest struct {
 
 // CreateWorkflow defines model for CreateWorkflow.
 type CreateWorkflow struct {
-	Inputs []WorkflowInput             `json:"inputs"`
-	Jobs   []CreateWorkflowJobTemplate `json:"jobs"`
-	Name   string                      `json:"name"`
+	Inputs    []WorkflowInput          `json:"inputs"`
+	JobAgents []CreateWorkflowJobAgent `json:"jobAgents"`
+	Name      string                   `json:"name"`
 }
 
-// CreateWorkflowJobTemplate defines model for CreateWorkflowJobTemplate.
-type CreateWorkflowJobTemplate struct {
+// CreateWorkflowJobAgent defines model for CreateWorkflowJobAgent.
+type CreateWorkflowJobAgent struct {
 	// Config Configuration for the job agent
 	Config map[string]interface{} `json:"config"`
-
-	// If CEL expression to determine if the job should run
-	If     *string            `json:"if,omitempty"`
-	Matrix *WorkflowJobMatrix `json:"matrix,omitempty"`
-	Name   string             `json:"name"`
+	Name   string                 `json:"name"`
 
 	// Ref Reference to the job agent
 	Ref string `json:"ref"`
+
+	// Selector CEL expression to determine if the job agent should dispatch a job
+	Selector string `json:"selector"`
 }
 
 // CreateWorkspaceRequest defines model for CreateWorkspaceRequest.
@@ -844,6 +857,28 @@ type ReleaseTargetState struct {
 	LatestJob      *Job     `json:"latestJob,omitempty"`
 }
 
+// ReleaseTargetStateResponse defines model for ReleaseTargetStateResponse.
+type ReleaseTargetStateResponse struct {
+	CurrentRelease *Release `json:"currentRelease,omitempty"`
+	DesiredRelease *Release `json:"desiredRelease,omitempty"`
+	LatestJob      *struct {
+		Job           Job `json:"job"`
+		Verifications []struct {
+			CreatedAt time.Time                  `json:"createdAt"`
+			Id        string                     `json:"id"`
+			JobId     string                     `json:"jobId"`
+			Message   *string                    `json:"message,omitempty"`
+			Metrics   []VerificationMetricStatus `json:"metrics"`
+
+			// Status Computed aggregate status of this verification
+			Status ReleaseTargetStateResponseLatestJobVerificationsStatus `json:"status"`
+		} `json:"verifications"`
+	} `json:"latestJob,omitempty"`
+}
+
+// ReleaseTargetStateResponseLatestJobVerificationsStatus Computed aggregate status of this verification
+type ReleaseTargetStateResponseLatestJobVerificationsStatus string
+
 // ReleaseTargetWithState defines model for ReleaseTargetWithState.
 type ReleaseTargetWithState struct {
 	ReleaseTarget ReleaseTarget      `json:"releaseTarget"`
@@ -1032,9 +1067,9 @@ type UpdateDeploymentVersionRequest struct {
 
 // UpdateWorkflow defines model for UpdateWorkflow.
 type UpdateWorkflow struct {
-	Inputs []WorkflowInput             `json:"inputs"`
-	Jobs   []CreateWorkflowJobTemplate `json:"jobs"`
-	Name   string                      `json:"name"`
+	Inputs    []WorkflowInput          `json:"inputs"`
+	JobAgents []CreateWorkflowJobAgent `json:"jobAgents"`
+	Name      string                   `json:"name"`
 }
 
 // UpdateWorkspaceRequest defines model for UpdateWorkspaceRequest.
@@ -1145,6 +1180,16 @@ type UpsertResourceProviderRequest struct {
 	Name     string             `json:"name"`
 }
 
+// UpsertResourceRequest defines model for UpsertResourceRequest.
+type UpsertResourceRequest struct {
+	Config    *map[string]interface{} `json:"config,omitempty"`
+	Kind      string                  `json:"kind"`
+	Metadata  *map[string]string      `json:"metadata,omitempty"`
+	Name      string                  `json:"name"`
+	Variables *map[string]interface{} `json:"variables,omitempty"`
+	Version   string                  `json:"version"`
+}
+
 // UpsertSystemRequest defines model for UpsertSystemRequest.
 type UpsertSystemRequest struct {
 	Description *string            `json:"description,omitempty"`
@@ -1171,6 +1216,24 @@ type Value struct {
 	union json.RawMessage
 }
 
+// VerificationMeasurement defines model for VerificationMeasurement.
+type VerificationMeasurement struct {
+	// Data Raw measurement data
+	Data *map[string]interface{} `json:"data,omitempty"`
+
+	// MeasuredAt When measurement was taken
+	MeasuredAt time.Time `json:"measuredAt"`
+
+	// Message Measurement result message
+	Message *string `json:"message,omitempty"`
+
+	// Status Status of a verification measurement
+	Status VerificationMeasurementStatus `json:"status"`
+}
+
+// VerificationMeasurementStatus Status of a verification measurement
+type VerificationMeasurementStatus string
+
 // VerificationMetricSpec defines model for VerificationMetricSpec.
 type VerificationMetricSpec struct {
 	// Count Number of measurements to take
@@ -1184,6 +1247,34 @@ type VerificationMetricSpec struct {
 
 	// IntervalSeconds Interval between measurements in seconds
 	IntervalSeconds int32 `json:"intervalSeconds"`
+
+	// Name Name of the verification metric
+	Name     string         `json:"name"`
+	Provider MetricProvider `json:"provider"`
+
+	// SuccessCondition CEL expression to evaluate measurement success (e.g., "result.statusCode == 200")
+	SuccessCondition string `json:"successCondition"`
+
+	// SuccessThreshold Minimum number of consecutive successful measurements required to consider the metric successful
+	SuccessThreshold *int `json:"successThreshold,omitempty"`
+}
+
+// VerificationMetricStatus defines model for VerificationMetricStatus.
+type VerificationMetricStatus struct {
+	// Count Number of measurements to take
+	Count int `json:"count"`
+
+	// FailureCondition CEL expression to evaluate measurement failure (e.g., "result.statusCode == 500"), if not provided, a failure is just the opposite of the success condition
+	FailureCondition *string `json:"failureCondition,omitempty"`
+
+	// FailureThreshold Stop after this many consecutive failures (0 = no limit)
+	FailureThreshold *int `json:"failureThreshold,omitempty"`
+
+	// IntervalSeconds Interval between measurements in seconds
+	IntervalSeconds int32 `json:"intervalSeconds"`
+
+	// Measurements Individual verification measurements taken for this metric
+	Measurements []VerificationMeasurement `json:"measurements"`
 
 	// Name Name of the verification metric
 	Name     string         `json:"name"`
@@ -1225,10 +1316,10 @@ type VersionSelectorRule struct {
 
 // Workflow defines model for Workflow.
 type Workflow struct {
-	Id     string                `json:"id"`
-	Inputs []WorkflowInput       `json:"inputs"`
-	Jobs   []WorkflowJobTemplate `json:"jobs"`
-	Name   string                `json:"name"`
+	Id        string             `json:"id"`
+	Inputs    []WorkflowInput    `json:"inputs"`
+	JobAgents []WorkflowJobAgent `json:"jobAgents"`
+	Name      string             `json:"name"`
 }
 
 // WorkflowArrayInput defines model for WorkflowArrayInput.
@@ -1263,33 +1354,17 @@ type WorkflowJob struct {
 	WorkflowId string `json:"workflowId"`
 }
 
-// WorkflowJobMatrix defines model for WorkflowJobMatrix.
-type WorkflowJobMatrix map[string]WorkflowJobMatrix_AdditionalProperties
-
-// WorkflowJobMatrix0 defines model for .
-type WorkflowJobMatrix0 = []map[string]interface{}
-
-// WorkflowJobMatrix1 defines model for .
-type WorkflowJobMatrix1 = string
-
-// WorkflowJobMatrix_AdditionalProperties defines model for WorkflowJobMatrix.AdditionalProperties.
-type WorkflowJobMatrix_AdditionalProperties struct {
-	union json.RawMessage
-}
-
-// WorkflowJobTemplate defines model for WorkflowJobTemplate.
-type WorkflowJobTemplate struct {
+// WorkflowJobAgent defines model for WorkflowJobAgent.
+type WorkflowJobAgent struct {
 	// Config Configuration for the job agent
 	Config map[string]interface{} `json:"config"`
-	Id     string                 `json:"id"`
-
-	// If CEL expression to determine if the job should run
-	If     *string            `json:"if,omitempty"`
-	Matrix *WorkflowJobMatrix `json:"matrix,omitempty"`
-	Name   string             `json:"name"`
+	Name   string                 `json:"name"`
 
 	// Ref Reference to the job agent
 	Ref string `json:"ref"`
+
+	// Selector CEL expression to determine if the job agent should dispatch a job
+	Selector string `json:"selector"`
 }
 
 // WorkflowManualArrayInput defines model for WorkflowManualArrayInput.
@@ -1554,6 +1629,12 @@ type ListWorkflowsParams struct {
 	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
+// CreateWorkflowRunJSONBody defines parameters for CreateWorkflowRun.
+type CreateWorkflowRunJSONBody struct {
+	// Inputs Input values for the workflow run.
+	Inputs map[string]interface{} `json:"inputs"`
+}
+
 // CreateWorkspaceJSONRequestBody defines body for CreateWorkspace for application/json ContentType.
 type CreateWorkspaceJSONRequestBody = CreateWorkspaceRequest
 
@@ -1620,6 +1701,9 @@ type RequestResourceProviderUpsertJSONRequestBody = UpsertResourceProviderReques
 // SetResourceProviderResourcesJSONRequestBody defines body for SetResourceProviderResources for application/json ContentType.
 type SetResourceProviderResourcesJSONRequestBody SetResourceProviderResourcesJSONBody
 
+// UpsertResourceByIdentifierJSONRequestBody defines body for UpsertResourceByIdentifier for application/json ContentType.
+type UpsertResourceByIdentifierJSONRequestBody = UpsertResourceRequest
+
 // RequestResourceVariablesUpdateJSONRequestBody defines body for RequestResourceVariablesUpdate for application/json ContentType.
 type RequestResourceVariablesUpdateJSONRequestBody RequestResourceVariablesUpdateJSONBody
 
@@ -1634,6 +1718,9 @@ type CreateWorkflowJSONRequestBody = CreateWorkflow
 
 // UpdateWorkflowJSONRequestBody defines body for UpdateWorkflow for application/json ContentType.
 type UpdateWorkflowJSONRequestBody = UpdateWorkflow
+
+// CreateWorkflowRunJSONRequestBody defines body for CreateWorkflowRun for application/json ContentType.
+type CreateWorkflowRunJSONRequestBody CreateWorkflowRunJSONBody
 
 // AsBooleanValue returns the union data inside the LiteralValue as a BooleanValue
 func (t LiteralValue) AsBooleanValue() (BooleanValue, error) {
@@ -2270,68 +2357,6 @@ func (t *WorkflowInput) UnmarshalJSON(b []byte) error {
 	return err
 }
 
-// AsWorkflowJobMatrix0 returns the union data inside the WorkflowJobMatrix_AdditionalProperties as a WorkflowJobMatrix0
-func (t WorkflowJobMatrix_AdditionalProperties) AsWorkflowJobMatrix0() (WorkflowJobMatrix0, error) {
-	var body WorkflowJobMatrix0
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromWorkflowJobMatrix0 overwrites any union data inside the WorkflowJobMatrix_AdditionalProperties as the provided WorkflowJobMatrix0
-func (t *WorkflowJobMatrix_AdditionalProperties) FromWorkflowJobMatrix0(v WorkflowJobMatrix0) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeWorkflowJobMatrix0 performs a merge with any union data inside the WorkflowJobMatrix_AdditionalProperties, using the provided WorkflowJobMatrix0
-func (t *WorkflowJobMatrix_AdditionalProperties) MergeWorkflowJobMatrix0(v WorkflowJobMatrix0) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsWorkflowJobMatrix1 returns the union data inside the WorkflowJobMatrix_AdditionalProperties as a WorkflowJobMatrix1
-func (t WorkflowJobMatrix_AdditionalProperties) AsWorkflowJobMatrix1() (WorkflowJobMatrix1, error) {
-	var body WorkflowJobMatrix1
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromWorkflowJobMatrix1 overwrites any union data inside the WorkflowJobMatrix_AdditionalProperties as the provided WorkflowJobMatrix1
-func (t *WorkflowJobMatrix_AdditionalProperties) FromWorkflowJobMatrix1(v WorkflowJobMatrix1) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeWorkflowJobMatrix1 performs a merge with any union data inside the WorkflowJobMatrix_AdditionalProperties, using the provided WorkflowJobMatrix1
-func (t *WorkflowJobMatrix_AdditionalProperties) MergeWorkflowJobMatrix1(v WorkflowJobMatrix1) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-func (t WorkflowJobMatrix_AdditionalProperties) MarshalJSON() ([]byte, error) {
-	b, err := t.union.MarshalJSON()
-	return b, err
-}
-
-func (t *WorkflowJobMatrix_AdditionalProperties) UnmarshalJSON(b []byte) error {
-	err := t.union.UnmarshalJSON(b)
-	return err
-}
-
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
 
@@ -2632,6 +2657,11 @@ type ClientInterface interface {
 	// GetResourceByIdentifier request
 	GetResourceByIdentifier(ctx context.Context, workspaceId string, identifier string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// UpsertResourceByIdentifierWithBody request with any body
+	UpsertResourceByIdentifierWithBody(ctx context.Context, workspaceId string, identifier string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	UpsertResourceByIdentifier(ctx context.Context, workspaceId string, identifier string, body UpsertResourceByIdentifierJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetDeploymentsForResource request
 	GetDeploymentsForResource(ctx context.Context, workspaceId string, identifier string, params *GetDeploymentsForResourceParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -2701,6 +2731,11 @@ type ClientInterface interface {
 	UpdateWorkflowWithBody(ctx context.Context, workspaceId string, workflowId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	UpdateWorkflow(ctx context.Context, workspaceId string, workflowId string, body UpdateWorkflowJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateWorkflowRunWithBody request with any body
+	CreateWorkflowRunWithBody(ctx context.Context, workspaceId string, workflowId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateWorkflowRun(ctx context.Context, workspaceId string, workflowId string, body CreateWorkflowRunJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) ListWorkspaces(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -3699,6 +3734,30 @@ func (c *Client) GetResourceByIdentifier(ctx context.Context, workspaceId string
 	return c.Client.Do(req)
 }
 
+func (c *Client) UpsertResourceByIdentifierWithBody(ctx context.Context, workspaceId string, identifier string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpsertResourceByIdentifierRequestWithBody(c.Server, workspaceId, identifier, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) UpsertResourceByIdentifier(ctx context.Context, workspaceId string, identifier string, body UpsertResourceByIdentifierJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpsertResourceByIdentifierRequest(c.Server, workspaceId, identifier, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) GetDeploymentsForResource(ctx context.Context, workspaceId string, identifier string, params *GetDeploymentsForResourceParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetDeploymentsForResourceRequest(c.Server, workspaceId, identifier, params)
 	if err != nil {
@@ -3989,6 +4048,30 @@ func (c *Client) UpdateWorkflowWithBody(ctx context.Context, workspaceId string,
 
 func (c *Client) UpdateWorkflow(ctx context.Context, workspaceId string, workflowId string, body UpdateWorkflowJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateWorkflowRequest(c.Server, workspaceId, workflowId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateWorkflowRunWithBody(ctx context.Context, workspaceId string, workflowId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateWorkflowRunRequestWithBody(c.Server, workspaceId, workflowId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateWorkflowRun(ctx context.Context, workspaceId string, workflowId string, body CreateWorkflowRunJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateWorkflowRunRequest(c.Server, workspaceId, workflowId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -7149,6 +7232,60 @@ func NewGetResourceByIdentifierRequest(server string, workspaceId string, identi
 	return req, nil
 }
 
+// NewUpsertResourceByIdentifierRequest calls the generic UpsertResourceByIdentifier builder with application/json body
+func NewUpsertResourceByIdentifierRequest(server string, workspaceId string, identifier string, body UpsertResourceByIdentifierJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpsertResourceByIdentifierRequestWithBody(server, workspaceId, identifier, "application/json", bodyReader)
+}
+
+// NewUpsertResourceByIdentifierRequestWithBody generates requests for UpsertResourceByIdentifier with any type of body
+func NewUpsertResourceByIdentifierRequestWithBody(server string, workspaceId string, identifier string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "workspaceId", runtime.ParamLocationPath, workspaceId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "identifier", runtime.ParamLocationPath, identifier)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/resources/identifier/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetDeploymentsForResourceRequest generates requests for GetDeploymentsForResource
 func NewGetDeploymentsForResourceRequest(server string, workspaceId string, identifier string, params *GetDeploymentsForResourceParams) (*http.Request, error) {
 	var err error
@@ -8207,6 +8344,60 @@ func NewUpdateWorkflowRequestWithBody(server string, workspaceId string, workflo
 	return req, nil
 }
 
+// NewCreateWorkflowRunRequest calls the generic CreateWorkflowRun builder with application/json body
+func NewCreateWorkflowRunRequest(server string, workspaceId string, workflowId string, body CreateWorkflowRunJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateWorkflowRunRequestWithBody(server, workspaceId, workflowId, "application/json", bodyReader)
+}
+
+// NewCreateWorkflowRunRequestWithBody generates requests for CreateWorkflowRun with any type of body
+func NewCreateWorkflowRunRequestWithBody(server string, workspaceId string, workflowId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "workspaceId", runtime.ParamLocationPath, workspaceId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "workflowId", runtime.ParamLocationPath, workflowId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/workflows/%s/runs", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -8477,6 +8668,11 @@ type ClientWithResponsesInterface interface {
 	// GetResourceByIdentifierWithResponse request
 	GetResourceByIdentifierWithResponse(ctx context.Context, workspaceId string, identifier string, reqEditors ...RequestEditorFn) (*GetResourceByIdentifierResponse, error)
 
+	// UpsertResourceByIdentifierWithBodyWithResponse request with any body
+	UpsertResourceByIdentifierWithBodyWithResponse(ctx context.Context, workspaceId string, identifier string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpsertResourceByIdentifierResponse, error)
+
+	UpsertResourceByIdentifierWithResponse(ctx context.Context, workspaceId string, identifier string, body UpsertResourceByIdentifierJSONRequestBody, reqEditors ...RequestEditorFn) (*UpsertResourceByIdentifierResponse, error)
+
 	// GetDeploymentsForResourceWithResponse request
 	GetDeploymentsForResourceWithResponse(ctx context.Context, workspaceId string, identifier string, params *GetDeploymentsForResourceParams, reqEditors ...RequestEditorFn) (*GetDeploymentsForResourceResponse, error)
 
@@ -8546,6 +8742,11 @@ type ClientWithResponsesInterface interface {
 	UpdateWorkflowWithBodyWithResponse(ctx context.Context, workspaceId string, workflowId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateWorkflowResponse, error)
 
 	UpdateWorkflowWithResponse(ctx context.Context, workspaceId string, workflowId string, body UpdateWorkflowJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateWorkflowResponse, error)
+
+	// CreateWorkflowRunWithBodyWithResponse request with any body
+	CreateWorkflowRunWithBodyWithResponse(ctx context.Context, workspaceId string, workflowId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateWorkflowRunResponse, error)
+
+	CreateWorkflowRunWithResponse(ctx context.Context, workspaceId string, workflowId string, body CreateWorkflowRunJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateWorkflowRunResponse, error)
 }
 
 type ListWorkspacesResponse struct {
@@ -9882,7 +10083,7 @@ func (r GetJobsForReleaseTargetResponse) StatusCode() int {
 type GetReleaseTargetStateResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *ReleaseTargetState
+	JSON200      *ReleaseTargetStateResponse
 	JSON400      *ErrorResponse
 	JSON404      *ErrorResponse
 }
@@ -10128,6 +10329,30 @@ func (r GetResourceByIdentifierResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetResourceByIdentifierResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type UpsertResourceByIdentifierResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *ResourceRequestAccepted
+	JSON400      *ErrorResponse
+	JSON404      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r UpsertResourceByIdentifierResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpsertResourceByIdentifierResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -10644,6 +10869,30 @@ func (r UpdateWorkflowResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r UpdateWorkflowResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type CreateWorkflowRunResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *WorkflowRun
+	JSON400      *ErrorResponse
+	JSON404      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateWorkflowRunResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateWorkflowRunResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -11375,6 +11624,23 @@ func (c *ClientWithResponses) GetResourceByIdentifierWithResponse(ctx context.Co
 	return ParseGetResourceByIdentifierResponse(rsp)
 }
 
+// UpsertResourceByIdentifierWithBodyWithResponse request with arbitrary body returning *UpsertResourceByIdentifierResponse
+func (c *ClientWithResponses) UpsertResourceByIdentifierWithBodyWithResponse(ctx context.Context, workspaceId string, identifier string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpsertResourceByIdentifierResponse, error) {
+	rsp, err := c.UpsertResourceByIdentifierWithBody(ctx, workspaceId, identifier, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpsertResourceByIdentifierResponse(rsp)
+}
+
+func (c *ClientWithResponses) UpsertResourceByIdentifierWithResponse(ctx context.Context, workspaceId string, identifier string, body UpsertResourceByIdentifierJSONRequestBody, reqEditors ...RequestEditorFn) (*UpsertResourceByIdentifierResponse, error) {
+	rsp, err := c.UpsertResourceByIdentifier(ctx, workspaceId, identifier, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpsertResourceByIdentifierResponse(rsp)
+}
+
 // GetDeploymentsForResourceWithResponse request returning *GetDeploymentsForResourceResponse
 func (c *ClientWithResponses) GetDeploymentsForResourceWithResponse(ctx context.Context, workspaceId string, identifier string, params *GetDeploymentsForResourceParams, reqEditors ...RequestEditorFn) (*GetDeploymentsForResourceResponse, error) {
 	rsp, err := c.GetDeploymentsForResource(ctx, workspaceId, identifier, params, reqEditors...)
@@ -11593,6 +11859,23 @@ func (c *ClientWithResponses) UpdateWorkflowWithResponse(ctx context.Context, wo
 		return nil, err
 	}
 	return ParseUpdateWorkflowResponse(rsp)
+}
+
+// CreateWorkflowRunWithBodyWithResponse request with arbitrary body returning *CreateWorkflowRunResponse
+func (c *ClientWithResponses) CreateWorkflowRunWithBodyWithResponse(ctx context.Context, workspaceId string, workflowId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateWorkflowRunResponse, error) {
+	rsp, err := c.CreateWorkflowRunWithBody(ctx, workspaceId, workflowId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateWorkflowRunResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateWorkflowRunWithResponse(ctx context.Context, workspaceId string, workflowId string, body CreateWorkflowRunJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateWorkflowRunResponse, error) {
+	rsp, err := c.CreateWorkflowRun(ctx, workspaceId, workflowId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateWorkflowRunResponse(rsp)
 }
 
 // ParseListWorkspacesResponse parses an HTTP response from a ListWorkspacesWithResponse call
@@ -13661,7 +13944,7 @@ func ParseGetReleaseTargetStateResponse(rsp *http.Response) (*GetReleaseTargetSt
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ReleaseTargetState
+		var dest ReleaseTargetStateResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -14013,6 +14296,46 @@ func ParseGetResourceByIdentifierResponse(rsp *http.Response) (*GetResourceByIde
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpsertResourceByIdentifierResponse parses an HTTP response from a UpsertResourceByIdentifierWithResponse call
+func ParseUpsertResourceByIdentifierResponse(rsp *http.Response) (*UpsertResourceByIdentifierResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpsertResourceByIdentifierResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest ResourceRequestAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 
@@ -14787,6 +15110,46 @@ func ParseUpdateWorkflowResponse(rsp *http.Response) (*UpdateWorkflowResponse, e
 			return nil, err
 		}
 		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateWorkflowRunResponse parses an HTTP response from a CreateWorkflowRunWithResponse call
+func ParseCreateWorkflowRunResponse(rsp *http.Response) (*CreateWorkflowRunResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateWorkflowRunResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest WorkflowRun
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest ErrorResponse
