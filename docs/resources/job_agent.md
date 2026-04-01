@@ -21,6 +21,7 @@ description: |-
 
 ### Optional
 
+- `argo_workflow` (Block List) ArgoWorkflow job agent configuration (see [below for nested schema](#nestedblock--argo_workflow))
 - `argocd` (Block List) ArgoCD job agent configuration (see [below for nested schema](#nestedblock--argocd))
 - `custom` (Block List) Custom job agent configuration (see [below for nested schema](#nestedblock--custom))
 - `github` (Block List) GitHub job agent configuration (see [below for nested schema](#nestedblock--github))
@@ -31,6 +32,22 @@ description: |-
 ### Read-Only
 
 - `id` (String) The ID of the job agent
+
+<a id="nestedblock--argo_workflow"></a>
+### Nested Schema for `argo_workflow`
+
+Required:
+
+- `api_key` (String, Sensitive) ArgoWorkflow API token
+- `name` (String) ArgoWorkflow template name
+- `server_url` (String) ArgoWorkflow server address (host[:port] or URL)
+- `template` (String) ArgoWorkflow application template
+- `webhook_secret` (String, Sensitive) Argo Events Webhook Secret
+
+Optional:
+
+- `http_insecure` (Boolean) Allow insecure HTTP connections (defaults to false)
+
 
 <a id="nestedblock--argocd"></a>
 ### Nested Schema for `argocd`

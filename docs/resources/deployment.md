@@ -38,12 +38,26 @@ Required:
 
 Optional:
 
+- `argo_workflow` (Block, Optional) ArgoWorkflow job agent overrides (see [below for nested schema](#nestedblock--job_agent--argo_workflow))
 - `argocd` (Block, Optional) ArgoCD job agent overrides (see [below for nested schema](#nestedblock--job_agent--argocd))
 - `github` (Block, Optional) GitHub job agent overrides (see [below for nested schema](#nestedblock--job_agent--github))
 - `priority` (Number) Priority of the job agent
 - `selector` (String) CEL expression used to select resources
 - `terraform_cloud` (Block, Optional) Terraform Cloud job agent overrides (see [below for nested schema](#nestedblock--job_agent--terraform_cloud))
 - `test_runner` (Block, Optional) Test runner job agent overrides (see [below for nested schema](#nestedblock--job_agent--test_runner))
+
+<a id="nestedblock--job_agent--argo_workflow"></a>
+### Nested Schema for `job_agent.argo_workflow`
+
+Optional:
+
+- `api_key` (String, Sensitive) ArgoWorkflow API token
+- `http_insecure` (Boolean) Allow insecure HTTP connections (defaults to false)
+- `name` (String) The name of the argo template to call
+- `server_url` (String) ArgoWorkflow server address (host[:port] or URL)
+- `template` (String) ArgoWorkflow application template
+- `webhook_secret` (String, Sensitive) ArgoEvents webhook secret
+
 
 <a id="nestedblock--job_agent--argocd"></a>
 ### Nested Schema for `job_agent.argocd`

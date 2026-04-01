@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/defaults"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapplanmodifier"
@@ -20,10 +21,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-var _ resource.Resource = &JobAgentResource{}
-var _ resource.ResourceWithImportState = &JobAgentResource{}
-var _ resource.ResourceWithConfigure = &JobAgentResource{}
-var _ resource.ResourceWithValidateConfig = &JobAgentResource{}
+var (
+	_ resource.Resource                   = &JobAgentResource{}
+	_ resource.ResourceWithImportState    = &JobAgentResource{}
+	_ resource.ResourceWithConfigure      = &JobAgentResource{}
+	_ resource.ResourceWithValidateConfig = &JobAgentResource{}
+)
 
 func NewJobAgentResource() resource.Resource {
 	return &JobAgentResource{}
@@ -120,6 +123,43 @@ func (r *JobAgentResource) Schema(ctx context.Context, req resource.SchemaReques
 					},
 				},
 			},
+
+			"argo_workflow": schema.ListNestedBlock{
+				Description: "ArgoWorkflow job agent configuration",
+				NestedObject: schema.NestedBlockObject{
+					Attributes: map[string]schema.Attribute{
+						"api_key": schema.StringAttribute{
+							Required:    true,
+							Description: "ArgoWorkflow API token",
+							Sensitive:   true,
+						},
+						"webhook_secret": schema.StringAttribute{
+							Required:    true,
+							Description: "Argo Events Webhook Secret",
+							Sensitive:   true,
+						},
+						"server_url": schema.StringAttribute{
+							Required:    true,
+							Description: "ArgoWorkflow server address (host[:port] or URL)",
+						},
+						"template": schema.StringAttribute{
+							Required:    true,
+							Description: "ArgoWorkflow application template",
+						},
+						"name": schema.StringAttribute{
+							Required:    true,
+							Description: "ArgoWorkflow template name",
+						},
+						"http_insecure": schema.BoolAttribute{
+							Optional:    true,
+							Computed:    true,
+							Description: "Allow insecure HTTP connections (defaults to false)",
+							Default:     booldefault.StaticBool(false),
+						},
+					},
+				},
+			},
+
 			"github": schema.ListNestedBlock{
 				Description: "GitHub job agent configuration",
 				NestedObject: schema.NestedBlockObject{
@@ -341,11 +381,23 @@ func (r *JobAgentResource) Read(ctx context.Context, req resource.ReadRequest, r
 		priorToken = data.TerraformCloud[0].Token
 	}
 
+	var priorArgoWorkflowApiKey, priorArgoWorkflowWebhookSecret types.String
+	if len(data.ArgoWorkflow) > 0 {
+		priorArgoWorkflowApiKey = data.ArgoWorkflow[0].ApiKey
+		priorArgoWorkflowWebhookSecret = data.ArgoWorkflow[0].WebhookSecret
+	}
+
 	setJobAgentBlocksFromAPI(&data, jobAgent.Type, jobAgent.Config)
 
 	// Restore token from prior state since the API never returns it.
 	if len(data.TerraformCloud) > 0 && !priorToken.IsNull() {
 		data.TerraformCloud[0].Token = priorToken
+	}
+
+	// Restore ArgoWorkflow apiKey and webhookSecret from prior state since the API never returns them.
+	if len(data.ArgoWorkflow) > 0 {
+		data.ArgoWorkflow[0].ApiKey = priorArgoWorkflowApiKey
+		data.ArgoWorkflow[0].WebhookSecret = priorArgoWorkflowWebhookSecret
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -432,14 +484,15 @@ func (r *JobAgentResource) Delete(ctx context.Context, req resource.DeleteReques
 }
 
 type JobAgentResourceModel struct {
-	ID             types.String              `tfsdk:"id"`
-	Name           types.String              `tfsdk:"name"`
-	Metadata       types.Map                 `tfsdk:"metadata"`
-	Custom         []JobAgentCustomModel     `tfsdk:"custom"`
-	ArgoCD         []JobAgentArgoCDModel     `tfsdk:"argocd"`
-	GitHub         []JobAgentGitHubModel     `tfsdk:"github"`
-	TerraformCloud []JobAgentTFCModel        `tfsdk:"terraform_cloud"`
-	TestRunner     []JobAgentTestRunnerModel `tfsdk:"test_runner"`
+	ID             types.String                `tfsdk:"id"`
+	Name           types.String                `tfsdk:"name"`
+	Metadata       types.Map                   `tfsdk:"metadata"`
+	Custom         []JobAgentCustomModel       `tfsdk:"custom"`
+	ArgoCD         []JobAgentArgoCDModel       `tfsdk:"argocd"`
+	ArgoWorkflow   []JobAgentArgoWorkflowModel `tfsdk:"argo_workflow"`
+	GitHub         []JobAgentGitHubModel       `tfsdk:"github"`
+	TerraformCloud []JobAgentTFCModel          `tfsdk:"terraform_cloud"`
+	TestRunner     []JobAgentTestRunnerModel   `tfsdk:"test_runner"`
 }
 
 type JobAgentCustomModel struct {
@@ -453,6 +506,14 @@ type JobAgentArgoCDModel struct {
 	Template  types.String `tfsdk:"template"`
 }
 
+type JobAgentArgoWorkflowModel struct {
+	ApiKey        types.String `tfsdk:"api_key"`
+	WebhookSecret types.String `tfsdk:"webhook_secret"`
+	ServerUrl     types.String `tfsdk:"server_url"`
+	Template      types.String `tfsdk:"template"`
+	Name          types.String `tfsdk:"name"`
+	HttpInsecure  types.Bool   `tfsdk:"http_insecure"`
+}
 type JobAgentGitHubModel struct {
 	InstallationId types.Int64  `tfsdk:"installation_id"`
 	Owner          types.String `tfsdk:"owner"`
@@ -480,6 +541,9 @@ func countJobAgentConfigs(data JobAgentResourceModel) int {
 		count++
 	}
 	if len(data.ArgoCD) > 0 {
+		count++
+	}
+	if len(data.ArgoWorkflow) > 0 {
 		count++
 	}
 	if len(data.GitHub) > 0 {
@@ -515,6 +579,18 @@ func jobAgentConfigFromModel(data JobAgentResourceModel) (string, *map[string]in
 			"template":  argocd.Template.ValueString(),
 		}
 		return "argo-cd", &cfg, nil
+	case len(data.ArgoWorkflow) > 0:
+		argoWorkflow := data.ArgoWorkflow[0]
+		cfg := map[string]interface{}{
+			"apiKey":        argoWorkflow.ApiKey.ValueString(),
+			"webhookSecret": argoWorkflow.WebhookSecret.ValueString(),
+			"serverUrl":     argoWorkflow.ServerUrl.ValueString(),
+			"template":      argoWorkflow.Template.ValueString(),
+			"name":          argoWorkflow.Name.ValueString(),
+			"httpInsecure":  argoWorkflow.HttpInsecure.ValueBool(),
+		}
+		return "argo-workflow", &cfg, nil
+
 	case len(data.GitHub) > 0:
 		github := data.GitHub[0]
 		cfg := map[string]interface{}{
@@ -558,6 +634,7 @@ func jobAgentConfigFromModel(data JobAgentResourceModel) (string, *map[string]in
 
 func setJobAgentBlocksFromAPI(data *JobAgentResourceModel, jobType string, config map[string]interface{}) {
 	data.ArgoCD = nil
+	data.ArgoWorkflow = nil
 	data.GitHub = nil
 	data.TerraformCloud = nil
 	data.TestRunner = nil
@@ -572,6 +649,21 @@ func setJobAgentBlocksFromAPI(data *JobAgentResourceModel, jobType string, confi
 				Template:  types.StringValue(fmt.Sprint(config["template"])),
 			},
 		}
+
+	case "argo-workflow":
+		httpInsecure := types.BoolValue(false)
+		if v, ok := config["httpInsecure"]; ok {
+			httpInsecure = boolValueOrNull(v)
+		}
+		argoWorkflow := JobAgentArgoWorkflowModel{
+			ApiKey:        types.StringNull(),
+			WebhookSecret: types.StringNull(),
+			ServerUrl:     types.StringValue(fmt.Sprint(config["serverUrl"])),
+			Template:      types.StringValue(fmt.Sprint(config["template"])),
+			Name:          types.StringValue(fmt.Sprint(config["name"])),
+			HttpInsecure:  httpInsecure,
+		}
+		data.ArgoWorkflow = []JobAgentArgoWorkflowModel{argoWorkflow}
 	case "github-app":
 		github := JobAgentGitHubModel{
 			InstallationId: types.Int64Value(toInt64(config["installationId"])),
