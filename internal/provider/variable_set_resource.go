@@ -4,10 +4,8 @@ package provider
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/ctrlplanedev/terraform-provider-ctrlplane/internal/api"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -420,17 +418,16 @@ func vsVariableValueFromModel(m VariableSetVariableModel) (*api.Value, error) {
 	}
 
 	if !m.Value.IsNull() && !m.Value.IsUnknown() {
-		literal, err := stringToLiteralValue(m.Value.ValueString())
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert value: %w", err)
-		}
-
 		if m.Sensitive.ValueBool() {
 			if err := value.FromSensitiveValue(api.SensitiveValue{}); err != nil {
 				return nil, fmt.Errorf("failed to set sensitive value: %w", err)
 			}
 		} else {
-			if err := value.FromLiteralValue(*literal); err != nil {
+			var literal api.LiteralValue
+			if err := literal.FromStringValue(m.Value.ValueString()); err != nil {
+				return nil, fmt.Errorf("failed to set string value: %w", err)
+			}
+			if err := value.FromLiteralValue(literal); err != nil {
 				return nil, fmt.Errorf("failed to set literal value: %w", err)
 			}
 		}
@@ -439,55 +436,6 @@ func vsVariableValueFromModel(m VariableSetVariableModel) (*api.Value, error) {
 	}
 
 	return nil, fmt.Errorf("one of value or reference_value must be provided")
-}
-
-// stringToLiteralValue parses a string into the appropriate LiteralValue type.
-// It tries to interpret the string as a boolean, integer, float, JSON object,
-// and falls back to a plain string.
-func stringToLiteralValue(s string) (*api.LiteralValue, error) {
-	var literal api.LiteralValue
-
-	// Try boolean
-	if s == "true" || s == "false" {
-		b, _ := strconv.ParseBool(s)
-		if err := literal.FromBooleanValue(b); err != nil {
-			return nil, err
-		}
-		return &literal, nil
-	}
-
-	// Try integer
-	if i, err := strconv.ParseInt(s, 10, 64); err == nil {
-		if err := literal.FromIntegerValue(int(i)); err != nil {
-			return nil, err
-		}
-		return &literal, nil
-	}
-
-	// Try float
-	if f, err := strconv.ParseFloat(s, 64); err == nil {
-		if err := literal.FromNumberValue(float32(f)); err != nil {
-			return nil, err
-		}
-		return &literal, nil
-	}
-
-	// Try JSON object
-	if len(s) > 0 && s[0] == '{' {
-		var obj map[string]interface{}
-		if err := json.Unmarshal([]byte(s), &obj); err == nil {
-			if err := literal.FromObjectValue(api.ObjectValue{Object: obj}); err != nil {
-				return nil, err
-			}
-			return &literal, nil
-		}
-	}
-
-	// Default to string
-	if err := literal.FromStringValue(s); err != nil {
-		return nil, err
-	}
-	return &literal, nil
 }
 
 // vsVariablesToModel converts API variables to a Terraform list for state.
@@ -527,7 +475,9 @@ func vsVariablesToModel(variables []api.VariableSetVariable) (types.List, diag.D
 		} else if _, err := v.Value.AsSensitiveValue(); err == nil {
 			sensitiveVal = types.BoolValue(true)
 		} else if lit, err := v.Value.AsLiteralValue(); err == nil {
-			strVal = types.StringValue(literalValueToString(&lit))
+			if s, err := lit.AsStringValue(); err == nil {
+				strVal = types.StringValue(s)
+			}
 		}
 
 		obj, objDiags := types.ObjectValue(variableSetVariableAttrTypes, map[string]attr.Value{
@@ -548,28 +498,3 @@ func vsVariablesToModel(variables []api.VariableSetVariable) (types.List, diag.D
 	return list, diags
 }
 
-// literalValueToString converts a LiteralValue to its string representation.
-func literalValueToString(lit *api.LiteralValue) string {
-	if lit == nil {
-		return ""
-	}
-	if v, err := lit.AsStringValue(); err == nil {
-		return v
-	}
-	if v, err := lit.AsBooleanValue(); err == nil {
-		return strconv.FormatBool(v)
-	}
-	if v, err := lit.AsIntegerValue(); err == nil {
-		return strconv.Itoa(v)
-	}
-	if v, err := lit.AsNumberValue(); err == nil {
-		return strconv.FormatFloat(float64(v), 'f', -1, 32)
-	}
-	if v, err := lit.AsObjectValue(); err == nil {
-		b, err := json.Marshal(v.Object)
-		if err == nil {
-			return string(b)
-		}
-	}
-	return ""
-}

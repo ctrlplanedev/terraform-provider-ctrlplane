@@ -226,15 +226,16 @@ resource "ctrlplane_variable_set" "test" {
   selector    = "true"
   priority    = 1
 
-  variables {
-    key   = "VAR_ONE"
-    value = %q
-  }
-
-  variables {
-    key   = "VAR_TWO"
-    value = %q
-  }
+  variables = [
+    {
+      key   = "VAR_ONE"
+      value = %q
+    },
+    {
+      key   = "VAR_TWO"
+      value = %q
+    },
+  ]
 }
 `, testAccProviderConfig(), name, val1, val2)
 }
@@ -248,13 +249,15 @@ resource "ctrlplane_variable_set" "test" {
   selector    = "true"
   priority    = 1
 
-  variables {
-    key = "REGION"
-    reference_value {
-      reference = "resource"
-      path      = ["metadata", "region"]
-    }
-  }
+  variables = [
+    {
+      key = "REGION"
+      reference_value = {
+        reference = "resource"
+        path      = ["metadata", "region"]
+      }
+    },
+  ]
 }
 `, testAccProviderConfig(), name)
 }
