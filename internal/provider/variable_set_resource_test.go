@@ -227,13 +227,13 @@ resource "ctrlplane_variable_set" "test" {
   priority    = 1
 
   variables {
-    key           = "VAR_ONE"
-    literal_value = %q
+    key   = "VAR_ONE"
+    value = %q
   }
 
   variables {
-    key           = "VAR_TWO"
-    literal_value = %q
+    key   = "VAR_TWO"
+    value = %q
   }
 }
 `, testAccProviderConfig(), name, val1, val2)

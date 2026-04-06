@@ -4,8 +4,10 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/ctrlplanedev/terraform-provider-ctrlplane/internal/api"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -41,14 +43,16 @@ type VariableSetResourceModel struct {
 }
 
 type VariableSetVariableModel struct {
-	Key            types.String  `tfsdk:"key"`
-	LiteralValue   types.Dynamic `tfsdk:"literal_value"`
-	ReferenceValue types.Object  `tfsdk:"reference_value"`
+	Key            types.String `tfsdk:"key"`
+	Value          types.String `tfsdk:"value"`
+	Sensitive      types.Bool   `tfsdk:"sensitive"`
+	ReferenceValue types.Object `tfsdk:"reference_value"`
 }
 
 var variableSetVariableAttrTypes = map[string]attr.Type{
-	"key": types.StringType,
-	"literal_value": types.DynamicType,
+	"key":       types.StringType,
+	"value":     types.StringType,
+	"sensitive": types.BoolType,
 	"reference_value": types.ObjectType{
 		AttrTypes: referenceValueAttrTypes,
 	},
@@ -114,13 +118,17 @@ func (r *VariableSetResource) Schema(ctx context.Context, req resource.SchemaReq
 							Required:            true,
 							MarkdownDescription: "The key of the variable.",
 						},
-						"literal_value": schema.DynamicAttribute{
+						"value": schema.StringAttribute{
 							Optional:            true,
-							MarkdownDescription: "A literal value (string, number, boolean, or object). Conflicts with `reference_value`.",
+							MarkdownDescription: "The literal value as a string. Numbers, booleans, and JSON objects are also accepted and will be sent with their appropriate types. Conflicts with `reference_value`.",
+						},
+						"sensitive": schema.BoolAttribute{
+							Optional:            true,
+							MarkdownDescription: "Whether the value is sensitive. When true, the value is stored as a sensitive value. Conflicts with `reference_value`.",
 						},
 						"reference_value": schema.SingleNestedAttribute{
 							Optional:            true,
-							MarkdownDescription: "A reference value pointing to a property on the matched resource. Conflicts with `literal_value`.",
+							MarkdownDescription: "A reference value pointing to a property on the matched resource. Conflicts with `value`.",
 							Attributes: map[string]schema.Attribute{
 								"reference": schema.StringAttribute{
 									Required:            true,
@@ -147,7 +155,7 @@ func (r *VariableSetResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	variables, diags := variablesFromModel(ctx, data)
+	variables, diags := vsVariablesFromModel(ctx, data)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -249,7 +257,7 @@ func (r *VariableSetResource) Read(ctx context.Context, req resource.ReadRequest
 	data.Selector = types.StringValue(vs.Selector)
 	data.Priority = types.Int64Value(int64(vs.Priority))
 
-	varList, diags := variablesToModel(ctx, vs.Variables)
+	varList, diags := vsVariablesToModel(vs.Variables)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -266,7 +274,7 @@ func (r *VariableSetResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	variables, diags := variablesFromModel(ctx, data)
+	variables, diags := vsVariablesFromModel(ctx, data)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -339,8 +347,8 @@ func (r *VariableSetResource) Delete(ctx context.Context, req resource.DeleteReq
 	resp.Diagnostics.AddError("Failed to delete variable set", formatResponseError(deleteResp.StatusCode(), deleteResp.Body))
 }
 
-// variablesFromModel converts the Terraform list of variables into API VariableSetVariable slice.
-func variablesFromModel(ctx context.Context, data VariableSetResourceModel) ([]api.VariableSetVariable, diag.Diagnostics) {
+// vsVariablesFromModel converts the Terraform list of variables into API VariableSetVariable slice.
+func vsVariablesFromModel(ctx context.Context, data VariableSetResourceModel) ([]api.VariableSetVariable, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
 	if data.Variables.IsNull() || data.Variables.IsUnknown() {
@@ -355,7 +363,7 @@ func variablesFromModel(ctx context.Context, data VariableSetResourceModel) ([]a
 
 	variables := make([]api.VariableSetVariable, 0, len(models))
 	for _, m := range models {
-		value, err := variableValueFromModel(m)
+		value, err := vsVariableValueFromModel(m)
 		if err != nil {
 			diags.AddError("Failed to convert variable value", fmt.Sprintf("Variable '%s': %s", m.Key.ValueString(), err.Error()))
 			return nil, diags
@@ -370,8 +378,8 @@ func variablesFromModel(ctx context.Context, data VariableSetResourceModel) ([]a
 	return variables, diags
 }
 
-// variableValueFromModel converts a single variable model into an API Value.
-func variableValueFromModel(m VariableSetVariableModel) (*api.Value, error) {
+// vsVariableValueFromModel converts a single variable model into an API Value.
+func vsVariableValueFromModel(m VariableSetVariableModel) (*api.Value, error) {
 	var value api.Value
 
 	if !m.ReferenceValue.IsNull() && !m.ReferenceValue.IsUnknown() {
@@ -411,27 +419,79 @@ func variableValueFromModel(m VariableSetVariableModel) (*api.Value, error) {
 		return &value, nil
 	}
 
-	if !m.LiteralValue.IsNull() && !m.LiteralValue.IsUnknown() {
-		literal, err := literalValueFromDynamic(m.LiteralValue)
+	if !m.Value.IsNull() && !m.Value.IsUnknown() {
+		literal, err := stringToLiteralValue(m.Value.ValueString())
 		if err != nil {
-			return nil, fmt.Errorf("failed to convert literal value: %w", err)
-		}
-		if literal == nil {
-			return nil, fmt.Errorf("literal_value resolved to nil")
+			return nil, fmt.Errorf("failed to convert value: %w", err)
 		}
 
-		if err := value.FromLiteralValue(*literal); err != nil {
-			return nil, fmt.Errorf("failed to set literal value: %w", err)
+		if m.Sensitive.ValueBool() {
+			if err := value.FromSensitiveValue(api.SensitiveValue{}); err != nil {
+				return nil, fmt.Errorf("failed to set sensitive value: %w", err)
+			}
+		} else {
+			if err := value.FromLiteralValue(*literal); err != nil {
+				return nil, fmt.Errorf("failed to set literal value: %w", err)
+			}
 		}
 
 		return &value, nil
 	}
 
-	return nil, fmt.Errorf("one of literal_value or reference_value must be provided")
+	return nil, fmt.Errorf("one of value or reference_value must be provided")
 }
 
-// variablesToModel converts API variables to a Terraform list for state.
-func variablesToModel(_ context.Context, variables []api.VariableSetVariable) (types.List, diag.Diagnostics) {
+// stringToLiteralValue parses a string into the appropriate LiteralValue type.
+// It tries to interpret the string as a boolean, integer, float, JSON object,
+// and falls back to a plain string.
+func stringToLiteralValue(s string) (*api.LiteralValue, error) {
+	var literal api.LiteralValue
+
+	// Try boolean
+	if s == "true" || s == "false" {
+		b, _ := strconv.ParseBool(s)
+		if err := literal.FromBooleanValue(b); err != nil {
+			return nil, err
+		}
+		return &literal, nil
+	}
+
+	// Try integer
+	if i, err := strconv.ParseInt(s, 10, 64); err == nil {
+		if err := literal.FromIntegerValue(int(i)); err != nil {
+			return nil, err
+		}
+		return &literal, nil
+	}
+
+	// Try float
+	if f, err := strconv.ParseFloat(s, 64); err == nil {
+		if err := literal.FromNumberValue(float32(f)); err != nil {
+			return nil, err
+		}
+		return &literal, nil
+	}
+
+	// Try JSON object
+	if len(s) > 0 && s[0] == '{' {
+		var obj map[string]interface{}
+		if err := json.Unmarshal([]byte(s), &obj); err == nil {
+			if err := literal.FromObjectValue(api.ObjectValue{Object: obj}); err != nil {
+				return nil, err
+			}
+			return &literal, nil
+		}
+	}
+
+	// Default to string
+	if err := literal.FromStringValue(s); err != nil {
+		return nil, err
+	}
+	return &literal, nil
+}
+
+// vsVariablesToModel converts API variables to a Terraform list for state.
+func vsVariablesToModel(variables []api.VariableSetVariable) (types.List, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
 	if len(variables) == 0 {
@@ -440,7 +500,8 @@ func variablesToModel(_ context.Context, variables []api.VariableSetVariable) (t
 
 	elems := make([]attr.Value, 0, len(variables))
 	for _, v := range variables {
-		litVal := types.DynamicNull()
+		strVal := types.StringNull()
+		sensitiveVal := types.BoolNull()
 		refVal := types.ObjectNull(referenceValueAttrTypes)
 
 		// Try reference value first
@@ -463,13 +524,16 @@ func variablesToModel(_ context.Context, variables []api.VariableSetVariable) (t
 				return types.ListNull(types.ObjectType{AttrTypes: variableSetVariableAttrTypes}), diags
 			}
 			refVal = obj
+		} else if _, err := v.Value.AsSensitiveValue(); err == nil {
+			sensitiveVal = types.BoolValue(true)
 		} else if lit, err := v.Value.AsLiteralValue(); err == nil {
-			litVal = literalValueToDynamic(&lit)
+			strVal = types.StringValue(literalValueToString(&lit))
 		}
 
 		obj, objDiags := types.ObjectValue(variableSetVariableAttrTypes, map[string]attr.Value{
 			"key":             types.StringValue(v.Key),
-			"literal_value":   litVal,
+			"value":           strVal,
+			"sensitive":       sensitiveVal,
 			"reference_value": refVal,
 		})
 		if objDiags.HasError() {
@@ -482,4 +546,30 @@ func variablesToModel(_ context.Context, variables []api.VariableSetVariable) (t
 	list, listDiags := types.ListValue(types.ObjectType{AttrTypes: variableSetVariableAttrTypes}, elems)
 	diags.Append(listDiags...)
 	return list, diags
+}
+
+// literalValueToString converts a LiteralValue to its string representation.
+func literalValueToString(lit *api.LiteralValue) string {
+	if lit == nil {
+		return ""
+	}
+	if v, err := lit.AsStringValue(); err == nil {
+		return v
+	}
+	if v, err := lit.AsBooleanValue(); err == nil {
+		return strconv.FormatBool(v)
+	}
+	if v, err := lit.AsIntegerValue(); err == nil {
+		return strconv.Itoa(v)
+	}
+	if v, err := lit.AsNumberValue(); err == nil {
+		return strconv.FormatFloat(float64(v), 'f', -1, 32)
+	}
+	if v, err := lit.AsObjectValue(); err == nil {
+		b, err := json.Marshal(v.Object)
+		if err == nil {
+			return string(b)
+		}
+	}
+	return ""
 }
