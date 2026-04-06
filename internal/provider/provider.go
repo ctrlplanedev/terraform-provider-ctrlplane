@@ -130,6 +130,7 @@ func (p *CtrlplaneProvider) Resources(ctx context.Context) []func() resource.Res
 		NewEnvironmentSystemLinkResource,
 		NewDeploymentSystemLinkResource,
 		NewWorkflowResource,
+		NewVariableSetResource,
 	}
 }
 
