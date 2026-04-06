@@ -497,4 +497,3 @@ func vsVariablesToModel(variables []api.VariableSetVariable) (types.List, diag.D
 	diags.Append(listDiags...)
 	return list, diags
 }
-
