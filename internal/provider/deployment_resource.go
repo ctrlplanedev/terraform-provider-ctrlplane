@@ -510,6 +510,12 @@ func setStringIfSet(cfg map[string]any, key string, val types.String) {
 // which block to populate so that reads are stable.
 func setDeploymentBlocksFromConfig(data *DeploymentResourceModel, config map[string]interface{}) {
 	blockType := deploymentBlockType(data)
+
+	// Preserve sensitive fields from prior state before clearing blocks.
+	priorArgoCD := data.ArgoCD
+	priorArgoWorkflow := data.ArgoWorkflow
+	priorTFC := data.TerraformCloud
+
 	data.ArgoCD = nil
 	data.ArgoWorkflow = nil
 	data.GitHub = nil
@@ -527,6 +533,9 @@ func setDeploymentBlocksFromConfig(data *DeploymentResourceModel, config map[str
 			ServerUrl: stringValueOrNull(config["serverUrl"]),
 			Template:  stringValueOrNull(config["template"]),
 		}
+		if data.ArgoCD.ApiKey.IsNull() && priorArgoCD != nil && !priorArgoCD.ApiKey.IsNull() {
+			data.ArgoCD.ApiKey = priorArgoCD.ApiKey
+		}
 	case "argo_workflow":
 		data.ArgoWorkflow = &DeploymentArgoWorkflowModel{
 			ApiKey:        stringValueOrNull(config["apiKey"]),
@@ -535,6 +544,12 @@ func setDeploymentBlocksFromConfig(data *DeploymentResourceModel, config map[str
 			Template:      stringValueOrNull(config["template"]),
 			Name:          stringValueOrNull(config["name"]),
 			HttpInsecure:  boolValueOrNull(config["httpInsecure"]),
+		}
+		if data.ArgoWorkflow.ApiKey.IsNull() && priorArgoWorkflow != nil && !priorArgoWorkflow.ApiKey.IsNull() {
+			data.ArgoWorkflow.ApiKey = priorArgoWorkflow.ApiKey
+		}
+		if data.ArgoWorkflow.WebhookSecret.IsNull() && priorArgoWorkflow != nil && !priorArgoWorkflow.WebhookSecret.IsNull() {
+			data.ArgoWorkflow.WebhookSecret = priorArgoWorkflow.WebhookSecret
 		}
 	case "github":
 		gh := DeploymentGitHubModel{
@@ -568,6 +583,9 @@ func setDeploymentBlocksFromConfig(data *DeploymentResourceModel, config map[str
 			Token:              stringValueOrNull(config["token"]),
 			TriggerRunOnChange: boolValueOrNull(config["triggerRunOnChange"]),
 		}
+		if data.TerraformCloud.Token.IsNull() && priorTFC != nil && !priorTFC.Token.IsNull() {
+			data.TerraformCloud.Token = priorTFC.Token
+		}
 	case "test_runner":
 		tr := DeploymentTestRunnerModel{
 			DelaySeconds: types.Int64Null(),
@@ -585,7 +603,6 @@ func setDeploymentBlocksFromConfig(data *DeploymentResourceModel, config map[str
 		}
 		data.TestRunner = &tr
 	}
-
 }
 
 func deploymentBlockType(data *DeploymentResourceModel) string {
