@@ -21,83 +21,71 @@ description: |-
 
 ### Optional
 
-- `job_agent` (Block List) Job agent configuration (see [below for nested schema](#nestedblock--job_agent))
+- `argo_workflow` (Block, Optional) Argo Workflow job agent configuration (see [below for nested schema](#nestedblock--argo_workflow))
+- `argocd` (Block, Optional) ArgoCD job agent configuration (see [below for nested schema](#nestedblock--argocd))
+- `github` (Block, Optional) GitHub job agent configuration (see [below for nested schema](#nestedblock--github))
+- `job_agent_selector` (String) CEL expression to match job agents
 - `metadata` (Map of String) The metadata of the deployment
 - `resource_selector` (String) CEL expression used to select resources
+- `terraform_cloud` (Block, Optional) Terraform Cloud job agent configuration (see [below for nested schema](#nestedblock--terraform_cloud))
+- `test_runner` (Block, Optional) Test runner job agent configuration (see [below for nested schema](#nestedblock--test_runner))
 
 ### Read-Only
 
 - `id` (String) The ID of the deployment
 
-<a id="nestedblock--job_agent"></a>
-### Nested Schema for `job_agent`
-
-Required:
-
-- `id` (String) Job agent ID
+<a id="nestedblock--argo_workflow"></a>
+### Nested Schema for `argo_workflow`
 
 Optional:
 
-- `argo_workflow` (Block, Optional) ArgoWorkflow job agent overrides (see [below for nested schema](#nestedblock--job_agent--argo_workflow))
-- `argocd` (Block, Optional) ArgoCD job agent overrides (see [below for nested schema](#nestedblock--job_agent--argocd))
-- `github` (Block, Optional) GitHub job agent overrides (see [below for nested schema](#nestedblock--job_agent--github))
-- `priority` (Number) Priority of the job agent
-- `selector` (String) CEL expression used to select resources
-- `terraform_cloud` (Block, Optional) Terraform Cloud job agent overrides (see [below for nested schema](#nestedblock--job_agent--terraform_cloud))
-- `test_runner` (Block, Optional) Test runner job agent overrides (see [below for nested schema](#nestedblock--job_agent--test_runner))
-
-<a id="nestedblock--job_agent--argo_workflow"></a>
-### Nested Schema for `job_agent.argo_workflow`
-
-Optional:
-
-- `api_key` (String, Sensitive) ArgoWorkflow API token
-- `http_insecure` (Boolean) Allow insecure HTTP connections (defaults to false)
+- `api_key` (String, Sensitive) Argo Workflow API token
+- `http_insecure` (Boolean) Allow insecure HTTP connections
 - `name` (String) The name of the argo template to call
-- `server_url` (String) ArgoWorkflow server address (host[:port] or URL)
-- `template` (String) ArgoWorkflow application template
+- `server_url` (String) Argo Workflow server address
+- `template` (String) Argo Workflow application template
 - `webhook_secret` (String, Sensitive) ArgoEvents webhook secret
 
 
-<a id="nestedblock--job_agent--argocd"></a>
-### Nested Schema for `job_agent.argocd`
+<a id="nestedblock--argocd"></a>
+### Nested Schema for `argocd`
 
 Optional:
 
 - `api_key` (String, Sensitive) ArgoCD API token
-- `server_url` (String) ArgoCD server address (host[:port] or URL)
+- `server_url` (String) ArgoCD server address
 - `template` (String) ArgoCD application template
 
 
-<a id="nestedblock--job_agent--github"></a>
-### Nested Schema for `job_agent.github`
+<a id="nestedblock--github"></a>
+### Nested Schema for `github`
 
 Optional:
 
 - `installation_id` (Number) GitHub app installation ID
 - `owner` (String) GitHub repository owner
-- `ref` (String) Git ref to run the workflow on (defaults to "main" if omitted)
+- `ref` (String) Git ref to run the workflow on
 - `repo` (String) GitHub repository name
 - `workflow_id` (Number) GitHub Actions workflow ID
 
 
-<a id="nestedblock--job_agent--terraform_cloud"></a>
-### Nested Schema for `job_agent.terraform_cloud`
+<a id="nestedblock--terraform_cloud"></a>
+### Nested Schema for `terraform_cloud`
 
 Optional:
 
-- `address` (String) Terraform Cloud address (e.g. https://app.terraform.io)
+- `address` (String) Terraform Cloud address
 - `organization` (String) Terraform Cloud organization name
 - `template` (String) Terraform Cloud workspace template
 - `token` (String, Sensitive) Terraform Cloud API token
-- `trigger_run_on_change` (Boolean) Whether to create a TFC run on dispatch. When false, only the workspace and variables are synced. Defaults to true.
+- `trigger_run_on_change` (Boolean) Whether to create a TFC run on dispatch
 
 
-<a id="nestedblock--job_agent--test_runner"></a>
-### Nested Schema for `job_agent.test_runner`
+<a id="nestedblock--test_runner"></a>
+### Nested Schema for `test_runner`
 
 Optional:
 
 - `delay_seconds` (Number) Delay in seconds before resolving the job
 - `message` (String) Optional message to include in the job output
-- `status` (String) Final status to set (e.g. "successful", "failure")
+- `status` (String) Final status to set

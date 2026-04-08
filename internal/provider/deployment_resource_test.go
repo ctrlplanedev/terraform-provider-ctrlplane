@@ -79,11 +79,10 @@ resource "ctrlplane_deployment" "test" {
 
   resource_selector = "resource.name == '%s'"
 
-  job_agent {
-    id = ctrlplane_job_agent.test.id
-    test_runner {
-      delay_seconds = 10
-    }
+  job_agent_selector = "jobAgent.id == \"${ctrlplane_job_agent.test.id}\""
+
+  test_runner {
+    delay_seconds = 10
   }
 }
 `, testAccProviderConfig(), name, name+"-ja", status, name, metadataValue, name)
