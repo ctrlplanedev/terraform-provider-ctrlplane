@@ -4,6 +4,7 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -522,7 +523,14 @@ func setDeploymentBlocksFromConfig(data *DeploymentResourceModel, config map[str
 	data.TerraformCloud = nil
 	data.TestRunner = nil
 
-	if len(config) == 0 || blockType == "" {
+	if len(config) == 0 {
+		return
+	}
+
+	if blockType == "" {
+		blockType = inferBlockTypeFromConfig(config)
+	}
+	if blockType == "" {
 		return
 	}
 
@@ -603,6 +611,82 @@ func setDeploymentBlocksFromConfig(data *DeploymentResourceModel, config map[str
 		}
 		data.TestRunner = &tr
 	}
+}
+
+type argoCDConfig struct {
+	ApiKey    string `json:"apiKey"`
+	ServerUrl string `json:"serverUrl"`
+	Template  string `json:"template"`
+}
+
+type argoWorkflowConfig struct {
+	ApiKey        string `json:"apiKey"`
+	WebhookSecret string `json:"webhookSecret"`
+	ServerUrl     string `json:"serverUrl"`
+	Template      string `json:"template"`
+	Name          string `json:"name"`
+	HttpInsecure  *bool  `json:"httpInsecure"`
+}
+
+type githubConfig struct {
+	InstallationId *int64 `json:"installationId"`
+	Owner          string `json:"owner"`
+	Ref            string `json:"ref"`
+	Repo           string `json:"repo"`
+	WorkflowId     *int64 `json:"workflowId"`
+}
+
+type terraformCloudConfig struct {
+	Address            string `json:"address"`
+	Organization       string `json:"organization"`
+	Template           string `json:"template"`
+	Token              string `json:"token"`
+	TriggerRunOnChange *bool  `json:"triggerRunOnChange"`
+}
+
+type testRunnerConfig struct {
+	DelaySeconds *int64 `json:"delaySeconds"`
+	Message      string `json:"message"`
+	Status       string `json:"status"`
+}
+
+func inferBlockTypeFromConfig(config map[string]interface{}) string {
+	data, err := json.Marshal(config)
+	if err != nil {
+		return ""
+	}
+
+	var gh githubConfig
+	_ = json.Unmarshal(data, &gh)
+	if gh.Owner != "" || gh.Repo != "" || gh.InstallationId != nil || gh.WorkflowId != nil {
+		return "github"
+	}
+
+	var tfc terraformCloudConfig
+	_ = json.Unmarshal(data, &tfc)
+	if tfc.Organization != "" || tfc.Address != "" || tfc.TriggerRunOnChange != nil {
+		return "terraform_cloud"
+	}
+
+	var tr testRunnerConfig
+	_ = json.Unmarshal(data, &tr)
+	if tr.DelaySeconds != nil || tr.Status != "" {
+		return "test_runner"
+	}
+
+	var aw argoWorkflowConfig
+	_ = json.Unmarshal(data, &aw)
+	if aw.WebhookSecret != "" || aw.HttpInsecure != nil || aw.Name != "" {
+		return "argo_workflow"
+	}
+
+	var ac argoCDConfig
+	_ = json.Unmarshal(data, &ac)
+	if ac.ServerUrl != "" || ac.Template != "" || ac.ApiKey != "" {
+		return "argocd"
+	}
+
+	return ""
 }
 
 func deploymentBlockType(data *DeploymentResourceModel) string {
