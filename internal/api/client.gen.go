@@ -108,6 +108,20 @@ const (
 	Successful          JobStatus = "successful"
 )
 
+// Defines values for ListResourcesFiltersOrder.
+const (
+	ListResourcesFiltersOrderAsc  ListResourcesFiltersOrder = "asc"
+	ListResourcesFiltersOrderDesc ListResourcesFiltersOrder = "desc"
+)
+
+// Defines values for ListResourcesFiltersSortBy.
+const (
+	CreatedAt ListResourcesFiltersSortBy = "createdAt"
+	Kind      ListResourcesFiltersSortBy = "kind"
+	Name      ListResourcesFiltersSortBy = "name"
+	UpdatedAt ListResourcesFiltersSortBy = "updatedAt"
+)
+
 // Defines values for NullValue.
 const (
 	True NullValue = true
@@ -195,8 +209,8 @@ const (
 
 // Defines values for ListDeploymentVersionsParamsOrder.
 const (
-	Asc  ListDeploymentVersionsParamsOrder = "asc"
-	Desc ListDeploymentVersionsParamsOrder = "desc"
+	ListDeploymentVersionsParamsOrderAsc  ListDeploymentVersionsParamsOrder = "asc"
+	ListDeploymentVersionsParamsOrderDesc ListDeploymentVersionsParamsOrder = "desc"
 )
 
 // AnyApprovalRule defines model for AnyApprovalRule.
@@ -222,9 +236,12 @@ type CreateDeploymentRequest struct {
 	Description    *string                 `json:"description,omitempty"`
 	JobAgentConfig *map[string]interface{} `json:"jobAgentConfig,omitempty"`
 	JobAgentId     *string                 `json:"jobAgentId,omitempty"`
-	JobAgents      *[]DeploymentJobAgent   `json:"jobAgents,omitempty"`
-	Metadata       *map[string]string      `json:"metadata,omitempty"`
-	Name           string                  `json:"name"`
+
+	// JobAgentSelector CEL expression to match job agents. Defaults to jobAgent.id == "<jobAgentId>" if not provided.
+	JobAgentSelector *string               `json:"jobAgentSelector,omitempty"`
+	JobAgents        *[]DeploymentJobAgent `json:"jobAgents,omitempty"`
+	Metadata         *map[string]string    `json:"metadata,omitempty"`
+	Name             string                `json:"name"`
 
 	// ResourceSelector CEL expression to determine if the deployment should be used
 	ResourceSelector *string `json:"resourceSelector,omitempty"`
@@ -374,9 +391,12 @@ type Deployment struct {
 	Id             string                 `json:"id"`
 	JobAgentConfig map[string]interface{} `json:"jobAgentConfig"`
 	JobAgentId     *string                `json:"jobAgentId,omitempty"`
-	JobAgents      *[]DeploymentJobAgent  `json:"jobAgents,omitempty"`
-	Metadata       *map[string]string     `json:"metadata,omitempty"`
-	Name           string                 `json:"name"`
+
+	// JobAgentSelector CEL expression to match job agents
+	JobAgentSelector *string               `json:"jobAgentSelector,omitempty"`
+	JobAgents        *[]DeploymentJobAgent `json:"jobAgents,omitempty"`
+	Metadata         *map[string]string    `json:"metadata,omitempty"`
+	Name             string                `json:"name"`
 
 	// ResourceSelector CEL expression to determine if the deployment should be used
 	ResourceSelector *string `json:"resourceSelector,omitempty"`
@@ -711,6 +731,30 @@ type JobWithRelease struct {
 	Release     Release      `json:"release"`
 	Resource    *Resource    `json:"resource,omitempty"`
 }
+
+// ListResourcesFilters defines model for ListResourcesFilters.
+type ListResourcesFilters struct {
+	Identifiers *[]string `json:"identifiers,omitempty"`
+	Kinds       *[]string `json:"kinds,omitempty"`
+	Limit       *int      `json:"limit,omitempty"`
+
+	// Metadata Exact metadata key/value matches
+	Metadata    *map[string]string         `json:"metadata,omitempty"`
+	Offset      *int                       `json:"offset,omitempty"`
+	Order       *ListResourcesFiltersOrder `json:"order,omitempty"`
+	ProviderIds *[]string                  `json:"providerIds,omitempty"`
+
+	// Query Text search on name or identifier
+	Query    *string                     `json:"query,omitempty"`
+	SortBy   *ListResourcesFiltersSortBy `json:"sortBy,omitempty"`
+	Versions *[]string                   `json:"versions,omitempty"`
+}
+
+// ListResourcesFiltersOrder defines model for ListResourcesFilters.Order.
+type ListResourcesFiltersOrder string
+
+// ListResourcesFiltersSortBy defines model for ListResourcesFilters.SortBy.
+type ListResourcesFiltersSortBy string
 
 // LiteralValue defines model for LiteralValue.
 type LiteralValue struct {
@@ -1112,9 +1156,12 @@ type UpsertDeploymentRequest struct {
 	Description    *string                 `json:"description,omitempty"`
 	JobAgentConfig *map[string]interface{} `json:"jobAgentConfig,omitempty"`
 	JobAgentId     *string                 `json:"jobAgentId,omitempty"`
-	JobAgents      *[]DeploymentJobAgent   `json:"jobAgents,omitempty"`
-	Metadata       *map[string]string      `json:"metadata,omitempty"`
-	Name           string                  `json:"name"`
+
+	// JobAgentSelector CEL expression to match job agents. Defaults to jobAgent.id == "<jobAgentId>" if not provided.
+	JobAgentSelector *string               `json:"jobAgentSelector,omitempty"`
+	JobAgents        *[]DeploymentJobAgent `json:"jobAgents,omitempty"`
+	Metadata         *map[string]string    `json:"metadata,omitempty"`
+	Name             string                `json:"name"`
 
 	// ResourceSelector CEL expression to determine if the deployment should be used
 	ResourceSelector *string `json:"resourceSelector,omitempty"`
@@ -1780,6 +1827,9 @@ type UpsertResourceByIdentifierJSONRequestBody = UpsertResourceRequest
 
 // RequestResourceVariablesUpdateJSONRequestBody defines body for RequestResourceVariablesUpdate for application/json ContentType.
 type RequestResourceVariablesUpdateJSONRequestBody RequestResourceVariablesUpdateJSONBody
+
+// SearchResourcesJSONRequestBody defines body for SearchResources for application/json ContentType.
+type SearchResourcesJSONRequestBody = ListResourcesFilters
 
 // RequestSystemCreationJSONRequestBody defines body for RequestSystemCreation for application/json ContentType.
 type RequestSystemCreationJSONRequestBody = CreateSystemRequest
@@ -2752,6 +2802,11 @@ type ClientInterface interface {
 	RequestResourceVariablesUpdateWithBody(ctx context.Context, workspaceId string, identifier string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	RequestResourceVariablesUpdate(ctx context.Context, workspaceId string, identifier string, body RequestResourceVariablesUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchResourcesWithBody request with any body
+	SearchResourcesWithBody(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	SearchResources(ctx context.Context, workspaceId string, body SearchResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetReleaseTargetForResourceInDeployment request
 	GetReleaseTargetForResourceInDeployment(ctx context.Context, workspaceId string, resourceIdentifier string, deploymentId string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -3895,6 +3950,30 @@ func (c *Client) RequestResourceVariablesUpdateWithBody(ctx context.Context, wor
 
 func (c *Client) RequestResourceVariablesUpdate(ctx context.Context, workspaceId string, identifier string, body RequestResourceVariablesUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRequestResourceVariablesUpdateRequest(c.Server, workspaceId, identifier, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) SearchResourcesWithBody(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchResourcesRequestWithBody(c.Server, workspaceId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) SearchResources(ctx context.Context, workspaceId string, body SearchResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchResourcesRequest(c.Server, workspaceId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -7697,6 +7776,53 @@ func NewRequestResourceVariablesUpdateRequestWithBody(server string, workspaceId
 	return req, nil
 }
 
+// NewSearchResourcesRequest calls the generic SearchResources builder with application/json body
+func NewSearchResourcesRequest(server string, workspaceId string, body SearchResourcesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchResourcesRequestWithBody(server, workspaceId, "application/json", bodyReader)
+}
+
+// NewSearchResourcesRequestWithBody generates requests for SearchResources with any type of body
+func NewSearchResourcesRequestWithBody(server string, workspaceId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "workspaceId", runtime.ParamLocationPath, workspaceId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/resources/search", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetReleaseTargetForResourceInDeploymentRequest generates requests for GetReleaseTargetForResourceInDeployment
 func NewGetReleaseTargetForResourceInDeploymentRequest(server string, workspaceId string, resourceIdentifier string, deploymentId string) (*http.Request, error) {
 	var err error
@@ -9137,6 +9263,11 @@ type ClientWithResponsesInterface interface {
 	RequestResourceVariablesUpdateWithBodyWithResponse(ctx context.Context, workspaceId string, identifier string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestResourceVariablesUpdateResponse, error)
 
 	RequestResourceVariablesUpdateWithResponse(ctx context.Context, workspaceId string, identifier string, body RequestResourceVariablesUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestResourceVariablesUpdateResponse, error)
+
+	// SearchResourcesWithBodyWithResponse request with any body
+	SearchResourcesWithBodyWithResponse(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchResourcesResponse, error)
+
+	SearchResourcesWithResponse(ctx context.Context, workspaceId string, body SearchResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchResourcesResponse, error)
 
 	// GetReleaseTargetForResourceInDeploymentWithResponse request
 	GetReleaseTargetForResourceInDeploymentWithResponse(ctx context.Context, workspaceId string, resourceIdentifier string, deploymentId string, reqEditors ...RequestEditorFn) (*GetReleaseTargetForResourceInDeploymentResponse, error)
@@ -10926,6 +11057,40 @@ func (r RequestResourceVariablesUpdateResponse) StatusCode() int {
 	return 0
 }
 
+type SearchResourcesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *struct {
+		Items []Resource `json:"items"`
+
+		// Limit Maximum number of items returned
+		Limit int `json:"limit"`
+
+		// Offset Number of items skipped
+		Offset int `json:"offset"`
+
+		// Total Total number of items available
+		Total int `json:"total"`
+	}
+	JSON400 *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchResourcesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchResourcesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetReleaseTargetForResourceInDeploymentResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -12276,6 +12441,23 @@ func (c *ClientWithResponses) RequestResourceVariablesUpdateWithResponse(ctx con
 		return nil, err
 	}
 	return ParseRequestResourceVariablesUpdateResponse(rsp)
+}
+
+// SearchResourcesWithBodyWithResponse request with arbitrary body returning *SearchResourcesResponse
+func (c *ClientWithResponses) SearchResourcesWithBodyWithResponse(ctx context.Context, workspaceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchResourcesResponse, error) {
+	rsp, err := c.SearchResourcesWithBody(ctx, workspaceId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchResourcesResponse(rsp)
+}
+
+func (c *ClientWithResponses) SearchResourcesWithResponse(ctx context.Context, workspaceId string, body SearchResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchResourcesResponse, error) {
+	rsp, err := c.SearchResources(ctx, workspaceId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchResourcesResponse(rsp)
 }
 
 // GetReleaseTargetForResourceInDeploymentWithResponse request returning *GetReleaseTargetForResourceInDeploymentResponse
@@ -15141,6 +15323,50 @@ func ParseRequestResourceVariablesUpdateResponse(rsp *http.Response) (*RequestRe
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSearchResourcesResponse parses an HTTP response from a SearchResourcesWithResponse call
+func ParseSearchResourcesResponse(rsp *http.Response) (*SearchResourcesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchResourcesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Items []Resource `json:"items"`
+
+			// Limit Maximum number of items returned
+			Limit int `json:"limit"`
+
+			// Offset Number of items skipped
+			Offset int `json:"offset"`
+
+			// Total Total number of items available
+			Total int `json:"total"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	}
 
