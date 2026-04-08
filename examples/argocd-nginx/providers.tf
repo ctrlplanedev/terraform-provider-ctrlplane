@@ -2,7 +2,7 @@ terraform {
   required_providers {
     ctrlplane = {
       source  = "ctrlplanedev/ctrlplane"
-      version = "~> 1"
+      version = ">= 1.10.1"
     }
   }
 }

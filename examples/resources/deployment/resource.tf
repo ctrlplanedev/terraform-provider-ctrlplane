@@ -18,13 +18,11 @@ resource "ctrlplane_deployment" "web" {
 
   resource_selector = "resource.kind == \"kubernetes/namespace\""
 
-  job_agent {
-    id = ctrlplane_job_agent.github.id
+  job_agent_selector = "jobAgent.id == \"${ctrlplane_job_agent.github.id}\""
 
-    github {
-      owner       = "my-org"
-      repo        = "web-frontend"
-      workflow_id = 12345678
-    }
+  github {
+    owner       = "my-org"
+    repo        = "web-frontend"
+    workflow_id = 12345678
   }
 }

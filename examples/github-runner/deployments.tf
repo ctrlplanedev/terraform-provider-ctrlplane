@@ -1,11 +1,10 @@
 resource "ctrlplane_deployment" "this" {
   name              = "github-runner-deployment"
   resource_selector = "resource.name == 'github-runner-test'"
-  job_agent {
-    id = ctrlplane_job_agent.this.id
-    github {
-      workflow_id = 106983480
-    }
+  job_agent_selector = "jobAgent.id == \"${ctrlplane_job_agent.this.id}\""
+
+  github {
+    workflow_id = 106983480
   }
 }
 

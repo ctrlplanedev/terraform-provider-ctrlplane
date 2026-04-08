@@ -1,13 +1,12 @@
 resource "ctrlplane_deployment" "this" {
   name              = "relationship-variables-app"
   resource_selector = "resource.metadata['example'] == 'relationship-variables' && resource.kind == 'KubernetesCluster'"
-  job_agent {
-    id = ctrlplane_job_agent.this.id
-    test_runner {
-      delay_seconds = 5
-      status        = "successful"
-      message       = "Test runner for relationship variables example"
-    }
+  job_agent_selector = "jobAgent.id == \"${ctrlplane_job_agent.this.id}\""
+
+  test_runner {
+    delay_seconds = 5
+    status        = "successful"
+    message       = "Test runner for relationship variables example"
   }
 }
 
