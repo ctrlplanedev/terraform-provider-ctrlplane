@@ -586,10 +586,6 @@ func setDeploymentBlocksFromConfig(data *DeploymentResourceModel, config map[str
 		data.TestRunner = &tr
 	}
 
-	// Preserve sensitive tokens from prior state since the API won't return them.
-	if blockType == "terraform_cloud" && data.TerraformCloud != nil {
-		// Token is handled by prior-state preservation in the Read caller.
-	}
 }
 
 func deploymentBlockType(data *DeploymentResourceModel) string {
