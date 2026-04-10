@@ -289,8 +289,8 @@ func (r *DeploymentResource) Read(ctx context.Context, req resource.ReadRequest,
 		data.ResourceSelector = types.StringNull()
 	}
 
-	if dep.JobAgentSelector != nil && *dep.JobAgentSelector != "" {
-		data.JobAgentSelector = types.StringValue(*dep.JobAgentSelector)
+	if dep.JobAgentSelector != "" {
+		data.JobAgentSelector = types.StringValue(dep.JobAgentSelector)
 	} else {
 		data.JobAgentSelector = types.StringNull()
 	}
