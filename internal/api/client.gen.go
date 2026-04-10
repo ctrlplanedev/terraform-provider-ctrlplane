@@ -55,12 +55,12 @@ const (
 	DeploymentPlanStatusFailed    DeploymentPlanStatus = "failed"
 )
 
-// Defines values for DeploymentPlanTargetStatus.
+// Defines values for DeploymentPlanTargetResultStatus.
 const (
-	DeploymentPlanTargetStatusCompleted   DeploymentPlanTargetStatus = "completed"
-	DeploymentPlanTargetStatusComputing   DeploymentPlanTargetStatus = "computing"
-	DeploymentPlanTargetStatusErrored     DeploymentPlanTargetStatus = "errored"
-	DeploymentPlanTargetStatusUnsupported DeploymentPlanTargetStatus = "unsupported"
+	DeploymentPlanTargetResultStatusCompleted   DeploymentPlanTargetResultStatus = "completed"
+	DeploymentPlanTargetResultStatusComputing   DeploymentPlanTargetResultStatus = "computing"
+	DeploymentPlanTargetResultStatusErrored     DeploymentPlanTargetResultStatus = "errored"
+	DeploymentPlanTargetResultStatusUnsupported DeploymentPlanTargetResultStatus = "unsupported"
 )
 
 // Defines values for DeploymentVersionStatus.
@@ -235,13 +235,11 @@ type CreateDeploymentPlanRequest struct {
 type CreateDeploymentRequest struct {
 	Description    *string                 `json:"description,omitempty"`
 	JobAgentConfig *map[string]interface{} `json:"jobAgentConfig,omitempty"`
-	JobAgentId     *string                 `json:"jobAgentId,omitempty"`
 
-	// JobAgentSelector CEL expression to match job agents. Defaults to jobAgent.id == "<jobAgentId>" if not provided.
-	JobAgentSelector *string               `json:"jobAgentSelector,omitempty"`
-	JobAgents        *[]DeploymentJobAgent `json:"jobAgents,omitempty"`
-	Metadata         *map[string]string    `json:"metadata,omitempty"`
-	Name             string                `json:"name"`
+	// JobAgentSelector CEL expression to match job agents
+	JobAgentSelector *string            `json:"jobAgentSelector,omitempty"`
+	Metadata         *map[string]string `json:"metadata,omitempty"`
+	Name             string             `json:"name"`
 
 	// ResourceSelector CEL expression to determine if the deployment should be used
 	ResourceSelector *string `json:"resourceSelector,omitempty"`
@@ -390,13 +388,11 @@ type Deployment struct {
 	Description    *string                `json:"description,omitempty"`
 	Id             string                 `json:"id"`
 	JobAgentConfig map[string]interface{} `json:"jobAgentConfig"`
-	JobAgentId     *string                `json:"jobAgentId,omitempty"`
 
 	// JobAgentSelector CEL expression to match job agents
-	JobAgentSelector *string               `json:"jobAgentSelector,omitempty"`
-	JobAgents        *[]DeploymentJobAgent `json:"jobAgents,omitempty"`
-	Metadata         *map[string]string    `json:"metadata,omitempty"`
-	Name             string                `json:"name"`
+	JobAgentSelector string             `json:"jobAgentSelector"`
+	Metadata         *map[string]string `json:"metadata,omitempty"`
+	Name             string             `json:"name"`
 
 	// ResourceSelector CEL expression to determine if the deployment should be used
 	ResourceSelector *string `json:"resourceSelector,omitempty"`
@@ -411,17 +407,8 @@ type DeploymentAndSystems struct {
 
 // DeploymentDependencyRule defines model for DeploymentDependencyRule.
 type DeploymentDependencyRule struct {
-	// DependsOn CEL expression to match upstream deployment(s) that must have a successful release before this deployment can proceed.
+	// DependsOn CEL expression to match upstream deployment(s) that must have a successful release before this deployment can proceed. The expression can reference both deployment properties (deployment.id, deployment.name, deployment.slug, deployment.metadata) and the currently deployed version properties (version.id, version.tag, version.name, version.status, version.metadata, version.createdAt). For example: deployment.name == 'db-migration' && version.tag.startsWith('v2.').
 	DependsOn string `json:"dependsOn"`
-}
-
-// DeploymentJobAgent defines model for DeploymentJobAgent.
-type DeploymentJobAgent struct {
-	Config JobAgentConfig `json:"config"`
-	Ref    string         `json:"ref"`
-
-	// Selector CEL expression to determine if the job agent should be used
-	Selector string `json:"selector"`
 }
 
 // DeploymentPlan defines model for DeploymentPlan.
@@ -446,24 +433,36 @@ type DeploymentPlanSummary struct {
 
 // DeploymentPlanTarget defines model for DeploymentPlanTarget.
 type DeploymentPlanTarget struct {
-	// ContentHash Hash of the rendered output for change detection
-	ContentHash *string `json:"contentHash,omitempty"`
+	EnvironmentId   string `json:"environmentId"`
+	EnvironmentName string `json:"environmentName"`
 
-	// Current Full rendered output of the currently deployed state
-	Current         *string `json:"current,omitempty"`
-	EnvironmentId   string  `json:"environmentId"`
-	EnvironmentName string  `json:"environmentName"`
-	HasChanges      *bool   `json:"hasChanges"`
-
-	// Proposed Full rendered output of the proposed version
-	Proposed     *string                    `json:"proposed,omitempty"`
-	ResourceId   string                     `json:"resourceId"`
-	ResourceName string                     `json:"resourceName"`
-	Status       DeploymentPlanTargetStatus `json:"status"`
+	// HasChanges True if any result for this target has changes
+	HasChanges   bool                         `json:"hasChanges"`
+	ResourceId   string                       `json:"resourceId"`
+	ResourceName string                       `json:"resourceName"`
+	Results      []DeploymentPlanTargetResult `json:"results"`
 }
 
-// DeploymentPlanTargetStatus defines model for DeploymentPlanTarget.Status.
-type DeploymentPlanTargetStatus string
+// DeploymentPlanTargetResult defines model for DeploymentPlanTargetResult.
+type DeploymentPlanTargetResult struct {
+	// ContentHash Hash of the rendered output for change detection
+	ContentHash string `json:"contentHash"`
+
+	// Current Full rendered output of the currently deployed state
+	Current    string `json:"current"`
+	HasChanges bool   `json:"hasChanges"`
+	Id         string `json:"id"`
+
+	// Message Agent message (e.g. error explanation or summary)
+	Message string `json:"message"`
+
+	// Proposed Full rendered output of the proposed version
+	Proposed string                           `json:"proposed"`
+	Status   DeploymentPlanTargetResultStatus `json:"status"`
+}
+
+// DeploymentPlanTargetResultStatus defines model for DeploymentPlanTargetResult.Status.
+type DeploymentPlanTargetResultStatus string
 
 // DeploymentPlanVersion defines model for DeploymentPlanVersion.
 type DeploymentPlanVersion struct {
@@ -596,7 +595,11 @@ type EnvironmentProgressionRule struct {
 	// MaximumAgeHours Maximum age of dependency deployment before blocking progression (prevents stale promotions)
 	MaximumAgeHours *int32 `json:"maximumAgeHours,omitempty"`
 
-	// MinimumSockTimeMinutes Minimum time to wait after the depends on environment is in a success state before the current environment can be deployed
+	// MinimumSoakTimeMinutes Minimum time to wait after the depends on environment is in a success state before the current environment can be deployed. Defaults to 0 if not provided.
+	MinimumSoakTimeMinutes *int32 `json:"minimumSoakTimeMinutes,omitempty"`
+
+	// MinimumSockTimeMinutes Use minimumSoakTimeMinutes instead. Minimum time to wait after the depends on environment is in a success state before the current environment can be deployed
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	MinimumSockTimeMinutes   *int32       `json:"minimumSockTimeMinutes,omitempty"`
 	MinimumSuccessPercentage *float32     `json:"minimumSuccessPercentage,omitempty"`
 	SuccessStatuses          *[]JobStatus `json:"successStatuses,omitempty"`
@@ -1155,13 +1158,11 @@ type UpdateWorkspaceRequest struct {
 type UpsertDeploymentRequest struct {
 	Description    *string                 `json:"description,omitempty"`
 	JobAgentConfig *map[string]interface{} `json:"jobAgentConfig,omitempty"`
-	JobAgentId     *string                 `json:"jobAgentId,omitempty"`
 
-	// JobAgentSelector CEL expression to match job agents. Defaults to jobAgent.id == "<jobAgentId>" if not provided.
-	JobAgentSelector *string               `json:"jobAgentSelector,omitempty"`
-	JobAgents        *[]DeploymentJobAgent `json:"jobAgents,omitempty"`
-	Metadata         *map[string]string    `json:"metadata,omitempty"`
-	Name             string                `json:"name"`
+	// JobAgentSelector CEL expression to match job agents
+	JobAgentSelector *string            `json:"jobAgentSelector,omitempty"`
+	Metadata         *map[string]string `json:"metadata,omitempty"`
+	Name             string             `json:"name"`
 
 	// ResourceSelector CEL expression to determine if the deployment should be used
 	ResourceSelector *string `json:"resourceSelector,omitempty"`

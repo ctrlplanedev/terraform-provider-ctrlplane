@@ -429,7 +429,7 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 							Optional:    true,
 							Description: "Minimum percentage of successful deployments required",
 						},
-						"minimum_sock_time_minutes": schema.Int64Attribute{
+						"minimum_soak_time_minutes": schema.Int64Attribute{
 							Optional:    true,
 							Computed:    true,
 							Description: "Minimum time in minutes to wait after the dependency environment is in a success state",
@@ -815,7 +815,7 @@ type PolicyEnvironmentProgression struct {
 	ID                           types.String  `tfsdk:"id"`
 	DependsOnEnvironmentSelector types.String  `tfsdk:"depends_on_environment_selector"`
 	MinimumSuccessPercentage     types.Float64 `tfsdk:"minimum_success_percentage"`
-	MinimumSockTimeMinutes       types.Int64   `tfsdk:"minimum_sock_time_minutes"`
+	MinimumSoakTimeMinutes       types.Int64   `tfsdk:"minimum_soak_time_minutes"`
 	MaximumAgeHours              types.Int64   `tfsdk:"maximum_age_hours"`
 }
 
@@ -1065,9 +1065,9 @@ func policyRulesFromModel(data PolicyResourceModel) ([]policyRequestRule, diag.D
 			val := float32(progression.MinimumSuccessPercentage.ValueFloat64())
 			rule.MinimumSuccessPercentage = &val
 		}
-		if int64ValueSet(progression.MinimumSockTimeMinutes) {
-			val := int32(progression.MinimumSockTimeMinutes.ValueInt64())
-			rule.MinimumSockTimeMinutes = &val
+		if int64ValueSet(progression.MinimumSoakTimeMinutes) {
+			val := int32(progression.MinimumSoakTimeMinutes.ValueInt64())
+			rule.MinimumSoakTimeMinutes = &val
 		}
 		if int64ValueSet(progression.MaximumAgeHours) {
 			val := int32(progression.MaximumAgeHours.ValueInt64())
@@ -1320,14 +1320,14 @@ func policyRulesToModel(rules []api.PolicyRule) (policyRulesModel, diag.Diagnost
 				ID:                           types.StringValue(rule.Id),
 				DependsOnEnvironmentSelector: types.StringValue(rule.EnvironmentProgression.DependsOnEnvironmentSelector),
 				MinimumSuccessPercentage:     types.Float64Null(),
-				MinimumSockTimeMinutes:       types.Int64Null(),
+				MinimumSoakTimeMinutes:       types.Int64Null(),
 				MaximumAgeHours:              types.Int64Null(),
 			}
 			if rule.EnvironmentProgression.MinimumSuccessPercentage != nil {
 				model.MinimumSuccessPercentage = types.Float64Value(float64(*rule.EnvironmentProgression.MinimumSuccessPercentage))
 			}
-			if rule.EnvironmentProgression.MinimumSockTimeMinutes != nil {
-				model.MinimumSockTimeMinutes = types.Int64Value(int64(*rule.EnvironmentProgression.MinimumSockTimeMinutes))
+			if rule.EnvironmentProgression.MinimumSoakTimeMinutes != nil {
+				model.MinimumSoakTimeMinutes = types.Int64Value(int64(*rule.EnvironmentProgression.MinimumSoakTimeMinutes))
 			}
 			if rule.EnvironmentProgression.MaximumAgeHours != nil {
 				model.MaximumAgeHours = types.Int64Value(int64(*rule.EnvironmentProgression.MaximumAgeHours))
