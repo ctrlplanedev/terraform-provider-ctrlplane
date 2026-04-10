@@ -1,6 +1,6 @@
 resource "ctrlplane_deployment" "this" {
-  name              = "simple-variable-deployment"
-  resource_selector = "resource.kind == 'testing' && resource.version == 'ctrlplane.dev/testing/v1'"
+  name               = "simple-variable-deployment"
+  resource_selector  = "resource.kind == 'testing' && resource.version == 'ctrlplane.dev/testing/v1'"
   job_agent_selector = "jobAgent.id == \"${ctrlplane_job_agent.this.id}\""
 
   test_runner {

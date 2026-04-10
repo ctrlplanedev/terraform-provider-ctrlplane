@@ -1,6 +1,6 @@
 resource "ctrlplane_deployment" "this" {
-  name              = "argocd-guestbook"
-  resource_selector = var.deployment_resource_selector
+  name               = "argocd-guestbook"
+  resource_selector  = var.deployment_resource_selector
   job_agent_selector = "jobAgent.id == \"${ctrlplane_job_agent.this.id}\""
 }
 
