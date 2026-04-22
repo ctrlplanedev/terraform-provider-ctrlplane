@@ -90,6 +90,9 @@ func (r *RelationshipRuleResource) Schema(ctx context.Context, req resource.Sche
 			"matcher": schema.StringAttribute{
 				Required:    true,
 				Description: "A CEL expression that defines the relationship rule",
+				PlanModifiers: []planmodifier.String{
+					celNormalized(),
+				},
 			},
 			"metadata": schema.MapAttribute{
 				Optional:    true,

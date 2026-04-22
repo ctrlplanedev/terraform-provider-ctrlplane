@@ -227,6 +227,9 @@ func (r *EnvironmentResource) Schema(ctx context.Context, req resource.SchemaReq
 			"resource_selector": schema.StringAttribute{
 				Optional:    true,
 				Description: "CEL expression used to select resources",
+				PlanModifiers: []planmodifier.String{
+					celNormalized(),
+				},
 			},
 			"metadata": schema.MapAttribute{
 				Optional:    true,

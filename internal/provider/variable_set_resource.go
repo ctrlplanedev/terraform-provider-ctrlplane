@@ -100,6 +100,9 @@ func (r *VariableSetResource) Schema(ctx context.Context, req resource.SchemaReq
 			"selector": schema.StringAttribute{
 				Required:            true,
 				MarkdownDescription: "A CEL expression to select which release targets this variable set applies to.",
+				PlanModifiers: []planmodifier.String{
+					celNormalized(),
+				},
 			},
 			"priority": schema.Int64Attribute{
 				Optional:            true,
