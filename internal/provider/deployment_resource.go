@@ -85,6 +85,9 @@ func (r *DeploymentResource) Schema(ctx context.Context, req resource.SchemaRequ
 			"resource_selector": schema.StringAttribute{
 				Optional:    true,
 				Description: "CEL expression used to select resources",
+				PlanModifiers: []planmodifier.String{
+					celNormalized(),
+				},
 			},
 			"job_agent_selector": schema.StringAttribute{
 				Optional:    true,

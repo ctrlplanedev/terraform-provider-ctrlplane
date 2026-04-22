@@ -93,6 +93,9 @@ func (r *DeploymentVariableValueResource) Schema(ctx context.Context, req resour
 			"resource_selector": schema.StringAttribute{
 				Optional:            true,
 				MarkdownDescription: "A CEL expression to select which resources this value applies to.",
+				PlanModifiers: []planmodifier.String{
+					celNormalized(),
+				},
 			},
 			"literal_value": schema.DynamicAttribute{
 				Optional:            true,

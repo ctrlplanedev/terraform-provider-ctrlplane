@@ -128,6 +128,9 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 						"selector": schema.StringAttribute{
 							Required:    true,
 							Description: "CEL expression to match allowed versions (has access to version, environment, resource, and deployment variables)",
+							PlanModifiers: []planmodifier.String{
+								celNormalized(),
+							},
 						},
 						"description": schema.StringAttribute{
 							Optional:    true,
@@ -424,6 +427,9 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 						"depends_on_environment_selector": schema.StringAttribute{
 							Required:    true,
 							Description: "CEL expression to match the environment that must have a successful release before this environment can proceed",
+							PlanModifiers: []planmodifier.String{
+								celNormalized(),
+							},
 						},
 						"minimum_success_percentage": schema.Float64Attribute{
 							Optional:    true,

@@ -596,13 +596,12 @@ type EnvironmentProgressionRule struct {
 	MaximumAgeHours *int32 `json:"maximumAgeHours,omitempty"`
 
 	// MinimumSoakTimeMinutes Minimum time to wait after the depends on environment is in a success state before the current environment can be deployed. Defaults to 0 if not provided.
-	MinimumSoakTimeMinutes *int32 `json:"minimumSoakTimeMinutes,omitempty"`
+	MinimumSoakTimeMinutes   *int32   `json:"minimumSoakTimeMinutes,omitempty"`
+	MinimumSuccessPercentage *float32 `json:"minimumSuccessPercentage,omitempty"`
 
-	// MinimumSockTimeMinutes Use minimumSoakTimeMinutes instead. Minimum time to wait after the depends on environment is in a success state before the current environment can be deployed
-	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
-	MinimumSockTimeMinutes   *int32       `json:"minimumSockTimeMinutes,omitempty"`
-	MinimumSuccessPercentage *float32     `json:"minimumSuccessPercentage,omitempty"`
-	SuccessStatuses          *[]JobStatus `json:"successStatuses,omitempty"`
+	// RequireVerificationPassed If true, jobs must also have passed verification to count toward the success percentage
+	RequireVerificationPassed *bool        `json:"requireVerificationPassed,omitempty"`
+	SuccessStatuses           *[]JobStatus `json:"successStatuses,omitempty"`
 }
 
 // EnvironmentRequestAccepted defines model for EnvironmentRequestAccepted.
@@ -1573,6 +1572,9 @@ type ListDeploymentsParams struct {
 
 	// Offset Number of items to skip
 	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
+
+	// Cel CEL expression to filter the results
+	Cel *string `form:"cel,omitempty" json:"cel,omitempty"`
 }
 
 // ListDeploymentVariablesByDeploymentParams defines parameters for ListDeploymentVariablesByDeployment.
@@ -4935,6 +4937,22 @@ func NewListDeploymentsRequest(server string, workspaceId string, params *ListDe
 		if params.Offset != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "offset", runtime.ParamLocationQuery, *params.Offset); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Cel != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "cel", runtime.ParamLocationQuery, *params.Cel); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
