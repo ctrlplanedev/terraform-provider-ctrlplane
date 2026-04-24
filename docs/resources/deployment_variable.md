@@ -22,7 +22,6 @@ description: |-
 
 ### Optional
 
-- `default_value` (Dynamic) The default value for the variable
 - `description` (String) The variable description
 
 ### Read-Only

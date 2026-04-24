@@ -22,7 +22,7 @@ func TestAccDeploymentVariableResource(t *testing.T) {
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccDeploymentVariableResourceConfig(name, "value-1"),
+				Config: testAccDeploymentVariableResourceConfig(name),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"ctrlplane_deployment_variable.test",
@@ -37,7 +37,7 @@ func TestAccDeploymentVariableResource(t *testing.T) {
 				},
 			},
 			{
-				Config: testAccDeploymentVariableResourceConfig(updatedName, "value-2"),
+				Config: testAccDeploymentVariableResourceConfig(updatedName),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"ctrlplane_deployment_variable.test",
@@ -55,7 +55,7 @@ func TestAccDeploymentVariableResource(t *testing.T) {
 	})
 }
 
-func testAccDeploymentVariableResourceConfig(key, defaultValue string) string {
+func testAccDeploymentVariableResourceConfig(key string) string {
 	return fmt.Sprintf(`
 %s
 resource "ctrlplane_system" "test" {
@@ -71,7 +71,6 @@ resource "ctrlplane_deployment_variable" "test" {
   deployment_id = ctrlplane_deployment.test.id
   key           = %q
   description   = "Terraform acceptance test variable"
-  default_value = %q
 }
-`, testAccProviderConfig(), key, key+"-deployment", key, key, defaultValue)
+`, testAccProviderConfig(), key, key+"-deployment", key, key)
 }
