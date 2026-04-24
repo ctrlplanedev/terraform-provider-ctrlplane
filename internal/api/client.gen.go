@@ -2621,6 +2621,9 @@ type ClientInterface interface {
 
 	RequestDeploymentCreation(ctx context.Context, workspaceId string, body RequestDeploymentCreationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetDeploymentByName request
+	GetDeploymentByName(ctx context.Context, workspaceId string, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// RequestDeploymentDeletion request
 	RequestDeploymentDeletion(ctx context.Context, workspaceId string, deploymentId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -3141,6 +3144,18 @@ func (c *Client) RequestDeploymentCreationWithBody(ctx context.Context, workspac
 
 func (c *Client) RequestDeploymentCreation(ctx context.Context, workspaceId string, body RequestDeploymentCreationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRequestDeploymentCreationRequest(c.Server, workspaceId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetDeploymentByName(ctx context.Context, workspaceId string, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetDeploymentByNameRequest(c.Server, workspaceId, name)
 	if err != nil {
 		return nil, err
 	}
@@ -5036,6 +5051,47 @@ func NewRequestDeploymentCreationRequestWithBody(server string, workspaceId stri
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetDeploymentByNameRequest generates requests for GetDeploymentByName
+func NewGetDeploymentByNameRequest(server string, workspaceId string, name string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "workspaceId", runtime.ParamLocationPath, workspaceId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/deployments/name/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -9170,6 +9226,9 @@ type ClientWithResponsesInterface interface {
 
 	RequestDeploymentCreationWithResponse(ctx context.Context, workspaceId string, body RequestDeploymentCreationJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestDeploymentCreationResponse, error)
 
+	// GetDeploymentByNameWithResponse request
+	GetDeploymentByNameWithResponse(ctx context.Context, workspaceId string, name string, reqEditors ...RequestEditorFn) (*GetDeploymentByNameResponse, error)
+
 	// RequestDeploymentDeletionWithResponse request
 	RequestDeploymentDeletionWithResponse(ctx context.Context, workspaceId string, deploymentId string, reqEditors ...RequestEditorFn) (*RequestDeploymentDeletionResponse, error)
 
@@ -9818,6 +9877,30 @@ func (r RequestDeploymentCreationResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r RequestDeploymentCreationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetDeploymentByNameResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DeploymentWithVariablesAndSystems
+	JSON400      *ErrorResponse
+	JSON404      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetDeploymentByNameResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetDeploymentByNameResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -11975,6 +12058,15 @@ func (c *ClientWithResponses) RequestDeploymentCreationWithResponse(ctx context.
 	return ParseRequestDeploymentCreationResponse(rsp)
 }
 
+// GetDeploymentByNameWithResponse request returning *GetDeploymentByNameResponse
+func (c *ClientWithResponses) GetDeploymentByNameWithResponse(ctx context.Context, workspaceId string, name string, reqEditors ...RequestEditorFn) (*GetDeploymentByNameResponse, error) {
+	rsp, err := c.GetDeploymentByName(ctx, workspaceId, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetDeploymentByNameResponse(rsp)
+}
+
 // RequestDeploymentDeletionWithResponse request returning *RequestDeploymentDeletionResponse
 func (c *ClientWithResponses) RequestDeploymentDeletionWithResponse(ctx context.Context, workspaceId string, deploymentId string, reqEditors ...RequestEditorFn) (*RequestDeploymentDeletionResponse, error) {
 	rsp, err := c.RequestDeploymentDeletion(ctx, workspaceId, deploymentId, reqEditors...)
@@ -13498,6 +13590,46 @@ func ParseRequestDeploymentCreationResponse(rsp *http.Response) (*RequestDeploym
 			return nil, err
 		}
 		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetDeploymentByNameResponse parses an HTTP response from a GetDeploymentByNameWithResponse call
+func ParseGetDeploymentByNameResponse(rsp *http.Response) (*GetDeploymentByNameResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetDeploymentByNameResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DeploymentWithVariablesAndSystems
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 
