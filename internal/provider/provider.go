@@ -141,6 +141,7 @@ func (p *CtrlplaneProvider) EphemeralResources(ctx context.Context) []func() eph
 func (p *CtrlplaneProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		NewEnvironmentDataSource,
+		NewDeploymentDataSource,
 	}
 }
 
