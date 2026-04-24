@@ -77,10 +77,6 @@ func (r *DeploymentVariableResource) Schema(ctx context.Context, req resource.Sc
 				Optional:    true,
 				Description: "The variable description",
 			},
-			"default_value": schema.DynamicAttribute{
-				Optional:    true,
-				Description: "The default value for the variable",
-			},
 		},
 	}
 }
@@ -98,17 +94,10 @@ func (r *DeploymentVariableResource) Create(ctx context.Context, req resource.Cr
 		data.ID = types.StringValue(variableID)
 	}
 
-	defaultValue, err := literalValueFromDynamic(data.DefaultValue)
-	if err != nil {
-		resp.Diagnostics.AddError("Failed to create deployment variable", err.Error())
-		return
-	}
-
 	requestBody := api.RequestDeploymentVariableUpdateJSONRequestBody{
 		DeploymentId: data.DeploymentId.ValueString(),
 		Key:          data.Key.ValueString(),
 		Description:  data.Description.ValueStringPointer(),
-		DefaultValue: defaultValue,
 	}
 
 	variableResp, err := r.workspace.Client.RequestDeploymentVariableUpdateWithResponse(
@@ -202,7 +191,6 @@ func (r *DeploymentVariableResource) Read(ctx context.Context, req resource.Read
 	data.DeploymentId = types.StringValue(variable.DeploymentId)
 	data.Key = types.StringValue(variable.Key)
 	data.Description = descriptionValue(variable.Description)
-	data.DefaultValue = literalValueToDynamic(variable.DefaultValue)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -214,17 +202,10 @@ func (r *DeploymentVariableResource) Update(ctx context.Context, req resource.Up
 		return
 	}
 
-	defaultValue, err := literalValueFromDynamic(data.DefaultValue)
-	if err != nil {
-		resp.Diagnostics.AddError("Failed to update deployment variable", err.Error())
-		return
-	}
-
 	requestBody := api.RequestDeploymentVariableUpdateJSONRequestBody{
 		DeploymentId: data.DeploymentId.ValueString(),
 		Key:          data.Key.ValueString(),
 		Description:  data.Description.ValueStringPointer(),
-		DefaultValue: defaultValue,
 	}
 
 	variableResp, err := r.workspace.Client.RequestDeploymentVariableUpdateWithResponse(
@@ -286,11 +267,10 @@ func (r *DeploymentVariableResource) Delete(ctx context.Context, req resource.De
 }
 
 type DeploymentVariableResourceModel struct {
-	ID           types.String  `tfsdk:"id"`
-	DeploymentId types.String  `tfsdk:"deployment_id"`
-	Key          types.String  `tfsdk:"key"`
-	Description  types.String  `tfsdk:"description"`
-	DefaultValue types.Dynamic `tfsdk:"default_value"`
+	ID           types.String `tfsdk:"id"`
+	DeploymentId types.String `tfsdk:"deployment_id"`
+	Key          types.String `tfsdk:"key"`
+	Description  types.String `tfsdk:"description"`
 }
 
 func literalValueFromDynamic(value types.Dynamic) (*api.LiteralValue, error) {
@@ -359,9 +339,9 @@ func literalValueFromInterface(value interface{}) (*api.LiteralValue, error) {
 			return nil, err
 		}
 	case []interface{}:
-		return nil, fmt.Errorf("unsupported default_value type []interface{}")
+		return nil, fmt.Errorf("unsupported literal value type []interface{}")
 	default:
-		return nil, fmt.Errorf("unsupported default_value type %T", value)
+		return nil, fmt.Errorf("unsupported literal value type %T", value)
 	}
 
 	return &literal, nil

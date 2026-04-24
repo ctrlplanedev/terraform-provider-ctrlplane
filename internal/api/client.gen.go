@@ -485,11 +485,10 @@ type DeploymentRequestAccepted struct {
 
 // DeploymentVariable defines model for DeploymentVariable.
 type DeploymentVariable struct {
-	DefaultValue *LiteralValue `json:"defaultValue,omitempty"`
-	DeploymentId string        `json:"deploymentId"`
-	Description  *string       `json:"description,omitempty"`
-	Id           string        `json:"id"`
-	Key          string        `json:"key"`
+	DeploymentId string  `json:"deploymentId"`
+	Description  *string `json:"description,omitempty"`
+	Id           string  `json:"id"`
+	Key          string  `json:"key"`
 }
 
 // DeploymentVariableRequestAccepted defines model for DeploymentVariableRequestAccepted.
@@ -1170,10 +1169,9 @@ type UpsertDeploymentRequest struct {
 
 // UpsertDeploymentVariableRequest defines model for UpsertDeploymentVariableRequest.
 type UpsertDeploymentVariableRequest struct {
-	DefaultValue *LiteralValue `json:"defaultValue,omitempty"`
-	DeploymentId string        `json:"deploymentId"`
-	Description  *string       `json:"description,omitempty"`
-	Key          string        `json:"key"`
+	DeploymentId string  `json:"deploymentId"`
+	Description  *string `json:"description,omitempty"`
+	Key          string  `json:"key"`
 }
 
 // UpsertDeploymentVariableValueRequest defines model for UpsertDeploymentVariableValueRequest.
@@ -1596,6 +1594,9 @@ type ListDeploymentVersionsParams struct {
 
 	// Order Sort order for results
 	Order *ListDeploymentVersionsParamsOrder `form:"order,omitempty" json:"order,omitempty"`
+
+	// Cel CEL expression to filter the results
+	Cel *string `form:"cel,omitempty" json:"cel,omitempty"`
 }
 
 // ListDeploymentVersionsParamsOrder defines parameters for ListDeploymentVersions.
@@ -2663,6 +2664,9 @@ type ClientInterface interface {
 
 	RequestEnvironmentCreation(ctx context.Context, workspaceId string, body RequestEnvironmentCreationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetEnvironmentByName request
+	GetEnvironmentByName(ctx context.Context, workspaceId string, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// RequestEnvironmentDeletion request
 	RequestEnvironmentDeletion(ctx context.Context, workspaceId string, environmentId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -3329,6 +3333,18 @@ func (c *Client) RequestEnvironmentCreationWithBody(ctx context.Context, workspa
 
 func (c *Client) RequestEnvironmentCreation(ctx context.Context, workspaceId string, body RequestEnvironmentCreationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRequestEnvironmentCreationRequest(c.Server, workspaceId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetEnvironmentByName(ctx context.Context, workspaceId string, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetEnvironmentByNameRequest(c.Server, workspaceId, name)
 	if err != nil {
 		return nil, err
 	}
@@ -5425,6 +5441,22 @@ func NewListDeploymentVersionsRequest(server string, workspaceId string, deploym
 
 		}
 
+		if params.Cel != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "cel", runtime.ParamLocationQuery, *params.Cel); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		queryURL.RawQuery = queryValues.Encode()
 	}
 
@@ -5659,6 +5691,47 @@ func NewRequestEnvironmentCreationRequestWithBody(server string, workspaceId str
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetEnvironmentByNameRequest generates requests for GetEnvironmentByName
+func NewGetEnvironmentByNameRequest(server string, workspaceId string, name string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "workspaceId", runtime.ParamLocationPath, workspaceId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/environments/name/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -9140,6 +9213,9 @@ type ClientWithResponsesInterface interface {
 
 	RequestEnvironmentCreationWithResponse(ctx context.Context, workspaceId string, body RequestEnvironmentCreationJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestEnvironmentCreationResponse, error)
 
+	// GetEnvironmentByNameWithResponse request
+	GetEnvironmentByNameWithResponse(ctx context.Context, workspaceId string, name string, reqEditors ...RequestEditorFn) (*GetEnvironmentByNameResponse, error)
+
 	// RequestEnvironmentDeletionWithResponse request
 	RequestEnvironmentDeletionWithResponse(ctx context.Context, workspaceId string, environmentId string, reqEditors ...RequestEditorFn) (*RequestEnvironmentDeletionResponse, error)
 
@@ -9728,6 +9804,8 @@ type RequestDeploymentCreationResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON202      *DeploymentRequestAccepted
+	JSON400      *ErrorResponse
+	JSON409      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -9798,6 +9876,8 @@ type RequestDeploymentUpsertResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON202      *DeploymentRequestAccepted
+	JSON400      *ErrorResponse
+	JSON409      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -10016,6 +10096,8 @@ type RequestEnvironmentCreationResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON202      *EnvironmentRequestAccepted
+	JSON400      *ErrorResponse
+	JSON409      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -10028,6 +10110,30 @@ func (r RequestEnvironmentCreationResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r RequestEnvironmentCreationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetEnvironmentByNameResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *EnvironmentWithSystems
+	JSON400      *ErrorResponse
+	JSON404      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetEnvironmentByNameResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetEnvironmentByNameResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -10088,6 +10194,7 @@ type RequestEnvironmentUpsertResponse struct {
 	JSON202      *EnvironmentRequestAccepted
 	JSON400      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON409      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -12007,6 +12114,15 @@ func (c *ClientWithResponses) RequestEnvironmentCreationWithResponse(ctx context
 	return ParseRequestEnvironmentCreationResponse(rsp)
 }
 
+// GetEnvironmentByNameWithResponse request returning *GetEnvironmentByNameResponse
+func (c *ClientWithResponses) GetEnvironmentByNameWithResponse(ctx context.Context, workspaceId string, name string, reqEditors ...RequestEditorFn) (*GetEnvironmentByNameResponse, error) {
+	rsp, err := c.GetEnvironmentByName(ctx, workspaceId, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetEnvironmentByNameResponse(rsp)
+}
+
 // RequestEnvironmentDeletionWithResponse request returning *RequestEnvironmentDeletionResponse
 func (c *ClientWithResponses) RequestEnvironmentDeletionWithResponse(ctx context.Context, workspaceId string, environmentId string, reqEditors ...RequestEditorFn) (*RequestEnvironmentDeletionResponse, error) {
 	rsp, err := c.RequestEnvironmentDeletion(ctx, workspaceId, environmentId, reqEditors...)
@@ -13369,6 +13485,20 @@ func ParseRequestDeploymentCreationResponse(rsp *http.Response) (*RequestDeploym
 		}
 		response.JSON202 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
 	}
 
 	return response, nil
@@ -13474,6 +13604,20 @@ func ParseRequestDeploymentUpsertResponse(rsp *http.Response) (*RequestDeploymen
 			return nil, err
 		}
 		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	}
 
@@ -13779,6 +13923,60 @@ func ParseRequestEnvironmentCreationResponse(rsp *http.Response) (*RequestEnviro
 		}
 		response.JSON202 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetEnvironmentByNameResponse parses an HTTP response from a GetEnvironmentByNameWithResponse call
+func ParseGetEnvironmentByNameResponse(rsp *http.Response) (*GetEnvironmentByNameResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetEnvironmentByNameResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest EnvironmentWithSystems
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
 	}
 
 	return response, nil
@@ -13898,6 +14096,13 @@ func ParseRequestEnvironmentUpsertResponse(rsp *http.Response) (*RequestEnvironm
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	}
 
