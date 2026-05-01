@@ -142,6 +142,7 @@ func (r *WorkflowResource) ValidateConfig(ctx context.Context, req resource.Vali
 		return
 	}
 
+	seenNames := make(map[string]int, len(data.JobAgents))
 	for i, agent := range data.JobAgents {
 		count := dispatchBlockCount(agent.dispatchBlocks())
 		if count == 0 {
@@ -157,6 +158,19 @@ func (r *WorkflowResource) ValidateConfig(ctx context.Context, req resource.Vali
 				fmt.Sprintf("job_agent[%d] (%q) may set only one of argocd, argo_workflow, github, terraform_cloud, or test_runner.", i, agent.Name.ValueString()),
 			)
 		}
+
+		if agent.Name.IsNull() || agent.Name.IsUnknown() {
+			continue
+		}
+		name := agent.Name.ValueString()
+		if prev, ok := seenNames[name]; ok {
+			resp.Diagnostics.AddError(
+				"Duplicate job agent name",
+				fmt.Sprintf("job_agent[%d] reuses name %q already used by job_agent[%d]; names must be unique within a workflow.", i, name, prev),
+			)
+			continue
+		}
+		seenNames[name] = i
 	}
 }
 
