@@ -18,9 +18,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-var _ resource.Resource = &WorkflowResource{}
-var _ resource.ResourceWithImportState = &WorkflowResource{}
-var _ resource.ResourceWithConfigure = &WorkflowResource{}
+var (
+	_ resource.Resource                   = &WorkflowResource{}
+	_ resource.ResourceWithImportState    = &WorkflowResource{}
+	_ resource.ResourceWithConfigure      = &WorkflowResource{}
+	_ resource.ResourceWithValidateConfig = &WorkflowResource{}
+)
 
 func NewWorkflowResource() resource.Resource {
 	return &WorkflowResource{}
@@ -40,8 +43,31 @@ type WorkflowResourceModel struct {
 type WorkflowJobAgentModel struct {
 	Name     types.String `tfsdk:"name"`
 	Ref      types.String `tfsdk:"ref"`
-	Config   types.Map    `tfsdk:"config"`
 	Selector types.String `tfsdk:"selector"`
+
+	ArgoCD         *JobAgentDispatchArgoCDModel       `tfsdk:"argocd"`
+	ArgoWorkflow   *JobAgentDispatchArgoWorkflowModel `tfsdk:"argo_workflow"`
+	GitHub         *JobAgentDispatchGitHubModel       `tfsdk:"github"`
+	TerraformCloud *JobAgentDispatchTFCModel          `tfsdk:"terraform_cloud"`
+	TestRunner     *JobAgentDispatchTestRunnerModel   `tfsdk:"test_runner"`
+}
+
+func (m *WorkflowJobAgentModel) dispatchBlocks() JobAgentDispatchBlocks {
+	return JobAgentDispatchBlocks{
+		ArgoCD:         m.ArgoCD,
+		ArgoWorkflow:   m.ArgoWorkflow,
+		GitHub:         m.GitHub,
+		TerraformCloud: m.TerraformCloud,
+		TestRunner:     m.TestRunner,
+	}
+}
+
+func (m *WorkflowJobAgentModel) setDispatchBlocks(b JobAgentDispatchBlocks) {
+	m.ArgoCD = b.ArgoCD
+	m.ArgoWorkflow = b.ArgoWorkflow
+	m.GitHub = b.GitHub
+	m.TerraformCloud = b.TerraformCloud
+	m.TestRunner = b.TestRunner
 }
 
 func (r *WorkflowResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -97,19 +123,40 @@ func (r *WorkflowResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 							Required:    true,
 							Description: "ID of the job agent to reference.",
 						},
-						"config": schema.MapAttribute{
-							Required:    true,
-							Description: "Configuration for the job agent.",
-							ElementType: types.StringType,
-						},
 						"selector": schema.StringAttribute{
 							Required:    true,
 							Description: "CEL expression to determine if the job agent should dispatch. Use \"true\" to always dispatch.",
 						},
 					},
+					Blocks: jobAgentDispatchConfigBlocks(),
 				},
 			},
 		},
+	}
+}
+
+func (r *WorkflowResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var data WorkflowResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	for i, agent := range data.JobAgents {
+		count := dispatchBlockCount(agent.dispatchBlocks())
+		if count == 0 {
+			resp.Diagnostics.AddError(
+				"Invalid job agent configuration",
+				fmt.Sprintf("job_agent[%d] (%q) must set exactly one of argocd, argo_workflow, github, terraform_cloud, or test_runner.", i, agent.Name.ValueString()),
+			)
+			continue
+		}
+		if count > 1 {
+			resp.Diagnostics.AddError(
+				"Invalid job agent configuration",
+				fmt.Sprintf("job_agent[%d] (%q) may set only one of argocd, argo_workflow, github, terraform_cloud, or test_runner.", i, agent.Name.ValueString()),
+			)
+		}
 	}
 }
 
@@ -287,13 +334,11 @@ func parseWorkflowInputs(raw types.String) ([]api.WorkflowInput, error) {
 func workflowJobAgentsFromModel(agents []WorkflowJobAgentModel) []api.CreateWorkflowJobAgent {
 	result := make([]api.CreateWorkflowJobAgent, len(agents))
 	for i, a := range agents {
-		config := make(map[string]interface{})
-		if !a.Config.IsNull() && !a.Config.IsUnknown() {
-			var decoded map[string]string
-			_ = a.Config.ElementsAs(context.Background(), &decoded, false)
-			for k, v := range decoded {
-				config[k] = v
-			}
+		var config map[string]interface{}
+		if cfg := jobAgentDispatchConfigToMap(a.dispatchBlocks()); cfg != nil {
+			config = *cfg
+		} else {
+			config = map[string]interface{}{}
 		}
 		result[i] = api.CreateWorkflowJobAgent{
 			Name:     a.Name.ValueString(),
@@ -311,14 +356,26 @@ func setWorkflowModelFromAPI(data *WorkflowResourceModel, w *api.Workflow) {
 
 	data.Inputs = types.StringValue(normalizeInputsJSON(w.Inputs))
 
+	priorByName := make(map[string]WorkflowJobAgentModel, len(data.JobAgents))
+	for _, a := range data.JobAgents {
+		priorByName[a.Name.ValueString()] = a
+	}
+
 	agents := make([]WorkflowJobAgentModel, len(w.JobAgents))
 	for i, a := range w.JobAgents {
-		agents[i] = WorkflowJobAgentModel{
+		agent := WorkflowJobAgentModel{
 			Name:     types.StringValue(a.Name),
 			Ref:      types.StringValue(a.Ref),
-			Config:   interfaceMapStringValue(a.Config),
 			Selector: types.StringValue(a.Selector),
 		}
+		var prior JobAgentDispatchBlocks
+		if p, ok := priorByName[a.Name]; ok {
+			prior = p.dispatchBlocks()
+		}
+		var out JobAgentDispatchBlocks
+		setJobAgentDispatchBlocksFromConfig(&prior, &out, a.Config)
+		agent.setDispatchBlocks(out)
+		agents[i] = agent
 	}
 	data.JobAgents = agents
 }
