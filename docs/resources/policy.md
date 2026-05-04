@@ -30,6 +30,7 @@ description: |-
 - `environment_progression` (Block List) Environment progression rules (see [below for nested schema](#nestedblock--environment_progression))
 - `gradual_rollout` (Block List) Gradual rollout rules (see [below for nested schema](#nestedblock--gradual_rollout))
 - `metadata` (Map of String) The metadata of the policy
+- `plan_validation_opa` (Block List) OPA-based plan validation rules. Each rule must define a `deny` rule set following the Conftest convention. (see [below for nested schema](#nestedblock--plan_validation_opa))
 - `priority` (Number) The priority of the policy (higher is evaluated first)
 - `verification` (Block List) Verification rules (see [below for nested schema](#nestedblock--verification))
 - `version_cooldown` (Block List) Version cooldown rules (see [below for nested schema](#nestedblock--version_cooldown))
@@ -113,6 +114,24 @@ Required:
 
 - `rollout_type` (String) Rollout strategy: "linear" or "linear-normalized"
 - `time_scale_interval` (Number) Base time interval in seconds used to compute delay between deployments
+
+Read-Only:
+
+- `created_at` (String) Rule creation timestamp
+- `id` (String) Rule ID
+
+
+<a id="nestedblock--plan_validation_opa"></a>
+### Nested Schema for `plan_validation_opa`
+
+Required:
+
+- `name` (String) Human-readable rule name; used in check output to identify which rule produced a violation.
+- `rego` (String) Rego source code. Follows Conftest conventions for emitting violations.
+
+Optional:
+
+- `description` (String) Optional human-readable explanation of the rule.
 
 Read-Only:
 
