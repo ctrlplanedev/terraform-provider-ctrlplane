@@ -448,6 +448,39 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 					},
 				},
 			},
+			"plan_validation_opa": schema.ListNestedBlock{
+				Description: "OPA-based plan validation rules. Each rule must define a `deny` rule set following the Conftest convention.",
+				NestedObject: schema.NestedBlockObject{
+					Attributes: map[string]schema.Attribute{
+						"created_at": schema.StringAttribute{
+							Computed:    true,
+							Description: "Rule creation timestamp",
+							PlanModifiers: []planmodifier.String{
+								stringplanmodifier.UseStateForUnknown(),
+							},
+						},
+						"id": schema.StringAttribute{
+							Computed:    true,
+							Description: "Rule ID",
+							PlanModifiers: []planmodifier.String{
+								stringplanmodifier.UseStateForUnknown(),
+							},
+						},
+						"name": schema.StringAttribute{
+							Required:    true,
+							Description: "Human-readable rule name; used in check output to identify which rule produced a violation.",
+						},
+						"description": schema.StringAttribute{
+							Optional:    true,
+							Description: "Optional human-readable explanation of the rule.",
+						},
+						"rego": schema.StringAttribute{
+							Required:    true,
+							Description: "Rego source code. Follows Conftest conventions for emitting violations.",
+						},
+					},
+				},
+			},
 		},
 	}
 }
@@ -638,6 +671,7 @@ func (r *PolicyResource) Read(ctx context.Context, req resource.ReadRequest, res
 	data.GradualRollout = rules.GradualRollout
 	data.AnyApproval = rules.AnyApproval
 	data.EnvironmentProgression = rules.EnvironmentProgression
+	data.PlanValidationOpa = rules.PlanValidationOpa
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -728,6 +762,7 @@ func (r *PolicyResource) Update(ctx context.Context, req resource.UpdateRequest,
 	data.GradualRollout = readRules.GradualRollout
 	data.AnyApproval = readRules.AnyApproval
 	data.EnvironmentProgression = readRules.EnvironmentProgression
+	data.PlanValidationOpa = readRules.PlanValidationOpa
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
 }
@@ -773,6 +808,7 @@ type PolicyResourceModel struct {
 	GradualRollout         []PolicyGradualRollout         `tfsdk:"gradual_rollout"`
 	AnyApproval            []PolicyAnyApproval            `tfsdk:"any_approval"`
 	EnvironmentProgression []PolicyEnvironmentProgression `tfsdk:"environment_progression"`
+	PlanValidationOpa      []PolicyPlanValidationOpa      `tfsdk:"plan_validation_opa"`
 }
 
 type PolicyVersionSelector struct {
@@ -832,6 +868,14 @@ type PolicyVerificationRule struct {
 	Metric    []PolicyVerificationMetric `tfsdk:"metric"`
 }
 
+type PolicyPlanValidationOpa struct {
+	CreatedAt   types.String `tfsdk:"created_at"`
+	ID          types.String `tfsdk:"id"`
+	Name        types.String `tfsdk:"name"`
+	Description types.String `tfsdk:"description"`
+	Rego        types.String `tfsdk:"rego"`
+}
+
 type PolicyVerificationMetric struct {
 	Name     types.String                 `tfsdk:"name"`
 	Interval types.String                 `tfsdk:"interval"`
@@ -870,6 +914,7 @@ type policyRulesModel struct {
 	GradualRollout         []PolicyGradualRollout
 	AnyApproval            []PolicyAnyApproval
 	EnvironmentProgression []PolicyEnvironmentProgression
+	PlanValidationOpa      []PolicyPlanValidationOpa
 }
 
 type policyRequestPayload struct {
@@ -893,6 +938,7 @@ type policyRequestRule struct {
 	GradualRollout         *api.GradualRolloutRule         `json:"gradualRollout,omitempty"`
 	AnyApproval            *api.AnyApprovalRule            `json:"anyApproval,omitempty"`
 	EnvironmentProgression *api.EnvironmentProgressionRule `json:"environmentProgression,omitempty"`
+	PlanValidationOpa      *api.PlanValidationOpaRule      `json:"planValidationOpa,omitempty"`
 	PolicyId               *string                         `json:"policyId,omitempty"`
 }
 
@@ -1083,6 +1129,29 @@ func policyRulesFromModel(data PolicyResourceModel) ([]policyRequestRule, diag.D
 			CreatedAt:              createdAtValue(progression.CreatedAt),
 			Id:                     id,
 			EnvironmentProgression: &rule,
+		})
+	}
+
+	for _, opa := range data.PlanValidationOpa {
+		id := selectorIDValue(opa.ID)
+		name := opa.Name.ValueString()
+		rego := opa.Rego.ValueString()
+		if name == "" || rego == "" {
+			diags.AddError("Invalid plan validation rule", "name and rego must be set")
+			continue
+		}
+		rule := api.PlanValidationOpaRule{
+			Name: name,
+			Rego: rego,
+		}
+		if selectorValueSet(opa.Description) {
+			desc := opa.Description.ValueString()
+			rule.Description = &desc
+		}
+		rules = append(rules, policyRequestRule{
+			CreatedAt:         createdAtValue(opa.CreatedAt),
+			Id:                id,
+			PlanValidationOpa: &rule,
 		})
 	}
 
@@ -1340,6 +1409,19 @@ func policyRulesToModel(rules []api.PolicyRule) (policyRulesModel, diag.Diagnost
 			}
 			result.EnvironmentProgression = append(result.EnvironmentProgression, model)
 		}
+		if rule.PlanValidationOpa != nil {
+			model := PolicyPlanValidationOpa{
+				CreatedAt:   types.StringValue(rule.CreatedAt),
+				ID:          types.StringValue(rule.Id),
+				Name:        types.StringValue(rule.PlanValidationOpa.Name),
+				Description: types.StringNull(),
+				Rego:        types.StringValue(rule.PlanValidationOpa.Rego),
+			}
+			if rule.PlanValidationOpa.Description != nil {
+				model.Description = types.StringValue(*rule.PlanValidationOpa.Description)
+			}
+			result.PlanValidationOpa = append(result.PlanValidationOpa, model)
+		}
 	}
 
 	return result, diags
@@ -1354,6 +1436,7 @@ func ensurePolicyIDs(plan *PolicyResourceModel, state *PolicyResourceModel) {
 	mergeGradualRolloutIDs(plan.GradualRollout, gradualRolloutListFromState(state))
 	mergeAnyApprovalIDs(plan.AnyApproval, anyApprovalListFromState(state))
 	mergeEnvironmentProgressionIDs(plan.EnvironmentProgression, environmentProgressionListFromState(state))
+	mergePlanValidationOpaIDs(plan.PlanValidationOpa, planValidationOpaListFromState(state))
 }
 
 func ensurePolicyRuleCreatedAt(plan *PolicyResourceModel, state *PolicyResourceModel) {
@@ -1365,6 +1448,7 @@ func ensurePolicyRuleCreatedAt(plan *PolicyResourceModel, state *PolicyResourceM
 	mergeGradualRolloutCreatedAt(plan.GradualRollout, gradualRolloutListFromState(state))
 	mergeAnyApprovalCreatedAt(plan.AnyApproval, anyApprovalListFromState(state))
 	mergeEnvironmentProgressionCreatedAt(plan.EnvironmentProgression, environmentProgressionListFromState(state))
+	mergePlanValidationOpaCreatedAt(plan.PlanValidationOpa, planValidationOpaListFromState(state))
 }
 
 func setPolicyIDOnRules(request *policyRequestPayload, policyID string) {
@@ -1632,6 +1716,39 @@ func mergeEnvironmentProgressionIDs(plan []PolicyEnvironmentProgression, state [
 }
 
 func mergeEnvironmentProgressionCreatedAt(plan []PolicyEnvironmentProgression, state []PolicyEnvironmentProgression) {
+	for i := range plan {
+		if selectorValueSet(plan[i].CreatedAt) {
+			continue
+		}
+		if i < len(state) && selectorValueSet(state[i].CreatedAt) {
+			plan[i].CreatedAt = state[i].CreatedAt
+			continue
+		}
+		plan[i].CreatedAt = types.StringValue(time.Now().UTC().Format(time.RFC3339))
+	}
+}
+
+func planValidationOpaListFromState(state *PolicyResourceModel) []PolicyPlanValidationOpa {
+	if state == nil {
+		return nil
+	}
+	return state.PlanValidationOpa
+}
+
+func mergePlanValidationOpaIDs(plan []PolicyPlanValidationOpa, state []PolicyPlanValidationOpa) {
+	for i := range plan {
+		if selectorValueSet(plan[i].ID) {
+			continue
+		}
+		if i < len(state) && selectorValueSet(state[i].ID) {
+			plan[i].ID = state[i].ID
+			continue
+		}
+		plan[i].ID = types.StringValue(uuid.NewString())
+	}
+}
+
+func mergePlanValidationOpaCreatedAt(plan []PolicyPlanValidationOpa, state []PolicyPlanValidationOpa) {
 	for i := range plan {
 		if selectorValueSet(plan[i].CreatedAt) {
 			continue
