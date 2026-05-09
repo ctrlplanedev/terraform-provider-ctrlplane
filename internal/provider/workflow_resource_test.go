@@ -75,8 +75,12 @@ resource "ctrlplane_workflow" "test" {
   job_agent {
     name     = "test-agent"
     ref      = ctrlplane_job_agent.test.id
-    config   = { "delaySeconds" = "5", "status" = "successful" }
     selector = "true"
+
+    test_runner {
+      delay_seconds = 5
+      status        = "successful"
+    }
   }
 }
 `, testAccProviderConfig(), name+"-agent", name)
