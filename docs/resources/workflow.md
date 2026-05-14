@@ -23,6 +23,7 @@ Manages a workflow in Ctrlplane.
 
 - `inputs` (String) JSON-encoded array of workflow input definitions.
 - `job_agent` (Block List) Job agents to dispatch when the workflow runs. (see [below for nested schema](#nestedblock--job_agent))
+- `slug` (String) URL-safe identifier unique within the workspace. Derived from name if omitted; sticky once set.
 
 ### Read-Only
 
