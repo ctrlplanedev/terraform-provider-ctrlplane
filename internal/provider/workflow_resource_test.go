@@ -17,6 +17,8 @@ import (
 func TestAccWorkflowResource(t *testing.T) {
 	name := fmt.Sprintf("tf-acc-wf-%d", time.Now().UnixNano())
 	updatedName := name + "-updated"
+	// name is already lowercase + digits + hyphens, so slugify is a no-op.
+	derivedSlug := name
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
@@ -35,6 +37,11 @@ func TestAccWorkflowResource(t *testing.T) {
 						tfjsonpath.New("name"),
 						knownvalue.StringExact(name),
 					),
+					statecheck.ExpectKnownValue(
+						"ctrlplane_workflow.test",
+						tfjsonpath.New("slug"),
+						knownvalue.StringExact(derivedSlug),
+					),
 				},
 			},
 			{
@@ -44,6 +51,39 @@ func TestAccWorkflowResource(t *testing.T) {
 						"ctrlplane_workflow.test",
 						tfjsonpath.New("name"),
 						knownvalue.StringExact(updatedName),
+					),
+					// Slug is sticky: renaming the workflow must NOT change the slug.
+					statecheck.ExpectKnownValue(
+						"ctrlplane_workflow.test",
+						tfjsonpath.New("slug"),
+						knownvalue.StringExact(derivedSlug),
+					),
+				},
+			},
+			{
+				ResourceName:      "ctrlplane_workflow.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccWorkflowResource_ExplicitSlug(t *testing.T) {
+	name := fmt.Sprintf("tf-acc-wf-explicit-%d", time.Now().UnixNano())
+	slug := fmt.Sprintf("custom-slug-%d", time.Now().UnixNano())
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccWorkflowConfigWithSlug(name, slug),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"ctrlplane_workflow.test",
+						tfjsonpath.New("slug"),
+						knownvalue.StringExact(slug),
 					),
 				},
 			},
@@ -80,4 +120,31 @@ resource "ctrlplane_workflow" "test" {
   }
 }
 `, testAccProviderConfig(), name+"-agent", name)
+}
+
+func testAccWorkflowConfigWithSlug(name, slug string) string {
+	return fmt.Sprintf(`
+%s
+
+resource "ctrlplane_job_agent" "test" {
+  name = %q
+
+  test_runner {
+    delay_seconds = 5
+    status        = "successful"
+  }
+}
+
+resource "ctrlplane_workflow" "test" {
+  name = %q
+  slug = %q
+
+  job_agent {
+    name     = "test-agent"
+    ref      = ctrlplane_job_agent.test.id
+    config   = { "delaySeconds" = "5", "status" = "successful" }
+    selector = "true"
+  }
+}
+`, testAccProviderConfig(), name+"-agent", name, slug)
 }
