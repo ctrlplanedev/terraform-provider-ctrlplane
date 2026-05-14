@@ -33,6 +33,7 @@ type WorkflowResource struct {
 type WorkflowResourceModel struct {
 	ID        types.String            `tfsdk:"id"`
 	Name      types.String            `tfsdk:"name"`
+	Slug      types.String            `tfsdk:"slug"`
 	Inputs    types.String            `tfsdk:"inputs"`
 	JobAgents []WorkflowJobAgentModel `tfsdk:"job_agent"`
 }
@@ -78,6 +79,14 @@ func (r *WorkflowResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			"name": schema.StringAttribute{
 				Required:    true,
 				Description: "The name of the workflow.",
+			},
+			"slug": schema.StringAttribute{
+				Optional:    true,
+				Computed:    true,
+				Description: "URL-safe identifier unique within the workspace. Derived from name if omitted; sticky once set.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"inputs": schema.StringAttribute{
 				Optional:    true,
@@ -128,6 +137,7 @@ func (r *WorkflowResource) Create(ctx context.Context, req resource.CreateReques
 
 	body := api.CreateWorkflowJSONRequestBody{
 		Name:      data.Name.ValueString(),
+		Slug:      optionalSlug(data.Slug),
 		Inputs:    inputs,
 		JobAgents: workflowJobAgentsFromModel(data.JobAgents),
 	}
@@ -198,6 +208,7 @@ func (r *WorkflowResource) Update(ctx context.Context, req resource.UpdateReques
 
 	body := api.UpdateWorkflowJSONRequestBody{
 		Name:      data.Name.ValueString(),
+		Slug:      optionalSlug(data.Slug),
 		Inputs:    inputs,
 		JobAgents: workflowJobAgentsFromModel(data.JobAgents),
 	}
@@ -305,9 +316,18 @@ func workflowJobAgentsFromModel(agents []WorkflowJobAgentModel) []api.CreateWork
 	return result
 }
 
+func optionalSlug(s types.String) *string {
+	if s.IsNull() || s.IsUnknown() {
+		return nil
+	}
+	v := s.ValueString()
+	return &v
+}
+
 func setWorkflowModelFromAPI(data *WorkflowResourceModel, w *api.Workflow) {
 	data.ID = types.StringValue(w.Id)
 	data.Name = types.StringValue(w.Name)
+	data.Slug = types.StringValue(w.Slug)
 
 	data.Inputs = types.StringValue(normalizeInputsJSON(w.Inputs))
 
