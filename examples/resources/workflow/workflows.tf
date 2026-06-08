@@ -30,14 +30,24 @@ resource "ctrlplane_workflow" "example" {
   job_agent {
     name     = "workflow-runner-1"
     ref      = ctrlplane_job_agent.runner_1.id
-    config   = { delaySeconds = "10", message = "Test runner job agent", status = "successful" }
     selector = "true"
+
+    test_runner {
+      delay_seconds = 10
+      message       = "Test runner job agent"
+      status        = "successful"
+    }
   }
 
   job_agent {
     name     = "workflow-runner-2"
     ref      = ctrlplane_job_agent.runner_2.id
-    config   = { delaySeconds = "10", message = "Test runner job agent", status = "successful" }
     selector = "true"
+
+    test_runner {
+      delay_seconds = 10
+      message       = "Test runner job agent"
+      status        = "successful"
+    }
   }
 }
